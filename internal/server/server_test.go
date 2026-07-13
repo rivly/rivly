@@ -15,6 +15,7 @@ import (
 	"github.com/rivly/rivly/internal/config"
 	"github.com/rivly/rivly/internal/database"
 	"github.com/rivly/rivly/internal/database/db"
+	"github.com/rivly/rivly/internal/events"
 )
 
 func newTestServer(t *testing.T) *Server {
@@ -29,7 +30,7 @@ func newTestServer(t *testing.T) *Server {
 	}
 	queries := db.New(sqlDB)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	return New(logger, queries, auth.NewSessionManager(sqlDB), auth.NewLocal(queries), fakeDocker{}, config.Config{})
+	return New(logger, queries, auth.NewSessionManager(sqlDB), auth.NewLocal(queries), fakeDocker{}, events.NewHub(), config.Config{})
 }
 
 func TestAuthFlow(t *testing.T) {

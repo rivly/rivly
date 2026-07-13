@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"strings"
+	"time"
 )
 
 type Config struct {
@@ -10,6 +11,7 @@ type Config struct {
 	DatabasePath   string
 	TrustedOrigins []string
 	DockerHost     string
+	PollInterval   time.Duration
 }
 
 func Load() Config {
@@ -18,7 +20,17 @@ func Load() Config {
 		DatabasePath:   env("RIVLY_DATABASE", "rivly.db"),
 		TrustedOrigins: splitNonEmpty(os.Getenv("RIVLY_TRUSTED_ORIGINS")),
 		DockerHost:     env("DOCKER_HOST", "unix:///var/run/docker.sock"),
+		PollInterval:   envDuration("RIVLY_POLL_INTERVAL", 5*time.Second),
 	}
+}
+
+func envDuration(key string, fallback time.Duration) time.Duration {
+	if v := os.Getenv(key); v != "" {
+		if d, err := time.ParseDuration(v); err == nil {
+			return d
+		}
+	}
+	return fallback
 }
 
 func env(key, fallback string) string {

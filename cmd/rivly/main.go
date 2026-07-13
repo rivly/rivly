@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -15,6 +16,7 @@ import (
 	"github.com/rivly/rivly/internal/database"
 	"github.com/rivly/rivly/internal/database/db"
 	"github.com/rivly/rivly/internal/docker"
+	"github.com/rivly/rivly/internal/events"
 	"github.com/rivly/rivly/internal/server"
 )
 
@@ -47,19 +49,23 @@ func run(logger *slog.Logger) error {
 	dockerManager := docker.NewManager()
 	defer dockerManager.Close()
 
+	eventsHub := events.NewHub()
 	sessions := auth.NewSessionManager(sqlDB)
 	local := auth.NewLocal(queries)
-	srv := server.New(logger, queries, sessions, local, dockerManager, cfg)
+	srv := server.New(logger, queries, sessions, local, dockerManager, eventsHub, cfg)
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	go srv.RunPoller(ctx)
 
 	httpServer := &http.Server{
 		Addr:              cfg.Addr,
 		Handler:           srv.Router(),
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       120 * time.Second,
+		BaseContext:       func(net.Listener) context.Context { return ctx },
 	}
-
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
 
 	go func() {
 		logger.Info("Rivly listening", "addr", cfg.Addr)

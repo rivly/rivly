@@ -15,6 +15,7 @@ import (
 	"github.com/rivly/rivly/internal/config"
 	"github.com/rivly/rivly/internal/database/db"
 	"github.com/rivly/rivly/internal/docker"
+	"github.com/rivly/rivly/internal/events"
 )
 
 type dockerService interface {
@@ -22,13 +23,15 @@ type dockerService interface {
 }
 
 type Server struct {
-	logger   *slog.Logger
-	queries  *db.Queries
-	sessions *scs.SessionManager
-	local    *auth.Local
-	docker   dockerService
-	cfg      config.Config
-	setupMu  sync.Mutex
+	logger       *slog.Logger
+	queries      *db.Queries
+	sessions     *scs.SessionManager
+	local        *auth.Local
+	docker       dockerService
+	events       *events.Hub
+	cfg          config.Config
+	setupMu      sync.Mutex
+	lastEnvState map[int64]string
 }
 
 func New(
@@ -37,15 +40,18 @@ func New(
 	sessions *scs.SessionManager,
 	local *auth.Local,
 	docker dockerService,
+	eventsHub *events.Hub,
 	cfg config.Config,
 ) *Server {
 	return &Server{
-		logger:   logger,
-		queries:  queries,
-		sessions: sessions,
-		local:    local,
-		docker:   docker,
-		cfg:      cfg,
+		logger:       logger,
+		queries:      queries,
+		sessions:     sessions,
+		local:        local,
+		docker:       docker,
+		events:       eventsHub,
+		cfg:          cfg,
+		lastEnvState: make(map[int64]string),
 	}
 }
 
@@ -64,7 +70,6 @@ func (s *Server) Router() http.Handler {
 	}
 	r.Use(crossOrigin.Handler)
 	r.Use(secureCookies)
-	r.Use(s.sessions.LoadAndSave)
 
 	authLimit := httprate.LimitBy(10, time.Minute, func(r *http.Request) (string, error) {
 		return httprate.CanonicalizeIP(middleware.GetClientIP(r.Context())), nil
@@ -72,16 +77,22 @@ func (s *Server) Router() http.Handler {
 
 	r.Get("/api/health", s.handleHealth)
 	r.Route("/api/v1", func(r chi.Router) {
-		r.Get("/setup", s.handleSetupStatus)
-		r.With(authLimit).Post("/setup", s.handleSetup)
-		r.With(authLimit).Post("/login", s.handleLogin)
-		r.Post("/logout", s.handleLogout)
-		r.With(s.requireAuth).Get("/me", s.handleMe)
+		r.With(s.requireEventAuth).Get("/events", s.handleEvents)
 
-		r.Route("/environments", func(r chi.Router) {
-			r.Use(s.requireAuth)
-			r.Get("/", s.handleListEnvironments)
-			r.Get("/{id}", s.handleGetEnvironment)
+		r.Group(func(r chi.Router) {
+			r.Use(s.sessions.LoadAndSave)
+
+			r.Get("/setup", s.handleSetupStatus)
+			r.With(authLimit).Post("/setup", s.handleSetup)
+			r.With(authLimit).Post("/login", s.handleLogin)
+			r.Post("/logout", s.handleLogout)
+			r.With(s.requireAuth).Get("/me", s.handleMe)
+
+			r.Route("/environments", func(r chi.Router) {
+				r.Use(s.requireAuth)
+				r.Get("/", s.handleListEnvironments)
+				r.Get("/{id}", s.handleGetEnvironment)
+			})
 		})
 	})
 
