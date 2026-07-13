@@ -1,0 +1,32 @@
+.shell {
+  display: flex;
+  min-height: 100dvh;
+  background: var(--bg-subtle);
+}
+
+.body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.main {
+  flex: 1;
+  padding: 24px;
+}
+
+.backdrop {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    border: 0;
+    background: rgba(16, 24, 40, 0.4);
+  }
+}

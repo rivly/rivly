@@ -1,0 +1,52 @@
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 56px;
+  padding: 0 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.burger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.burger:hover {
+  background: var(--bg-subtle);
+}
+
+.burger svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.mobileLogo {
+  display: none;
+}
+
+.spacer {
+  flex: 1;
+}
+
+@media (max-width: 768px) {
+  .burger {
+    display: inline-flex;
+  }
+
+  .mobileLogo {
+    display: block;
+  }
+}
