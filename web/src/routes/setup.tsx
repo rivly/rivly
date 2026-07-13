@@ -10,6 +10,7 @@ import { ApiError } from '../lib/api'
 import { loadAuthState, useSetup } from '../lib/auth'
 
 export const Route = createFileRoute('/setup')({
+  head: () => ({ meta: [{ title: 'Set up · Rivly' }] }),
   beforeLoad: async ({ context }) => {
     const { needsSetup, me } = await loadAuthState(context.queryClient)
     if (me) {

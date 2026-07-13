@@ -5,6 +5,7 @@ import { formatBytes } from '../../../../lib/format'
 import styles from './index.module.css'
 
 export const Route = createFileRoute('/_app/environments/$id/')({
+  head: () => ({ meta: [{ title: 'Overview · Rivly' }] }),
   component: OverviewPage,
 })
 

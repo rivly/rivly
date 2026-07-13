@@ -16,6 +16,7 @@ import { toast } from '../../lib/toast'
 import styles from './index.module.css'
 
 export const Route = createFileRoute('/_app/')({
+  head: () => ({ meta: [{ title: 'Environments · Rivly' }] }),
   component: HomePage,
 })
 

@@ -12,6 +12,7 @@ import { loadAuthState, useLogin } from '../lib/auth'
 import styles from './login.module.css'
 
 export const Route = createFileRoute('/login')({
+  head: () => ({ meta: [{ title: 'Sign in · Rivly' }] }),
   beforeLoad: async ({ context }) => {
     const { needsSetup, me } = await loadAuthState(context.queryClient)
     if (me) {

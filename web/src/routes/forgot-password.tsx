@@ -3,6 +3,7 @@ import { AuthLayout } from '../components/AuthLayout'
 import styles from './forgot-password.module.css'
 
 export const Route = createFileRoute('/forgot-password')({
+  head: () => ({ meta: [{ title: 'Reset password · Rivly' }] }),
   component: ForgotPasswordPage,
 })
 

@@ -1,6 +1,20 @@
-import { createRootRouteWithContext, Outlet } from '@tanstack/react-router'
+import {
+  createRootRouteWithContext,
+  HeadContent,
+  Outlet,
+} from '@tanstack/react-router'
 import type { QueryClient } from '@tanstack/react-query'
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  component: () => <Outlet />,
+  head: () => ({ meta: [{ title: 'Rivly' }] }),
+  component: RootLayout,
 })
+
+function RootLayout() {
+  return (
+    <>
+      <HeadContent />
+      <Outlet />
+    </>
+  )
+}
