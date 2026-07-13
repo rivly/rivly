@@ -15,12 +15,18 @@ import (
 )
 
 type fakeDocker struct {
-	info    docker.SystemInfo
-	infoErr error
+	info          docker.SystemInfo
+	infoErr       error
+	containers    []docker.Container
+	containersErr error
 }
 
 func (f fakeDocker) Info(_ context.Context, _ int64, _ string) (docker.SystemInfo, error) {
 	return f.info, f.infoErr
+}
+
+func (f fakeDocker) Containers(_ context.Context, _ int64, _ string) ([]docker.Container, error) {
+	return f.containers, f.containersErr
 }
 
 const testCreds = `{"email":"admin@rivly.dev","password":"s3cret-password","displayName":"Admin"}`

@@ -20,6 +20,7 @@ import (
 
 type dockerService interface {
 	Info(ctx context.Context, id int64, host string) (docker.SystemInfo, error)
+	Containers(ctx context.Context, id int64, host string) ([]docker.Container, error)
 }
 
 type Server struct {
@@ -92,6 +93,7 @@ func (s *Server) Router() http.Handler {
 				r.Use(s.requireAuth)
 				r.Get("/", s.handleListEnvironments)
 				r.Get("/{id}", s.handleGetEnvironment)
+				r.Get("/{id}/containers", s.handleListContainers)
 			})
 		})
 	})

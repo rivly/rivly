@@ -2,6 +2,7 @@ package docker
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"time"
 
@@ -9,6 +10,8 @@ import (
 )
 
 const callTimeout = 5 * time.Second
+
+const composeProjectLabel = "com.docker.compose.project"
 
 type Manager struct {
 	mu      sync.Mutex
@@ -100,6 +103,80 @@ func (m *Manager) Info(ctx context.Context, id int64, host string) (SystemInfo, 
 		ContainersStopped: i.ContainersStopped,
 		Images:            i.Images,
 	}, nil
+}
+
+type Container struct {
+	ID      string
+	Name    string
+	Image   string
+	State   string
+	Status  string
+	Stack   string
+	Created int64
+	IP      string
+	Ports   []Port
+}
+
+type Port struct {
+	PrivatePort uint16
+	PublicPort  uint16
+	Type        string
+	IP          string
+}
+
+func (m *Manager) Containers(ctx context.Context, id int64, host string) ([]Container, error) {
+	cli, err := m.clientFor(id, host)
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithTimeout(ctx, callTimeout)
+	defer cancel()
+	res, err := cli.ContainerList(ctx, client.ContainerListOptions{All: true})
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]Container, 0, len(res.Items))
+	for _, c := range res.Items {
+		name := ""
+		if len(c.Names) > 0 {
+			name = strings.TrimPrefix(c.Names[0], "/")
+		}
+		ports := make([]Port, 0, len(c.Ports))
+		for _, p := range c.Ports {
+			ip := ""
+			if p.IP.IsValid() {
+				ip = p.IP.String()
+			}
+			ports = append(ports, Port{
+				PrivatePort: p.PrivatePort,
+				PublicPort:  p.PublicPort,
+				Type:        p.Type,
+				IP:          ip,
+			})
+		}
+		ip := ""
+		if c.NetworkSettings != nil {
+			for _, n := range c.NetworkSettings.Networks {
+				if n != nil && n.IPAddress.IsValid() {
+					ip = n.IPAddress.String()
+					break
+				}
+			}
+		}
+		out = append(out, Container{
+			ID:      c.ID,
+			Name:    name,
+			Image:   c.Image,
+			State:   string(c.State),
+			Status:  c.Status,
+			Stack:   c.Labels[composeProjectLabel],
+			Created: c.Created,
+			IP:      ip,
+			Ports:   ports,
+		})
+	}
+	return out, nil
 }
 
 func (m *Manager) Close() {
