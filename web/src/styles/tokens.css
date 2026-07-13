@@ -1,0 +1,25 @@
+:root {
+  color-scheme: light;
+
+  --bg: #ffffff;
+  --bg-subtle: #f6f7f9;
+  --surface: #ffffff;
+  --fg: #1a1d21;
+  --fg-muted: #626b76;
+  --border: #e6e8ec;
+  --border-strong: #d6dae0;
+
+  --accent: #2f7bff;
+  --accent-strong: #1e69f0;
+  --accent-border: #1a5fdc;
+  --accent-contrast: #ffffff;
+  --accent-glow: rgba(30, 105, 240, 0.28);
+
+  --radius: 8px;
+  --radius-lg: 14px;
+
+  --font-sans: "Geist Variable", -apple-system, BlinkMacSystemFont, system-ui,
+    "Segoe UI", Roboto, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, "SF Mono", Menlo, Consolas,
+    monospace;
+}

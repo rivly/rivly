@@ -46,7 +46,7 @@ These are the mistakes that get made here. Don't.
 - **Migrations are immutable**: add a new goose migration, never edit an applied one. Timestamps are **INTEGER unix** (`unixepoch()`), not `DATETIME` — Go cannot scan SQLite's datetime text into `time.Time`.
 - **chi APIs**: use `middleware.ClientIPFrom*` (not deprecated `RealIP`) and `httprate.LimitBy` (not `LimitByIP`). golangci-lint flags the deprecated ones — fix them, don't silence.
 - **Auth already exists** in `internal/auth`. Never roll your own hashing or session cookies. Auth failures stay generic and constant-time (no user enumeration).
-- **UI is hand-built vanilla CSS**. No Tailwind, no CSS-in-JS, no component library. Co-locate `Component.css`.
+- **UI is hand-built with CSS Modules** (`Component.module.css`), scoped per component. Only the reset and design tokens are global, in `src/styles/` (imported by `src/index.css`). No Tailwind, no CSS-in-JS, no *styled* component library, and never dump component styles into `index.css`. Complex widgets use **Base UI** (`@base-ui/react`, headless) and tables use **TanStack Table** — both give behavior + accessibility only, you write all the CSS. Prefer a native element when it is already accessible.
 - **Server state is TanStack Query**, never `useEffect` + `fetch`. Routing is TanStack Router file-based (`web/src/routes/`); the router plugin goes **before** `react()` in `vite.config.ts`; `routeTree.gen.ts` is generated, not hand-edited.
 - **No comments** anywhere. Clear names and small functions instead.
 
@@ -61,7 +61,8 @@ These are the mistakes that get made here. Don't.
 
 ## Frontend (web/)
 
-- Vite 8 + React 19 + TypeScript (strict) + vanilla CSS. Linter oxlint.
+- Vite 8 + React 19 + TypeScript (strict). Styling is plain CSS via **CSS Modules** (`Component.module.css`); global reset + design tokens in `src/styles/` (`tokens.css`, `reset.css`, `base.css`), imported by `src/index.css`. Linter oxlint.
+- Component stack: **Base UI** (`@base-ui/react`) for interactive widgets, **TanStack Table** for tables, **react-icons** (`react-icons/lu`, Lucide) for icons. All headless — you own the styling and the look.
 - Function components only; `ref` is a prop (no `forwardRef`); no `React.FC`; no top-level `import React`; type-only imports use `import type`.
 - Call the API at `/api/v1/...` with `credentials: 'include'` (auth is a session cookie). In dev, proxy `/api` through Vite so it stays same-origin — the backend rejects cross-origin browser POSTs (CSRF protection).
 - Server data via TanStack Query; local/UI state via React state or context.
