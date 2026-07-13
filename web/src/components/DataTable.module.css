@@ -154,7 +154,6 @@
   color: var(--fg);
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 tbody tr:last-child .td {

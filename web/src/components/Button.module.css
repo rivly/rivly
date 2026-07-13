@@ -31,6 +31,18 @@
   font-size: 0.875rem;
 }
 
+.iconOnly {
+  padding: 0;
+}
+
+.iconOnly.md {
+  width: 40px;
+}
+
+.iconOnly.sm {
+  width: 32px;
+}
+
 .btn:disabled,
 .btn[data-disabled] {
   opacity: 0.6;

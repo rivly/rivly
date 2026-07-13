@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useMemo } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { LuScrollText, LuTerminal } from 'react-icons/lu'
+import { Button } from '../../../../components/Button'
 import { DataTable } from '../../../../components/DataTable'
 import { Loader } from '../../../../components/Loader'
 import { Tooltip } from '../../../../components/Tooltip'
@@ -45,7 +46,7 @@ function ContainersPage() {
       {
         id: 'actions',
         header: 'Actions',
-        size: 96,
+        size: 104,
         enableSorting: false,
         enableHiding: false,
         meta: { sticky: 'left' },
@@ -118,24 +119,24 @@ function RowActions({ container }: { container: Container }) {
   return (
     <span className={styles.actions}>
       <Tooltip content="Logs">
-        <button
-          type="button"
-          className={styles.actionButton}
-          onClick={() => toast.info('Coming soon', `Logs for ${container.name}`)}
+        <Button
+          variant="secondary"
+          size="sm"
+          iconOnly
+          icon={<LuScrollText />}
           aria-label="Logs"
-        >
-          <LuScrollText />
-        </button>
+          onClick={() => toast.info('Coming soon', `Logs for ${container.name}`)}
+        />
       </Tooltip>
       <Tooltip content="Terminal">
-        <button
-          type="button"
-          className={styles.actionButton}
-          onClick={() => toast.info('Coming soon', `Terminal for ${container.name}`)}
+        <Button
+          variant="secondary"
+          size="sm"
+          iconOnly
+          icon={<LuTerminal />}
           aria-label="Terminal"
-        >
-          <LuTerminal />
-        </button>
+          onClick={() => toast.info('Coming soon', `Terminal for ${container.name}`)}
+        />
       </Tooltip>
     </span>
   )

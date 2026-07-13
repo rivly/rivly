@@ -7,6 +7,7 @@ type Props = Omit<ComponentProps<typeof BaseButton>, 'className'> & {
   size?: 'md' | 'sm'
   icon?: ReactNode
   iconPosition?: 'start' | 'end'
+  iconOnly?: boolean
   loading?: boolean
   fullWidth?: boolean
   className?: string
@@ -17,6 +18,7 @@ export function Button({
   size = 'md',
   icon,
   iconPosition = 'start',
+  iconOnly = false,
   loading = false,
   fullWidth = false,
   disabled,
@@ -28,6 +30,7 @@ export function Button({
     styles.btn,
     styles[variant],
     styles[size],
+    iconOnly && styles.iconOnly,
     fullWidth && styles.fullWidth,
     className,
   ]
