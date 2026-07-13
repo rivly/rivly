@@ -2,32 +2,6 @@
   max-width: 60rem;
 }
 
-.back {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 18px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--fg-muted);
-  text-decoration: none;
-}
-
-.back:hover {
-  color: var(--fg);
-}
-
-.back svg {
-  width: 1rem;
-  height: 1rem;
-}
-
-.state {
-  color: var(--fg-muted);
-  padding: 16px 0;
-  max-width: 40rem;
-}
-
 .head {
   display: flex;
   flex-direction: column;

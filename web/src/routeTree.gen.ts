@@ -15,6 +15,8 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppEnvironmentsIdRouteImport } from './routes/_app/environments/$id'
+import { Route as AppEnvironmentsIdIndexRouteImport } from './routes/_app/environments/$id/index'
+import { Route as AppEnvironmentsIdContainersRouteImport } from './routes/_app/environments/$id/containers'
 
 const SetupRoute = SetupRouteImport.update({
   id: '/setup',
@@ -45,20 +47,34 @@ const AppEnvironmentsIdRoute = AppEnvironmentsIdRouteImport.update({
   path: '/environments/$id',
   getParentRoute: () => AppRoute,
 } as any)
+const AppEnvironmentsIdIndexRoute = AppEnvironmentsIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppEnvironmentsIdRoute,
+} as any)
+const AppEnvironmentsIdContainersRoute =
+  AppEnvironmentsIdContainersRouteImport.update({
+    id: '/containers',
+    path: '/containers',
+    getParentRoute: () => AppEnvironmentsIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
-  '/environments/$id': typeof AppEnvironmentsIdRoute
+  '/environments/$id': typeof AppEnvironmentsIdRouteWithChildren
+  '/environments/$id/containers': typeof AppEnvironmentsIdContainersRoute
+  '/environments/$id/': typeof AppEnvironmentsIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
   '/': typeof AppIndexRoute
-  '/environments/$id': typeof AppEnvironmentsIdRoute
+  '/environments/$id/containers': typeof AppEnvironmentsIdContainersRoute
+  '/environments/$id': typeof AppEnvironmentsIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -67,14 +83,28 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
   '/_app/': typeof AppIndexRoute
-  '/_app/environments/$id': typeof AppEnvironmentsIdRoute
+  '/_app/environments/$id': typeof AppEnvironmentsIdRouteWithChildren
+  '/_app/environments/$id/containers': typeof AppEnvironmentsIdContainersRoute
+  '/_app/environments/$id/': typeof AppEnvironmentsIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/forgot-password' | '/login' | '/setup' | '/environments/$id'
+    | '/'
+    | '/forgot-password'
+    | '/login'
+    | '/setup'
+    | '/environments/$id'
+    | '/environments/$id/containers'
+    | '/environments/$id/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/forgot-password' | '/login' | '/setup' | '/' | '/environments/$id'
+  to:
+    | '/forgot-password'
+    | '/login'
+    | '/setup'
+    | '/'
+    | '/environments/$id/containers'
+    | '/environments/$id'
   id:
     | '__root__'
     | '/_app'
@@ -83,6 +113,8 @@ export interface FileRouteTypes {
     | '/setup'
     | '/_app/'
     | '/_app/environments/$id'
+    | '/_app/environments/$id/containers'
+    | '/_app/environments/$id/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -136,17 +168,44 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEnvironmentsIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/environments/$id/': {
+      id: '/_app/environments/$id/'
+      path: '/'
+      fullPath: '/environments/$id/'
+      preLoaderRoute: typeof AppEnvironmentsIdIndexRouteImport
+      parentRoute: typeof AppEnvironmentsIdRoute
+    }
+    '/_app/environments/$id/containers': {
+      id: '/_app/environments/$id/containers'
+      path: '/containers'
+      fullPath: '/environments/$id/containers'
+      preLoaderRoute: typeof AppEnvironmentsIdContainersRouteImport
+      parentRoute: typeof AppEnvironmentsIdRoute
+    }
   }
 }
 
+interface AppEnvironmentsIdRouteChildren {
+  AppEnvironmentsIdContainersRoute: typeof AppEnvironmentsIdContainersRoute
+  AppEnvironmentsIdIndexRoute: typeof AppEnvironmentsIdIndexRoute
+}
+
+const AppEnvironmentsIdRouteChildren: AppEnvironmentsIdRouteChildren = {
+  AppEnvironmentsIdContainersRoute: AppEnvironmentsIdContainersRoute,
+  AppEnvironmentsIdIndexRoute: AppEnvironmentsIdIndexRoute,
+}
+
+const AppEnvironmentsIdRouteWithChildren =
+  AppEnvironmentsIdRoute._addFileChildren(AppEnvironmentsIdRouteChildren)
+
 interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
-  AppEnvironmentsIdRoute: typeof AppEnvironmentsIdRoute
+  AppEnvironmentsIdRoute: typeof AppEnvironmentsIdRouteWithChildren
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
-  AppEnvironmentsIdRoute: AppEnvironmentsIdRoute,
+  AppEnvironmentsIdRoute: AppEnvironmentsIdRouteWithChildren,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

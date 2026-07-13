@@ -14,6 +14,7 @@ const handlers: Record<
       list ? list.map((e) => (e.id === env.id ? env : e)) : list,
     )
     queryClient.setQueryData(['environments', env.id], env)
+    queryClient.invalidateQueries({ queryKey: ['containers', env.id] })
   },
 }
 
