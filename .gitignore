@@ -1,0 +1,21 @@
+# Go
+/bin/
+/rivly
+*.exe
+*.test
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# Env
+.env
+*.local
+
+# Web (Node)
+/web/node_modules/
+/web/dist/
+
+# OS / editor
+.DS_Store
