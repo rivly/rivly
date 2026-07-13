@@ -1,6 +1,8 @@
 package server
 
 import (
+	"database/sql"
+	"errors"
 	"net/http"
 	"net/mail"
 	"strings"
@@ -37,16 +39,19 @@ func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 func (s *Server) handleSetupStatus(w http.ResponseWriter, r *http.Request) {
 	count, err := s.queries.CountUsers(r.Context())
 	if err != nil {
-		s.writeError(w, http.StatusInternalServerError, "could not read setup status")
+		s.serverError(w, r, "could not read setup status", err)
 		return
 	}
 	s.writeJSON(w, http.StatusOK, map[string]bool{"needsSetup": count == 0})
 }
 
 func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
+	s.setupMu.Lock()
+	defer s.setupMu.Unlock()
+
 	count, err := s.queries.CountUsers(r.Context())
 	if err != nil {
-		s.writeError(w, http.StatusInternalServerError, "could not read setup status")
+		s.serverError(w, r, "could not read setup status", err)
 		return
 	}
 	if count > 0 {
@@ -59,19 +64,20 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	if msg, ok := validateCredentials(in); !ok {
+	email, msg, ok := validateSetup(in)
+	if !ok {
 		s.writeError(w, http.StatusBadRequest, msg)
 		return
 	}
 
-	user, err := s.local.Register(r.Context(), in.Email, in.Password, strings.TrimSpace(in.DisplayName), "admin")
+	user, err := s.local.Register(r.Context(), email, in.Password, strings.TrimSpace(in.DisplayName), "admin")
 	if err != nil {
-		s.writeError(w, http.StatusInternalServerError, "could not create the account")
+		s.serverError(w, r, "could not create the account", err)
 		return
 	}
 
 	if err := s.startSession(r, user.ID); err != nil {
-		s.writeError(w, http.StatusInternalServerError, "could not start a session")
+		s.serverError(w, r, "could not start a session", err)
 		return
 	}
 	s.writeJSON(w, http.StatusCreated, toUserResponse(user))
@@ -91,7 +97,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.startSession(r, user.ID); err != nil {
-		s.writeError(w, http.StatusInternalServerError, "could not start a session")
+		s.serverError(w, r, "could not start a session", err)
 		return
 	}
 	s.writeJSON(w, http.StatusOK, toUserResponse(user))
@@ -99,7 +105,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	if err := s.sessions.Destroy(r.Context()); err != nil {
-		s.writeError(w, http.StatusInternalServerError, "could not log out")
+		s.serverError(w, r, "could not log out", err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -108,8 +114,12 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 	userID := s.sessions.GetInt64(r.Context(), sessionUserID)
 	user, err := s.queries.GetUserByID(r.Context(), userID)
-	if err != nil {
+	if errors.Is(err, sql.ErrNoRows) {
 		s.writeError(w, http.StatusUnauthorized, "authentication required")
+		return
+	}
+	if err != nil {
+		s.serverError(w, r, "could not load the account", err)
 		return
 	}
 	s.writeJSON(w, http.StatusOK, toUserResponse(user))
@@ -123,12 +133,16 @@ func (s *Server) startSession(r *http.Request, userID int64) error {
 	return nil
 }
 
-func validateCredentials(in credentialsInput) (string, bool) {
-	if _, err := mail.ParseAddress(in.Email); err != nil {
-		return "a valid email address is required", false
+func validateSetup(in credentialsInput) (email string, message string, ok bool) {
+	addr, err := mail.ParseAddress(in.Email)
+	if err != nil {
+		return "", "a valid email address is required", false
 	}
 	if len(in.Password) < 8 {
-		return "password must be at least 8 characters", false
+		return "", "password must be at least 8 characters", false
 	}
-	return "", true
+	if len(in.Password) > 128 {
+		return "", "password must be at most 128 characters", false
+	}
+	return strings.ToLower(addr.Address), "", true
 }

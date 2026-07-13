@@ -1,8 +1,13 @@
 package server
 
 import (
+	"log/slog"
 	"net/http"
+	"runtime/debug"
 	"strings"
+	"time"
+
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 const sessionUserID = "userID"
@@ -13,6 +18,45 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 			s.writeError(w, http.StatusUnauthorized, "authentication required")
 			return
 		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (s *Server) requestLogger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+		start := time.Now()
+		next.ServeHTTP(ww, r)
+		s.logger.LogAttrs(r.Context(), slog.LevelInfo, "request",
+			slog.String("method", r.Method),
+			slog.String("path", r.URL.Path),
+			slog.Int("status", ww.Status()),
+			slog.Int("bytes", ww.BytesWritten()),
+			slog.Int64("duration_ms", time.Since(start).Milliseconds()),
+			slog.String("ip", middleware.GetClientIP(r.Context())),
+			slog.String("request_id", middleware.GetReqID(r.Context())),
+		)
+	})
+}
+
+func (s *Server) recoverer(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			rec := recover()
+			if rec == nil {
+				return
+			}
+			if rec == http.ErrAbortHandler {
+				panic(rec)
+			}
+			s.logger.Error("panic recovered",
+				"err", rec,
+				"method", r.Method,
+				"path", r.URL.Path,
+				"stack", string(debug.Stack()),
+			)
+			s.writeError(w, http.StatusInternalServerError, "internal server error")
+		}()
 		next.ServeHTTP(w, r)
 	})
 }
@@ -33,6 +77,10 @@ func secureCookies(next http.Handler) http.Handler {
 type secureCookieWriter struct {
 	http.ResponseWriter
 	patched bool
+}
+
+func (w *secureCookieWriter) Unwrap() http.ResponseWriter {
+	return w.ResponseWriter
 }
 
 func (w *secureCookieWriter) patch() {

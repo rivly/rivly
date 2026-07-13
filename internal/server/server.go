@@ -3,6 +3,7 @@ package server
 import (
 	"log/slog"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/alexedwards/scs/v2"
@@ -20,6 +21,7 @@ type Server struct {
 	sessions *scs.SessionManager
 	local    *auth.Local
 	cfg      config.Config
+	setupMu  sync.Mutex
 }
 
 func New(
@@ -42,7 +44,8 @@ func (s *Server) Router() http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.ClientIPFromRemoteAddr)
-	r.Use(middleware.Recoverer)
+	r.Use(s.requestLogger)
+	r.Use(s.recoverer)
 
 	crossOrigin := http.NewCrossOriginProtection()
 	for _, origin := range s.cfg.TrustedOrigins {

@@ -13,6 +13,7 @@ func NewSessionManager(db *sql.DB) *scs.SessionManager {
 	sm := scs.New()
 	sm.Store = sqlite3store.New(db)
 	sm.Lifetime = 7 * 24 * time.Hour
+	sm.IdleTimeout = 3 * 24 * time.Hour
 	sm.Cookie.Name = "rivly_session"
 	sm.Cookie.Path = "/"
 	sm.Cookie.HttpOnly = true

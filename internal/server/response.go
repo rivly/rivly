@@ -17,6 +17,11 @@ func (s *Server) writeError(w http.ResponseWriter, status int, message string) {
 	s.writeJSON(w, status, map[string]string{"error": message})
 }
 
+func (s *Server) serverError(w http.ResponseWriter, r *http.Request, message string, err error) {
+	s.logger.Error(message, "err", err, "method", r.Method, "path", r.URL.Path)
+	s.writeError(w, http.StatusInternalServerError, message)
+}
+
 func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) error {
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	dec := json.NewDecoder(r.Body)
