@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { StatusBadge } from '../../../../components/StatusBadge'
-import { useEnvironment, type SystemInfo } from '../../../../lib/environments'
+import { useEnvironment } from '../../../../lib/environments'
 import { formatBytes } from '../../../../lib/format'
 import styles from './index.module.css'
 
@@ -27,8 +27,6 @@ function OverviewPage() {
       </header>
 
       <div className={styles.content}>
-        <ContainersCard system={env.system} />
-
         <div className={styles.metrics}>
           <Metric label="Images" value={env.system.images} />
           <Metric label="CPUs" value={env.system.ncpu} />
@@ -50,64 +48,6 @@ function OverviewPage() {
             <Detail label="Kernel" value={env.system.kernelVersion} />
           </dl>
         </div>
-      </div>
-    </div>
-  )
-}
-
-function ContainersCard({ system }: { system: SystemInfo }) {
-  const total = system.containers
-  const width = (n: number) => (total > 0 ? `${(n / total) * 100}%` : '0%')
-
-  return (
-    <div className={styles.card}>
-      <div className={styles.containersHead}>
-        <h2 className={styles.cardTitle}>Containers</h2>
-        <span className={styles.total}>{total}</span>
-      </div>
-
-      <div className={styles.bar}>
-        {total === 0 ? (
-          <span className={styles.barEmpty} />
-        ) : (
-          <>
-            {system.containersRunning > 0 && (
-              <span
-                className={styles.barRunning}
-                style={{ width: width(system.containersRunning) }}
-              />
-            )}
-            {system.containersPaused > 0 && (
-              <span
-                className={styles.barPaused}
-                style={{ width: width(system.containersPaused) }}
-              />
-            )}
-            {system.containersStopped > 0 && (
-              <span
-                className={styles.barStopped}
-                style={{ width: width(system.containersStopped) }}
-              />
-            )}
-          </>
-        )}
-      </div>
-
-      <div className={styles.legend}>
-        <span className={styles.legendItem}>
-          <span className={`${styles.dot} ${styles.dotRunning}`} />
-          {system.containersRunning} running
-        </span>
-        {system.containersPaused > 0 && (
-          <span className={styles.legendItem}>
-            <span className={`${styles.dot} ${styles.dotPaused}`} />
-            {system.containersPaused} paused
-          </span>
-        )}
-        <span className={styles.legendItem}>
-          <span className={`${styles.dot} ${styles.dotStopped}`} />
-          {system.containersStopped} stopped
-        </span>
       </div>
     </div>
   )
