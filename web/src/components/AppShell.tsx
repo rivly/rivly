@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { useServerEvents } from '../lib/events'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 import styles from './AppShell.module.css'
@@ -10,6 +11,8 @@ type Props = {
 }
 
 export function AppShell({ children }: Props) {
+  useServerEvents()
+
   const [menuOpen, setMenuOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(
     () => localStorage.getItem(COLLAPSE_KEY) === '1',
