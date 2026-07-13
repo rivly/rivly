@@ -1,0 +1,41 @@
+.wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.9375rem;
+  color: var(--fg);
+}
+
+.root {
+  position: relative;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--border-strong);
+  border-radius: 5px;
+  background: var(--surface);
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.root[data-checked] {
+  background: var(--accent);
+  border-color: var(--accent-border);
+}
+
+.indicator {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-contrast);
+}
+
+.indicator svg {
+  width: 0.8em;
+  height: 0.8em;
+}

@@ -1,0 +1,75 @@
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--fg);
+  font-size: 0.875rem;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.trigger:hover {
+  border-color: var(--border-strong);
+}
+
+.leading {
+  display: inline-flex;
+  color: var(--fg-muted);
+}
+
+.leading svg {
+  width: 1em;
+  height: 1em;
+}
+
+.value {
+  flex: 1;
+}
+
+.caret {
+  display: inline-flex;
+  color: var(--fg-muted);
+}
+
+.caret svg {
+  width: 0.9em;
+  height: 0.9em;
+}
+
+.positioner {
+  z-index: 50;
+}
+
+.popup {
+  min-width: 150px;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(16, 24, 40, 0.12);
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  outline: none;
+}
+
+.item[data-highlighted] {
+  background: var(--bg-subtle);
+}
+
+.item[data-selected] {
+  color: var(--accent-strong);
+  font-weight: 500;
+}

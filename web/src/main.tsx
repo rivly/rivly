@@ -7,15 +7,15 @@ import '@fontsource-variable/geist/index.css'
 import '@fontsource-variable/geist-mono/index.css'
 import './index.css'
 
-const router = createRouter({ routeTree })
+const queryClient = new QueryClient()
+
+const router = createRouter({ routeTree, context: { queryClient } })
 
 declare module '@tanstack/react-router' {
   interface Register {
     router: typeof router
   }
 }
-
-const queryClient = new QueryClient()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

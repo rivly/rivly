@@ -1,0 +1,8 @@
+.error {
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: color-mix(in oklab, var(--danger) 10%, transparent);
+  color: var(--danger-strong);
+  font-size: 0.875rem;
+}

@@ -1,0 +1,12 @@
+.forgot {
+  font-size: 0.8125rem;
+  color: var(--accent-strong);
+}
+
+.forgot:hover {
+  text-decoration: underline;
+}
+
+.remember {
+  margin-bottom: 16px;
+}

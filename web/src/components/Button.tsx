@@ -8,6 +8,7 @@ type Props = Omit<ComponentProps<typeof BaseButton>, 'className'> & {
   icon?: ReactNode
   iconPosition?: 'start' | 'end'
   loading?: boolean
+  fullWidth?: boolean
   className?: string
 }
 
@@ -17,12 +18,19 @@ export function Button({
   icon,
   iconPosition = 'start',
   loading = false,
+  fullWidth = false,
   disabled,
   className,
   children,
   ...props
 }: Props) {
-  const classes = [styles.btn, styles[variant], styles[size], className]
+  const classes = [
+    styles.btn,
+    styles[variant],
+    styles[size],
+    fullWidth && styles.fullWidth,
+    className,
+  ]
     .filter(Boolean)
     .join(' ')
 

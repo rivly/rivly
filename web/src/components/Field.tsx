@@ -1,0 +1,23 @@
+import { Field as BaseField } from '@base-ui/react/field'
+import type { ComponentProps } from 'react'
+import styles from './Field.module.css'
+
+type Props = Omit<ComponentProps<typeof BaseField.Control>, 'className'> & {
+  label: string
+  name: string
+}
+
+export function Field({ label, name, ...props }: Props) {
+  return (
+    <BaseField.Root name={name} className={styles.root}>
+      <BaseField.Label className={styles.label}>{label}</BaseField.Label>
+      <BaseField.Control className={styles.control} {...props} />
+      <BaseField.Error className={styles.error} match="valueMissing">
+        This field is required.
+      </BaseField.Error>
+      <BaseField.Error className={styles.error} match="typeMismatch">
+        Please enter a valid email address.
+      </BaseField.Error>
+    </BaseField.Root>
+  )
+}

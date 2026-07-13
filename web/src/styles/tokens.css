@@ -15,6 +15,9 @@
   --accent-contrast: #ffffff;
   --accent-glow: rgba(30, 105, 240, 0.28);
 
+  --danger: #e5484d;
+  --danger-strong: #c62a2f;
+
   --radius: 8px;
   --radius-lg: 14px;
 
