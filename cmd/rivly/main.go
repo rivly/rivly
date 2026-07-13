@@ -14,6 +14,7 @@ import (
 	"github.com/rivly/rivly/internal/config"
 	"github.com/rivly/rivly/internal/database"
 	"github.com/rivly/rivly/internal/database/db"
+	"github.com/rivly/rivly/internal/docker"
 	"github.com/rivly/rivly/internal/server"
 )
 
@@ -39,9 +40,16 @@ func run(logger *slog.Logger) error {
 	logger.Info("database ready", "path", cfg.DatabasePath)
 
 	queries := db.New(sqlDB)
+	if err := seedLocalEnvironment(context.Background(), queries, cfg.DockerHost); err != nil {
+		return err
+	}
+
+	dockerManager := docker.NewManager()
+	defer dockerManager.Close()
+
 	sessions := auth.NewSessionManager(sqlDB)
 	local := auth.NewLocal(queries)
-	srv := server.New(logger, queries, sessions, local, cfg)
+	srv := server.New(logger, queries, sessions, local, dockerManager, cfg)
 
 	httpServer := &http.Server{
 		Addr:              cfg.Addr,
@@ -67,4 +75,20 @@ func run(logger *slog.Logger) error {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	return httpServer.Shutdown(shutdownCtx)
+}
+
+func seedLocalEnvironment(ctx context.Context, queries *db.Queries, host string) error {
+	count, err := queries.CountEnvironments(ctx)
+	if err != nil {
+		return err
+	}
+	if count > 0 {
+		return nil
+	}
+	_, err = queries.CreateEnvironment(ctx, db.CreateEnvironmentParams{
+		Name: "local",
+		Kind: "local",
+		Url:  host,
+	})
+	return err
 }

@@ -1,0 +1,16 @@
+meta {
+  name: List Environments
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/v1/environments
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body[0].kind: eq local
+}

@@ -18,6 +18,15 @@ type Credential struct {
 	CreatedAt         int64
 }
 
+type Environment struct {
+	ID        int64
+	Name      string
+	Kind      string
+	Url       string
+	CreatedAt int64
+	UpdatedAt int64
+}
+
 type Session struct {
 	Token  string
 	Data   []byte

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -13,13 +14,20 @@ import (
 	"github.com/rivly/rivly/internal/auth"
 	"github.com/rivly/rivly/internal/config"
 	"github.com/rivly/rivly/internal/database/db"
+	"github.com/rivly/rivly/internal/docker"
 )
+
+type dockerService interface {
+	Ping(ctx context.Context, id int64, host string) docker.Status
+	Info(ctx context.Context, id int64, host string) (docker.SystemInfo, error)
+}
 
 type Server struct {
 	logger   *slog.Logger
 	queries  *db.Queries
 	sessions *scs.SessionManager
 	local    *auth.Local
+	docker   dockerService
 	cfg      config.Config
 	setupMu  sync.Mutex
 }
@@ -29,6 +37,7 @@ func New(
 	queries *db.Queries,
 	sessions *scs.SessionManager,
 	local *auth.Local,
+	docker dockerService,
 	cfg config.Config,
 ) *Server {
 	return &Server{
@@ -36,6 +45,7 @@ func New(
 		queries:  queries,
 		sessions: sessions,
 		local:    local,
+		docker:   docker,
 		cfg:      cfg,
 	}
 }
@@ -68,6 +78,12 @@ func (s *Server) Router() http.Handler {
 		r.With(authLimit).Post("/login", s.handleLogin)
 		r.Post("/logout", s.handleLogout)
 		r.With(s.requireAuth).Get("/me", s.handleMe)
+
+		r.Route("/environments", func(r chi.Router) {
+			r.Use(s.requireAuth)
+			r.Get("/", s.handleListEnvironments)
+			r.Get("/{id}", s.handleGetEnvironment)
+		})
 	})
 
 	return r

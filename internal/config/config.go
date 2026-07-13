@@ -9,6 +9,7 @@ type Config struct {
 	Addr           string
 	DatabasePath   string
 	TrustedOrigins []string
+	DockerHost     string
 }
 
 func Load() Config {
@@ -16,6 +17,7 @@ func Load() Config {
 		Addr:           env("RIVLY_ADDR", ":8080"),
 		DatabasePath:   env("RIVLY_DATABASE", "rivly.db"),
 		TrustedOrigins: splitNonEmpty(os.Getenv("RIVLY_TRUSTED_ORIGINS")),
+		DockerHost:     env("DOCKER_HOST", "unix:///var/run/docker.sock"),
 	}
 }
 
