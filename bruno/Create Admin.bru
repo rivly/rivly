@@ -1,0 +1,23 @@
+meta {
+  name: Create Admin
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/setup
+  body: json
+  auth: none
+}
+
+headers {
+  content-type: application/json
+}
+
+body:json {
+  {
+    "email": "{{email}}",
+    "password": "{{password}}",
+    "displayName": "Admin"
+  }
+}
