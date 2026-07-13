@@ -1,26 +1,13 @@
-import { Link, type LinkProps } from '@tanstack/react-router'
-import type { IconType } from 'react-icons'
-import { LuHouse, LuPanelLeftClose, LuPanelLeftOpen } from 'react-icons/lu'
+import { Link, useParams } from '@tanstack/react-router'
+import {
+  LuHouse,
+  LuLayoutDashboard,
+  LuPanelLeftClose,
+  LuPanelLeftOpen,
+} from 'react-icons/lu'
 import mark from '../assets/mark.png'
+import { useEnvironments } from '../lib/environments'
 import styles from './Sidebar.module.css'
-
-type NavItem = {
-  to: LinkProps['to']
-  label: string
-  icon: IconType
-  exact?: boolean
-}
-
-type NavSection = {
-  label?: string
-  items: NavItem[]
-}
-
-const SECTIONS: NavSection[] = [
-  {
-    items: [{ to: '/', label: 'Home', icon: LuHouse, exact: true }],
-  },
-]
 
 type Props = {
   open: boolean
@@ -30,6 +17,13 @@ type Props = {
 }
 
 export function Sidebar({ open, collapsed, onNavigate, onToggleCollapse }: Props) {
+  const params = useParams({ strict: false })
+  const { data: environments } = useEnvironments()
+  const currentEnv =
+    typeof params.id === 'string'
+      ? environments?.find((env) => String(env.id) === params.id)
+      : undefined
+
   return (
     <aside
       className={[
@@ -43,26 +37,40 @@ export function Sidebar({ open, collapsed, onNavigate, onToggleCollapse }: Props
         <span className={styles.wordmark}>Rivly</span>
       </div>
       <nav className={styles.nav}>
-        {SECTIONS.map((section) => (
-          <div key={section.items[0].to} className={styles.section}>
-            {section.label && (
-              <p className={styles.sectionLabel}>{section.label}</p>
-            )}
-            {section.items.map(({ to, label, icon: Icon, exact }) => (
-              <Link
-                key={to}
-                to={to}
-                activeOptions={{ exact }}
-                className={styles.link}
-                onClick={onNavigate}
-                title={collapsed ? label : undefined}
-              >
-                <Icon className={styles.icon} />
-                <span className={styles.label}>{label}</span>
-              </Link>
-            ))}
+        {currentEnv && (
+          <div className={styles.section}>
+            <p className={styles.sectionLabel}>
+              <span className={styles.envName}>{currentEnv.name}</span>
+            </p>
+            <Link
+              to="/environments/$id"
+              params={{ id: String(currentEnv.id) }}
+              activeOptions={{ exact: true }}
+              className={styles.link}
+              onClick={onNavigate}
+              title={collapsed ? 'Overview' : undefined}
+            >
+              <LuLayoutDashboard className={styles.icon} />
+              <span className={styles.label}>Overview</span>
+            </Link>
           </div>
-        ))}
+        )}
+
+        <div className={styles.section}>
+          <p className={styles.sectionLabel}>
+            <span className={styles.envName}>Rivly</span>
+          </p>
+          <Link
+            to="/"
+            activeOptions={{ exact: true }}
+            className={styles.link}
+            onClick={onNavigate}
+            title={collapsed ? 'Home' : undefined}
+          >
+            <LuHouse className={styles.icon} />
+            <span className={styles.label}>Home</span>
+          </Link>
+        </div>
       </nav>
       <div className={styles.footer}>
         <button

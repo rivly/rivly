@@ -18,7 +18,6 @@ import (
 )
 
 type dockerService interface {
-	Ping(ctx context.Context, id int64, host string) docker.Status
 	Info(ctx context.Context, id int64, host string) (docker.SystemInfo, error)
 }
 

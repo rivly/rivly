@@ -32,6 +32,8 @@ type SystemInfo struct {
 	KernelVersion     string
 	OperatingSystem   string
 	Name              string
+	Swarm             bool
+	Nodes             int
 	NCPU              int
 	MemTotal          int64
 	Containers        int
@@ -88,6 +90,8 @@ func (m *Manager) Info(ctx context.Context, id int64, host string) (SystemInfo, 
 		KernelVersion:     i.KernelVersion,
 		OperatingSystem:   i.OperatingSystem,
 		Name:              i.Name,
+		Swarm:             i.Swarm.LocalNodeState == "active",
+		Nodes:             i.Swarm.Nodes,
 		NCPU:              i.NCPU,
 		MemTotal:          i.MemTotal,
 		Containers:        i.Containers,

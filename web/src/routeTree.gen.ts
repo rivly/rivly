@@ -14,6 +14,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AppEnvironmentsIdRouteImport } from './routes/_app/environments/$id'
 
 const SetupRoute = SetupRouteImport.update({
   id: '/setup',
@@ -39,18 +40,25 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppEnvironmentsIdRoute = AppEnvironmentsIdRouteImport.update({
+  id: '/environments/$id',
+  path: '/environments/$id',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
+  '/environments/$id': typeof AppEnvironmentsIdRoute
 }
 export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
   '/': typeof AppIndexRoute
+  '/environments/$id': typeof AppEnvironmentsIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -59,13 +67,22 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/environments/$id': typeof AppEnvironmentsIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/forgot-password' | '/login' | '/setup'
+  fullPaths:
+    '/' | '/forgot-password' | '/login' | '/setup' | '/environments/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/forgot-password' | '/login' | '/setup' | '/'
-  id: '__root__' | '/_app' | '/forgot-password' | '/login' | '/setup' | '/_app/'
+  to: '/forgot-password' | '/login' | '/setup' | '/' | '/environments/$id'
+  id:
+    | '__root__'
+    | '/_app'
+    | '/forgot-password'
+    | '/login'
+    | '/setup'
+    | '/_app/'
+    | '/_app/environments/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -112,15 +129,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/environments/$id': {
+      id: '/_app/environments/$id'
+      path: '/environments/$id'
+      fullPath: '/environments/$id'
+      preLoaderRoute: typeof AppEnvironmentsIdRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
+  AppEnvironmentsIdRoute: typeof AppEnvironmentsIdRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
+  AppEnvironmentsIdRoute: AppEnvironmentsIdRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

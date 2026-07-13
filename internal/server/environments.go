@@ -1,10 +1,13 @@
 package server
 
 import (
+	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
+	"sync"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rivly/rivly/internal/database/db"
@@ -12,11 +15,12 @@ import (
 )
 
 type environmentResponse struct {
-	ID     int64  `json:"id"`
-	Name   string `json:"name"`
-	Kind   string `json:"kind"`
-	URL    string `json:"url"`
-	Status string `json:"status"`
+	ID       int64  `json:"id"`
+	Name     string `json:"name"`
+	Kind     string `json:"kind"`
+	URL      string `json:"url"`
+	Status   string `json:"status"`
+	LastSeen *int64 `json:"lastSeen,omitempty"`
 }
 
 type systemInfoResponse struct {
@@ -26,6 +30,8 @@ type systemInfoResponse struct {
 	KernelVersion     string `json:"kernelVersion"`
 	OperatingSystem   string `json:"operatingSystem"`
 	Name              string `json:"name"`
+	Swarm             bool   `json:"swarm"`
+	Nodes             int    `json:"nodes"`
 	NCPU              int    `json:"ncpu"`
 	MemTotal          int64  `json:"memTotal"`
 	Containers        int    `json:"containers"`
@@ -41,13 +47,18 @@ type environmentDetailResponse struct {
 }
 
 func toEnvironmentResponse(e db.Environment, status string) environmentResponse {
-	return environmentResponse{
+	resp := environmentResponse{
 		ID:     e.ID,
 		Name:   e.Name,
 		Kind:   e.Kind,
 		URL:    e.Url,
 		Status: status,
 	}
+	if e.SnapshotAt.Valid {
+		seen := e.SnapshotAt.Int64
+		resp.LastSeen = &seen
+	}
+	return resp
 }
 
 func statusLabel(up bool) string {
@@ -57,6 +68,43 @@ func statusLabel(up bool) string {
 	return "down"
 }
 
+// buildEnvironment queries the daemon live. On success it returns the fresh
+// system info and refreshes the stored snapshot; on failure it falls back to
+// the last known snapshot so the environment stays informative while down.
+func (s *Server) buildEnvironment(ctx context.Context, e db.Environment) environmentDetailResponse {
+	detail := environmentDetailResponse{
+		environmentResponse: toEnvironmentResponse(e, statusLabel(false)),
+	}
+
+	if info, err := s.docker.Info(ctx, e.ID, e.Url); err == nil {
+		detail.Status = statusLabel(true)
+		detail.System = toSystemInfoResponse(info)
+		s.saveSnapshot(ctx, e.ID, info)
+		return detail
+	}
+
+	if e.Snapshot.Valid {
+		var snap docker.SystemInfo
+		if err := json.Unmarshal([]byte(e.Snapshot.String), &snap); err == nil {
+			detail.System = toSystemInfoResponse(snap)
+		}
+	}
+	return detail
+}
+
+func (s *Server) saveSnapshot(ctx context.Context, id int64, info docker.SystemInfo) {
+	data, err := json.Marshal(info)
+	if err != nil {
+		return
+	}
+	if err := s.queries.UpdateEnvironmentSnapshot(ctx, db.UpdateEnvironmentSnapshotParams{
+		Snapshot: sql.NullString{String: string(data), Valid: true},
+		ID:       id,
+	}); err != nil {
+		s.logger.Error("could not save environment snapshot", "err", err, "env", id)
+	}
+}
+
 func (s *Server) handleListEnvironments(w http.ResponseWriter, r *http.Request) {
 	envs, err := s.queries.ListEnvironments(r.Context())
 	if err != nil {
@@ -64,11 +112,16 @@ func (s *Server) handleListEnvironments(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	out := make([]environmentResponse, 0, len(envs))
-	for _, e := range envs {
-		status := s.docker.Ping(r.Context(), e.ID, e.Url)
-		out = append(out, toEnvironmentResponse(e, statusLabel(status.Up)))
+	out := make([]environmentDetailResponse, len(envs))
+	var wg sync.WaitGroup
+	for i, e := range envs {
+		wg.Add(1)
+		go func(i int, e db.Environment) {
+			defer wg.Done()
+			out[i] = s.buildEnvironment(r.Context(), e)
+		}(i, e)
 	}
+	wg.Wait()
 	s.writeJSON(w, http.StatusOK, out)
 }
 
@@ -89,14 +142,7 @@ func (s *Server) handleGetEnvironment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	detail := environmentDetailResponse{
-		environmentResponse: toEnvironmentResponse(env, statusLabel(false)),
-	}
-	if info, err := s.docker.Info(r.Context(), env.ID, env.Url); err == nil {
-		detail.Status = statusLabel(true)
-		detail.System = toSystemInfoResponse(info)
-	}
-	s.writeJSON(w, http.StatusOK, detail)
+	s.writeJSON(w, http.StatusOK, s.buildEnvironment(r.Context(), env))
 }
 
 func toSystemInfoResponse(i docker.SystemInfo) *systemInfoResponse {
@@ -107,6 +153,8 @@ func toSystemInfoResponse(i docker.SystemInfo) *systemInfoResponse {
 		KernelVersion:     i.KernelVersion,
 		OperatingSystem:   i.OperatingSystem,
 		Name:              i.Name,
+		Swarm:             i.Swarm,
+		Nodes:             i.Nodes,
 		NCPU:              i.NCPU,
 		MemTotal:          i.MemTotal,
 		Containers:        i.Containers,

@@ -11,3 +11,8 @@ SELECT * FROM environments WHERE id = ? LIMIT 1;
 INSERT INTO environments (name, kind, url)
 VALUES (?, ?, ?)
 RETURNING *;
+
+-- name: UpdateEnvironmentSnapshot :exec
+UPDATE environments
+SET snapshot = ?, snapshot_at = unixepoch()
+WHERE id = ?;

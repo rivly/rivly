@@ -56,6 +56,9 @@
 }
 
 .sectionLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   padding: 0 10px;
   margin-bottom: 4px;
   font-size: 0.6875rem;
@@ -63,10 +66,16 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--fg-muted);
-  white-space: nowrap;
   overflow: hidden;
   opacity: 1;
   transition: opacity 0.15s ease;
+}
+
+.envName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .link {
@@ -163,7 +172,10 @@
   }
 
   .collapsed .sectionLabel {
+    height: 0;
+    margin: 0;
     opacity: 0;
+    overflow: hidden;
   }
 }
 

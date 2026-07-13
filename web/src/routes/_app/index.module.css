@@ -1,19 +1,133 @@
 .page {
-  max-width: 72rem;
-  margin: 0 auto;
+  max-width: 46rem;
 }
 
 .head {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
+  margin-bottom: 24px;
 }
 
 .title {
   font-size: 1.5rem;
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .subtitle {
+  color: var(--fg-muted);
+}
+
+.state {
+  color: var(--fg-muted);
+  padding: 16px 0;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.list li + li .row {
+  border-top: 1px solid var(--border);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 16px;
+  text-align: left;
+  text-decoration: none;
+  color: var(--fg);
+  transition: background 0.12s ease;
+}
+
+.row:hover {
+  background: color-mix(in srgb, var(--fg) 4%, transparent);
+}
+
+.rowIcon {
+  width: 22px;
+  height: 22px;
+  max-width: none;
+  flex-shrink: 0;
+  color: var(--fg-muted);
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  flex: 1;
+}
+
+.topLine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.name {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.type {
+  font-size: 0.6875rem;
+  color: var(--fg-muted);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  padding: 1px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.url {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.6875rem;
+  color: var(--fg-muted);
+  font-family: var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-top: 2px;
+}
+
+.stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.statIcon {
+  width: 14px;
+  height: 14px;
+  max-width: none;
+  flex-shrink: 0;
+}
+
+.chevron {
+  flex-shrink: 0;
+  width: 1.125rem;
+  height: 1.125rem;
   color: var(--fg-muted);
 }

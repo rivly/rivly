@@ -1,0 +1,35 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.up {
+  color: #1a7f42;
+  background: color-mix(in srgb, #1a7f42 12%, transparent);
+}
+
+.up .dot {
+  background: #1fab54;
+}
+
+.down {
+  color: var(--danger-strong);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+
+.down .dot {
+  background: var(--danger);
+}

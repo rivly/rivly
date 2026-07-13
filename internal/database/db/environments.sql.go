@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 )
 
 const countEnvironments = `-- name: CountEnvironments :one
@@ -23,7 +24,7 @@ func (q *Queries) CountEnvironments(ctx context.Context) (int64, error) {
 const createEnvironment = `-- name: CreateEnvironment :one
 INSERT INTO environments (name, kind, url)
 VALUES (?, ?, ?)
-RETURNING id, name, kind, url, created_at, updated_at
+RETURNING id, name, kind, url, created_at, updated_at, snapshot, snapshot_at
 `
 
 type CreateEnvironmentParams struct {
@@ -42,12 +43,14 @@ func (q *Queries) CreateEnvironment(ctx context.Context, arg CreateEnvironmentPa
 		&i.Url,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Snapshot,
+		&i.SnapshotAt,
 	)
 	return i, err
 }
 
 const getEnvironment = `-- name: GetEnvironment :one
-SELECT id, name, kind, url, created_at, updated_at FROM environments WHERE id = ? LIMIT 1
+SELECT id, name, kind, url, created_at, updated_at, snapshot, snapshot_at FROM environments WHERE id = ? LIMIT 1
 `
 
 func (q *Queries) GetEnvironment(ctx context.Context, id int64) (Environment, error) {
@@ -60,12 +63,14 @@ func (q *Queries) GetEnvironment(ctx context.Context, id int64) (Environment, er
 		&i.Url,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Snapshot,
+		&i.SnapshotAt,
 	)
 	return i, err
 }
 
 const listEnvironments = `-- name: ListEnvironments :many
-SELECT id, name, kind, url, created_at, updated_at FROM environments ORDER BY id
+SELECT id, name, kind, url, created_at, updated_at, snapshot, snapshot_at FROM environments ORDER BY id
 `
 
 func (q *Queries) ListEnvironments(ctx context.Context) ([]Environment, error) {
@@ -84,6 +89,8 @@ func (q *Queries) ListEnvironments(ctx context.Context) ([]Environment, error) {
 			&i.Url,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Snapshot,
+			&i.SnapshotAt,
 		); err != nil {
 			return nil, err
 		}
@@ -96,4 +103,20 @@ func (q *Queries) ListEnvironments(ctx context.Context) ([]Environment, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateEnvironmentSnapshot = `-- name: UpdateEnvironmentSnapshot :exec
+UPDATE environments
+SET snapshot = ?, snapshot_at = unixepoch()
+WHERE id = ?
+`
+
+type UpdateEnvironmentSnapshotParams struct {
+	Snapshot sql.NullString
+	ID       int64
+}
+
+func (q *Queries) UpdateEnvironmentSnapshot(ctx context.Context, arg UpdateEnvironmentSnapshotParams) error {
+	_, err := q.db.ExecContext(ctx, updateEnvironmentSnapshot, arg.Snapshot, arg.ID)
+	return err
 }

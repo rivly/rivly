@@ -16,7 +16,7 @@ export function AccountMenu() {
     <Menu.Root>
       <Menu.Trigger className={styles.trigger}>
         <span className={styles.avatar}>{initial}</span>
-        <span className={styles.name}>{me?.email}</span>
+        <span className={styles.name}>{name}</span>
         <LuChevronDown className={styles.caret} />
       </Menu.Trigger>
       <Menu.Portal>

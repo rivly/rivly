@@ -29,7 +29,7 @@ func newTestServer(t *testing.T) *Server {
 	}
 	queries := db.New(sqlDB)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	return New(logger, queries, auth.NewSessionManager(sqlDB), auth.NewLocal(queries), fakeDocker{up: true}, config.Config{})
+	return New(logger, queries, auth.NewSessionManager(sqlDB), auth.NewLocal(queries), fakeDocker{}, config.Config{})
 }
 
 func TestAuthFlow(t *testing.T) {

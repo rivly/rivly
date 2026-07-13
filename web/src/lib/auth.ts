@@ -6,6 +6,7 @@ import {
   type QueryClient,
 } from '@tanstack/react-query'
 import { api, ApiError } from './api'
+import { toast } from './toast'
 
 export type User = {
   id: number
@@ -81,6 +82,7 @@ export function useLogout() {
     mutationFn: () => api.post<void>('/logout'),
     onSuccess: () => {
       queryClient.setQueryData(['me'], null)
+      toast.success('Signed out', 'You have been logged out of Rivly.')
     },
   })
 }

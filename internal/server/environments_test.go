@@ -2,6 +2,8 @@ package server
 
 import (
 	"context"
+	"database/sql"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/cookiejar"
@@ -13,13 +15,8 @@ import (
 )
 
 type fakeDocker struct {
-	up      bool
 	info    docker.SystemInfo
 	infoErr error
-}
-
-func (f fakeDocker) Ping(_ context.Context, _ int64, _ string) docker.Status {
-	return docker.Status{Up: f.up}
 }
 
 func (f fakeDocker) Info(_ context.Context, _ int64, _ string) (docker.SystemInfo, error) {
@@ -52,7 +49,6 @@ func seedEnvironment(t *testing.T, srv *Server) {
 func TestEnvironments(t *testing.T) {
 	srv := newTestServer(t)
 	srv.docker = fakeDocker{
-		up:   true,
 		info: docker.SystemInfo{ServerVersion: "28.5.2", Containers: 3, ContainersRunning: 2, Images: 5},
 	}
 	seedEnvironment(t, srv)
@@ -91,7 +87,7 @@ func TestEnvironments(t *testing.T) {
 
 func TestEnvironmentDaemonDown(t *testing.T) {
 	srv := newTestServer(t)
-	srv.docker = fakeDocker{up: false, infoErr: errors.New("cannot connect to the docker daemon")}
+	srv.docker = fakeDocker{infoErr: errors.New("cannot connect to the docker daemon")}
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -109,5 +105,39 @@ func TestEnvironmentDaemonDown(t *testing.T) {
 	getJSON(t, client, ts.URL+"/api/v1/environments/1", &detail)
 	if detail.Status != "down" || detail.System != nil {
 		t.Fatalf("detail when daemon down: got %+v", detail)
+	}
+}
+
+func TestEnvironmentSnapshotWhenDown(t *testing.T) {
+	srv := newTestServer(t)
+	srv.docker = fakeDocker{infoErr: errors.New("cannot connect")}
+	seedEnvironment(t, srv)
+
+	snap, err := json.Marshal(docker.SystemInfo{ServerVersion: "1.2.3", Containers: 9, Images: 4})
+	if err != nil {
+		t.Fatalf("marshal snapshot: %v", err)
+	}
+	if err := srv.queries.UpdateEnvironmentSnapshot(context.Background(), db.UpdateEnvironmentSnapshotParams{
+		Snapshot: sql.NullString{String: string(snap), Valid: true},
+		ID:       1,
+	}); err != nil {
+		t.Fatalf("UpdateEnvironmentSnapshot: %v", err)
+	}
+
+	ts := httptest.NewServer(srv.Router())
+	defer ts.Close()
+
+	client := authedClient(t, ts)
+
+	var envs []environmentDetailResponse
+	getJSON(t, client, ts.URL+"/api/v1/environments", &envs)
+	if len(envs) != 1 || envs[0].Status != "down" {
+		t.Fatalf("snapshot env: got %+v", envs)
+	}
+	if envs[0].System == nil || envs[0].System.ServerVersion != "1.2.3" || envs[0].System.Containers != 9 {
+		t.Fatalf("expected snapshot system on down env: got %+v", envs[0].System)
+	}
+	if envs[0].LastSeen == nil {
+		t.Fatalf("expected lastSeen to be set")
 	}
 }

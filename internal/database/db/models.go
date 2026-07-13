@@ -19,12 +19,14 @@ type Credential struct {
 }
 
 type Environment struct {
-	ID        int64
-	Name      string
-	Kind      string
-	Url       string
-	CreatedAt int64
-	UpdatedAt int64
+	ID         int64
+	Name       string
+	Kind       string
+	Url        string
+	CreatedAt  int64
+	UpdatedAt  int64
+	Snapshot   sql.NullString
+	SnapshotAt sql.NullInt64
 }
 
 type Session struct {
