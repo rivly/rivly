@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="brand/logo-white-full.png" />
-    <img alt="Rivly" src="brand/logo-blue-full.png" width="320" />
+    <img alt="Rivly" src="brand/logo-blue-full.png" width="250" />
   </picture>
 </p>
 
