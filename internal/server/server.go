@@ -21,6 +21,8 @@ import (
 type dockerService interface {
 	Info(ctx context.Context, id int64, host string) (docker.SystemInfo, error)
 	Containers(ctx context.Context, id int64, host string) ([]docker.Container, error)
+	ContainerDetail(ctx context.Context, id int64, host, containerID string) (docker.ContainerDetail, error)
+	ContainerStats(ctx context.Context, id int64, host, containerID string) (<-chan docker.Stats, error)
 	Images(ctx context.Context, id int64, host string) ([]docker.Image, error)
 	ImageAction(ctx context.Context, id int64, host, imageID, action string) error
 	Volumes(ctx context.Context, id int64, host string) ([]docker.Volume, error)
@@ -102,6 +104,7 @@ func (s *Server) Router() http.Handler {
 	r.Route("/api/v1", func(r chi.Router) {
 		r.With(s.requireEventAuth).Get("/events", s.handleEvents)
 		r.With(s.requireEventAuth).Get("/environments/{id}/containers/{containerID}/logs", s.handleContainerLogs)
+		r.With(s.requireEventAuth).Get("/environments/{id}/containers/{containerID}/stats", s.handleContainerStats)
 		r.With(s.requireEventAuth).Get("/environments/{id}/containers/{containerID}/exec", s.handleContainerExec)
 
 		r.Group(func(r chi.Router) {
@@ -122,6 +125,7 @@ func (s *Server) Router() http.Handler {
 				r.Get("/{id}/stacks/{name}", s.handleGetStack)
 				r.Post("/{id}/stacks/actions", s.handleStackActions)
 				r.Get("/{id}/containers", s.handleListContainers)
+				r.Get("/{id}/containers/{containerID}", s.handleContainerDetail)
 				r.Post("/{id}/containers/actions", s.handleContainerActions)
 				r.Get("/{id}/images", s.handleListImages)
 				r.Post("/{id}/images/actions", s.handleImageActions)

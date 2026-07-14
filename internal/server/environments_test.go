@@ -19,6 +19,10 @@ type fakeDocker struct {
 	infoErr          error
 	containers       []docker.Container
 	containersErr    error
+	detail           docker.ContainerDetail
+	detailErr        error
+	statsData        []docker.Stats
+	statsErr         error
 	images           []docker.Image
 	imagesErr        error
 	imageActionErr   error
@@ -43,6 +47,22 @@ func (f fakeDocker) Info(_ context.Context, _ int64, _ string) (docker.SystemInf
 
 func (f fakeDocker) Containers(_ context.Context, _ int64, _ string) ([]docker.Container, error) {
 	return f.containers, f.containersErr
+}
+
+func (f fakeDocker) ContainerDetail(_ context.Context, _ int64, _, _ string) (docker.ContainerDetail, error) {
+	return f.detail, f.detailErr
+}
+
+func (f fakeDocker) ContainerStats(_ context.Context, _ int64, _, _ string) (<-chan docker.Stats, error) {
+	if f.statsErr != nil {
+		return nil, f.statsErr
+	}
+	out := make(chan docker.Stats, len(f.statsData))
+	for _, st := range f.statsData {
+		out <- st
+	}
+	close(out)
+	return out, nil
 }
 
 func (f fakeDocker) Images(_ context.Context, _ int64, _ string) ([]docker.Image, error) {

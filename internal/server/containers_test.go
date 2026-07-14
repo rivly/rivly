@@ -64,6 +64,60 @@ func TestListContainersUnreachable(t *testing.T) {
 	}
 }
 
+func TestContainerDetail(t *testing.T) {
+	srv := newTestServer(t)
+	srv.docker = fakeDocker{detail: docker.ContainerDetail{
+		ID: "abc", Name: "web", Image: "nginx:latest", State: "running",
+		Env: []string{"FOO=bar"}, RestartPolicy: "unless-stopped",
+	}}
+	seedEnvironment(t, srv)
+
+	ts := httptest.NewServer(srv.Router())
+	defer ts.Close()
+
+	if code := getStatus(t, &http.Client{}, ts.URL+"/api/v1/environments/1/containers/abc"); code != http.StatusUnauthorized {
+		t.Fatalf("detail without auth: want 401, got %d", code)
+	}
+
+	client := authedClient(t, ts)
+	var got containerDetailResponse
+	getJSON(t, client, ts.URL+"/api/v1/environments/1/containers/abc", &got)
+	if got.Name != "web" || got.State != "running" || len(got.Env) != 1 || got.RestartPolicy != "unless-stopped" {
+		t.Fatalf("detail: got %+v", got)
+	}
+}
+
+func TestContainerStatsStream(t *testing.T) {
+	srv := newTestServer(t)
+	srv.docker = fakeDocker{statsData: []docker.Stats{{CPUPercent: 12.5, MemUsage: 100, MemLimit: 1000, MemPercent: 10}}}
+	seedEnvironment(t, srv)
+
+	ts := httptest.NewServer(srv.Router())
+	defer ts.Close()
+
+	if code := getStatus(t, &http.Client{}, ts.URL+"/api/v1/environments/1/containers/abc/stats"); code != http.StatusUnauthorized {
+		t.Fatalf("stats without auth: want 401, got %d", code)
+	}
+
+	client := authedClient(t, ts)
+	resp, err := client.Get(ts.URL + "/api/v1/environments/1/containers/abc/stats")
+	if err != nil {
+		t.Fatalf("get stats: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read stats: %v", err)
+	}
+	stream := string(body)
+	if !strings.Contains(stream, `"cpuPercent":12.5`) {
+		t.Fatalf("stats missing cpu sample: %q", stream)
+	}
+	if !strings.Contains(stream, "event: end") {
+		t.Fatalf("stats missing end event: %q", stream)
+	}
+}
+
 func TestContainerLogsStream(t *testing.T) {
 	srv := newTestServer(t)
 	srv.docker = fakeDocker{logLines: []docker.LogLine{

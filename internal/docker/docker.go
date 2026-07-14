@@ -3,6 +3,7 @@ package docker
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"strconv"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/moby/moby/api/pkg/stdcopy"
+	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/api/types/events"
 	"github.com/moby/moby/client"
 )
@@ -191,6 +193,206 @@ func (m *Manager) Containers(ctx context.Context, id int64, host string) ([]Cont
 		})
 	}
 	return out, nil
+}
+
+type NetworkAttachment struct {
+	Name string
+	IP   string
+}
+
+type Mount struct {
+	Type        string
+	Source      string
+	Destination string
+	Name        string
+	RW          bool
+}
+
+type ContainerDetail struct {
+	ID            string
+	Name          string
+	Image         string
+	State         string
+	Created       int64
+	StartedAt     string
+	Command       string
+	RestartPolicy string
+	Ports         []Port
+	Networks      []NetworkAttachment
+	Mounts        []Mount
+	Env           []string
+	Labels        map[string]string
+}
+
+func (m *Manager) ContainerDetail(ctx context.Context, id int64, host, containerID string) (ContainerDetail, error) {
+	cli, err := m.clientFor(id, host)
+	if err != nil {
+		return ContainerDetail{}, err
+	}
+	ctx, cancel := context.WithTimeout(ctx, callTimeout)
+	defer cancel()
+	res, err := cli.ContainerInspect(ctx, containerID, client.ContainerInspectOptions{})
+	if err != nil {
+		return ContainerDetail{}, err
+	}
+	c := res.Container
+
+	detail := ContainerDetail{
+		ID:     c.ID,
+		Name:   strings.TrimPrefix(c.Name, "/"),
+		Image:  c.Image,
+		Labels: map[string]string{},
+	}
+	if t, perr := time.Parse(time.RFC3339Nano, c.Created); perr == nil {
+		detail.Created = t.Unix()
+	}
+	if c.State != nil {
+		detail.State = string(c.State.Status)
+		detail.StartedAt = c.State.StartedAt
+	}
+	if c.HostConfig != nil {
+		detail.RestartPolicy = string(c.HostConfig.RestartPolicy.Name)
+	}
+	if c.Config != nil {
+		detail.Image = c.Config.Image
+		detail.Env = c.Config.Env
+		detail.Labels = c.Config.Labels
+	}
+	detail.Command = strings.TrimSpace(c.Path + " " + strings.Join(c.Args, " "))
+
+	if c.NetworkSettings != nil {
+		for p, bindings := range c.NetworkSettings.Ports {
+			priv, _ := strconv.ParseUint(p.Port(), 10, 16)
+			proto := string(p.Proto())
+			if len(bindings) == 0 {
+				detail.Ports = append(detail.Ports, Port{PrivatePort: uint16(priv), Type: proto})
+				continue
+			}
+			for _, b := range bindings {
+				pub, _ := strconv.ParseUint(b.HostPort, 10, 16)
+				ip := ""
+				if b.HostIP.IsValid() {
+					ip = b.HostIP.String()
+				}
+				detail.Ports = append(detail.Ports, Port{
+					PrivatePort: uint16(priv),
+					PublicPort:  uint16(pub),
+					Type:        proto,
+					IP:          ip,
+				})
+			}
+		}
+		for name, ep := range c.NetworkSettings.Networks {
+			attach := NetworkAttachment{Name: name}
+			if ep != nil && ep.IPAddress.IsValid() {
+				attach.IP = ep.IPAddress.String()
+			}
+			detail.Networks = append(detail.Networks, attach)
+		}
+	}
+	for _, mnt := range c.Mounts {
+		detail.Mounts = append(detail.Mounts, Mount{
+			Type:        string(mnt.Type),
+			Source:      mnt.Source,
+			Destination: mnt.Destination,
+			Name:        mnt.Name,
+			RW:          mnt.RW,
+		})
+	}
+	return detail, nil
+}
+
+type Stats struct {
+	CPUPercent float64
+	MemUsage   uint64
+	MemLimit   uint64
+	MemPercent float64
+	NetRx      uint64
+	NetTx      uint64
+	BlockRead  uint64
+	BlockWrite uint64
+	Pids       uint64
+}
+
+func (m *Manager) ContainerStats(ctx context.Context, id int64, host, containerID string) (<-chan Stats, error) {
+	cli, err := m.clientFor(id, host)
+	if err != nil {
+		return nil, err
+	}
+	res, err := cli.ContainerStats(ctx, containerID, client.ContainerStatsOptions{Stream: true})
+	if err != nil {
+		return nil, err
+	}
+
+	out := make(chan Stats)
+	go func() {
+		defer close(out)
+		defer func() { _ = res.Body.Close() }()
+		decoder := json.NewDecoder(res.Body)
+		for {
+			var raw container.StatsResponse
+			if derr := decoder.Decode(&raw); derr != nil {
+				return
+			}
+			select {
+			case out <- computeStats(raw):
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+	return out, nil
+}
+
+func computeStats(s container.StatsResponse) Stats {
+	cpuDelta := float64(s.CPUStats.CPUUsage.TotalUsage) - float64(s.PreCPUStats.CPUUsage.TotalUsage)
+	sysDelta := float64(s.CPUStats.SystemUsage) - float64(s.PreCPUStats.SystemUsage)
+	onlineCPUs := float64(s.CPUStats.OnlineCPUs)
+	if onlineCPUs == 0 {
+		onlineCPUs = float64(len(s.CPUStats.CPUUsage.PercpuUsage))
+	}
+	cpuPercent := 0.0
+	if sysDelta > 0 && cpuDelta > 0 {
+		cpuPercent = (cpuDelta / sysDelta) * onlineCPUs * 100
+	}
+
+	memUsed := s.MemoryStats.Usage
+	if inactive, ok := s.MemoryStats.Stats["inactive_file"]; ok && inactive <= memUsed {
+		memUsed -= inactive
+	} else if cache, ok := s.MemoryStats.Stats["cache"]; ok && cache <= memUsed {
+		memUsed -= cache
+	}
+	memPercent := 0.0
+	if s.MemoryStats.Limit > 0 {
+		memPercent = float64(memUsed) / float64(s.MemoryStats.Limit) * 100
+	}
+
+	var netRx, netTx uint64
+	for _, n := range s.Networks {
+		netRx += n.RxBytes
+		netTx += n.TxBytes
+	}
+	var blockRead, blockWrite uint64
+	for _, b := range s.BlkioStats.IoServiceBytesRecursive {
+		switch strings.ToLower(b.Op) {
+		case "read":
+			blockRead += b.Value
+		case "write":
+			blockWrite += b.Value
+		}
+	}
+
+	return Stats{
+		CPUPercent: cpuPercent,
+		MemUsage:   memUsed,
+		MemLimit:   s.MemoryStats.Limit,
+		MemPercent: memPercent,
+		NetRx:      netRx,
+		NetTx:      netTx,
+		BlockRead:  blockRead,
+		BlockWrite: blockWrite,
+		Pids:       s.PidsStats.Current,
+	}
 }
 
 type Image struct {
