@@ -2,11 +2,14 @@ package server
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/rivly/rivly/internal/docker"
 )
 
 type containerResponse struct {
@@ -75,6 +78,136 @@ func (s *Server) handleListContainers(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	s.writeJSON(w, http.StatusOK, out)
+}
+
+type portMapping struct {
+	HostPort      string `json:"hostPort"`
+	ContainerPort string `json:"containerPort"`
+	Proto         string `json:"proto"`
+}
+
+type mountInput struct {
+	Source   string `json:"source"`
+	Target   string `json:"target"`
+	ReadOnly bool   `json:"readOnly"`
+}
+
+type runContainerRequest struct {
+	Name          string        `json:"name"`
+	Image         string        `json:"image"`
+	Command       string        `json:"command"`
+	Env           []envVar      `json:"env"`
+	Ports         []portMapping `json:"ports"`
+	Mounts        []mountInput  `json:"mounts"`
+	Network       string        `json:"network"`
+	RestartPolicy string        `json:"restartPolicy"`
+	Start         bool          `json:"start"`
+}
+
+var validRestartPolicies = map[string]bool{
+	"no":             true,
+	"always":         true,
+	"unless-stopped": true,
+	"on-failure":     true,
+}
+
+func (s *Server) handleCreateContainer(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, "invalid environment id")
+		return
+	}
+
+	var req runContainerRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		s.writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	req.Image = strings.TrimSpace(req.Image)
+	if req.Image == "" {
+		s.writeError(w, http.StatusBadRequest, "image is required")
+		return
+	}
+	req.Name = strings.TrimSpace(req.Name)
+	if req.Name != "" && !resourceNamePattern.MatchString(req.Name) {
+		s.writeError(w, http.StatusBadRequest, "invalid container name")
+		return
+	}
+	if req.RestartPolicy == "" {
+		req.RestartPolicy = "no"
+	}
+	if !validRestartPolicies[req.RestartPolicy] {
+		s.writeError(w, http.StatusBadRequest, "invalid restart policy")
+		return
+	}
+
+	input := docker.ContainerCreateInput{
+		Name:          req.Name,
+		Image:         req.Image,
+		Command:       strings.Fields(req.Command),
+		Network:       strings.TrimSpace(req.Network),
+		RestartPolicy: req.RestartPolicy,
+		Start:         req.Start,
+	}
+	for _, e := range req.Env {
+		key := strings.TrimSpace(e.Key)
+		if key == "" {
+			continue
+		}
+		input.Env = append(input.Env, key+"="+e.Value)
+	}
+	for _, p := range req.Ports {
+		containerPort := strings.TrimSpace(p.ContainerPort)
+		if containerPort == "" {
+			continue
+		}
+		input.Ports = append(input.Ports, docker.PortMapping{
+			HostPort:      strings.TrimSpace(p.HostPort),
+			ContainerPort: containerPort,
+			Proto:         strings.TrimSpace(p.Proto),
+		})
+	}
+	for _, m := range req.Mounts {
+		source := strings.TrimSpace(m.Source)
+		target := strings.TrimSpace(m.Target)
+		if source == "" || target == "" {
+			continue
+		}
+		input.Mounts = append(input.Mounts, docker.MountInput{
+			Source:   source,
+			Target:   target,
+			ReadOnly: m.ReadOnly,
+		})
+	}
+
+	env, err := s.queries.GetEnvironment(r.Context(), id)
+	if errors.Is(err, sql.ErrNoRows) {
+		s.writeError(w, http.StatusNotFound, "environment not found")
+		return
+	}
+	if err != nil {
+		s.serverError(w, r, "could not load environment", err)
+		return
+	}
+
+	containerID, err := s.docker.ContainerCreate(r.Context(), env.ID, env.Url, input)
+	if err != nil {
+		s.logger.Warn("container create failed", "image", req.Image, "err", err)
+		if containerID != "" {
+			s.publishEnvironment(r.Context(), env)
+			s.writeError(w, http.StatusBadGateway, "container created but could not start")
+			return
+		}
+		if strings.Contains(err.Error(), "pull image") {
+			s.writeError(w, http.StatusBadGateway, "could not pull the image")
+			return
+		}
+		s.writeError(w, http.StatusBadGateway, "could not create container")
+		return
+	}
+	s.publishEnvironment(r.Context(), env)
+	s.writeJSON(w, http.StatusCreated, map[string]any{"id": containerID})
 }
 
 type networkAttachmentResponse struct {

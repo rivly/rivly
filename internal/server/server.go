@@ -22,6 +22,7 @@ type dockerService interface {
 	Info(ctx context.Context, id int64, host string) (docker.SystemInfo, error)
 	Containers(ctx context.Context, id int64, host string) ([]docker.Container, error)
 	ContainerDetail(ctx context.Context, id int64, host, containerID string) (docker.ContainerDetail, error)
+	ContainerCreate(ctx context.Context, id int64, host string, in docker.ContainerCreateInput) (string, error)
 	ContainerStats(ctx context.Context, id int64, host, containerID string) (<-chan docker.Stats, error)
 	Images(ctx context.Context, id int64, host string) ([]docker.Image, error)
 	ImageAction(ctx context.Context, id int64, host, imageID, action string) error
@@ -130,6 +131,7 @@ func (s *Server) Router() http.Handler {
 				r.Get("/{id}/stacks/{name}", s.handleGetStack)
 				r.Post("/{id}/stacks/actions", s.handleStackActions)
 				r.Get("/{id}/containers", s.handleListContainers)
+				r.Post("/{id}/containers", s.handleCreateContainer)
 				r.Get("/{id}/containers/{containerID}", s.handleContainerDetail)
 				r.Post("/{id}/containers/actions", s.handleContainerActions)
 				r.Get("/{id}/images", s.handleListImages)

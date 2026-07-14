@@ -15,38 +15,40 @@ import (
 )
 
 type fakeDocker struct {
-	info             docker.SystemInfo
-	infoErr          error
-	containers       []docker.Container
-	containersErr    error
-	detail           docker.ContainerDetail
-	detailErr        error
-	statsData        []docker.Stats
-	statsErr         error
-	images           []docker.Image
-	imagesErr        error
-	imageActionErr   error
-	pullData         []docker.PullProgress
-	pullErr          error
-	pruneResult      docker.PruneResult
-	pruneErr         error
-	volumes          []docker.Volume
-	volumesErr       error
-	volumeActionErr  error
-	volumeCreated    docker.Volume
-	volumeCreateErr  error
-	networks         []docker.Network
-	networksErr      error
-	networkActionErr error
-	networkCreated   docker.CreatedNetwork
-	networkCreateErr error
-	stacks           []docker.Stack
-	stacksErr        error
-	stackActionErr   error
-	logLines         []docker.LogLine
-	logErr           error
-	execErr          error
-	actionErr        error
+	info               docker.SystemInfo
+	infoErr            error
+	containers         []docker.Container
+	containersErr      error
+	detail             docker.ContainerDetail
+	detailErr          error
+	createdContainerID string
+	createContainerErr error
+	statsData          []docker.Stats
+	statsErr           error
+	images             []docker.Image
+	imagesErr          error
+	imageActionErr     error
+	pullData           []docker.PullProgress
+	pullErr            error
+	pruneResult        docker.PruneResult
+	pruneErr           error
+	volumes            []docker.Volume
+	volumesErr         error
+	volumeActionErr    error
+	volumeCreated      docker.Volume
+	volumeCreateErr    error
+	networks           []docker.Network
+	networksErr        error
+	networkActionErr   error
+	networkCreated     docker.CreatedNetwork
+	networkCreateErr   error
+	stacks             []docker.Stack
+	stacksErr          error
+	stackActionErr     error
+	logLines           []docker.LogLine
+	logErr             error
+	execErr            error
+	actionErr          error
 }
 
 func (f fakeDocker) Info(_ context.Context, _ int64, _ string) (docker.SystemInfo, error) {
@@ -59,6 +61,10 @@ func (f fakeDocker) Containers(_ context.Context, _ int64, _ string) ([]docker.C
 
 func (f fakeDocker) ContainerDetail(_ context.Context, _ int64, _, _ string) (docker.ContainerDetail, error) {
 	return f.detail, f.detailErr
+}
+
+func (f fakeDocker) ContainerCreate(_ context.Context, _ int64, _ string, _ docker.ContainerCreateInput) (string, error) {
+	return f.createdContainerID, f.createContainerErr
 }
 
 func (f fakeDocker) ContainerStats(_ context.Context, _ int64, _, _ string) (<-chan docker.Stats, error) {

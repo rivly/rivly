@@ -15,11 +15,14 @@ import (
 	"github.com/moby/moby/api/pkg/stdcopy"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/api/types/events"
+	"github.com/moby/moby/api/types/mount"
 	"github.com/moby/moby/api/types/network"
 	"github.com/moby/moby/client"
 )
 
 const actionTimeout = 60 * time.Second
+
+const pullCreateTimeout = 10 * time.Minute
 
 var execShell = []string{"/bin/sh", "-c", "exec $(command -v bash || command -v sh)"}
 
@@ -1010,6 +1013,127 @@ func (s *ExecSession) Resize(ctx context.Context, rows, cols uint) error {
 
 func (s *ExecSession) Close() {
 	s.closed.Do(func() { s.resp.Close() })
+}
+
+type PortMapping struct {
+	HostPort      string
+	ContainerPort string
+	Proto         string
+}
+
+type MountInput struct {
+	Source   string
+	Target   string
+	ReadOnly bool
+}
+
+type ContainerCreateInput struct {
+	Name          string
+	Image         string
+	Command       []string
+	Env           []string
+	Ports         []PortMapping
+	Mounts        []MountInput
+	Network       string
+	RestartPolicy string
+	Start         bool
+}
+
+func (m *Manager) ContainerCreate(ctx context.Context, id int64, host string, in ContainerCreateInput) (string, error) {
+	cli, err := m.clientFor(id, host)
+	if err != nil {
+		return "", err
+	}
+	ctx, cancel := context.WithTimeout(ctx, pullCreateTimeout)
+	defer cancel()
+
+	config := &container.Config{
+		Image: in.Image,
+		Env:   in.Env,
+		Cmd:   in.Command,
+	}
+	hostConfig := &container.HostConfig{}
+
+	if len(in.Ports) > 0 {
+		exposed := network.PortSet{}
+		bindings := network.PortMap{}
+		for _, p := range in.Ports {
+			proto := p.Proto
+			if proto == "" {
+				proto = "tcp"
+			}
+			port, perr := network.ParsePort(p.ContainerPort + "/" + proto)
+			if perr != nil {
+				return "", fmt.Errorf("invalid container port %q: %w", p.ContainerPort, perr)
+			}
+			exposed[port] = struct{}{}
+			if p.HostPort != "" {
+				bindings[port] = append(bindings[port], network.PortBinding{HostPort: p.HostPort})
+			}
+		}
+		config.ExposedPorts = exposed
+		hostConfig.PortBindings = bindings
+	}
+
+	for _, mnt := range in.Mounts {
+		mountType := mount.TypeVolume
+		if strings.HasPrefix(mnt.Source, "/") || strings.HasPrefix(mnt.Source, ".") {
+			mountType = mount.TypeBind
+		}
+		hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
+			Type:     mountType,
+			Source:   mnt.Source,
+			Target:   mnt.Target,
+			ReadOnly: mnt.ReadOnly,
+		})
+	}
+
+	if in.RestartPolicy != "" && in.RestartPolicy != "no" {
+		hostConfig.RestartPolicy = container.RestartPolicy{Name: container.RestartPolicyMode(in.RestartPolicy)}
+	}
+	if in.Network != "" {
+		hostConfig.NetworkMode = container.NetworkMode(in.Network)
+	}
+
+	opts := client.ContainerCreateOptions{
+		Name:       in.Name,
+		Config:     config,
+		HostConfig: hostConfig,
+	}
+	res, err := cli.ContainerCreate(ctx, opts)
+	if err != nil && strings.Contains(err.Error(), "No such image") {
+		if perr := pullImage(ctx, cli, in.Image); perr != nil {
+			return "", fmt.Errorf("pull image %q: %w", in.Image, perr)
+		}
+		res, err = cli.ContainerCreate(ctx, opts)
+	}
+	if err != nil {
+		return "", err
+	}
+
+	if in.Start {
+		if _, err := cli.ContainerStart(ctx, res.ID, client.ContainerStartOptions{}); err != nil {
+			return res.ID, fmt.Errorf("container created but failed to start: %w", err)
+		}
+	}
+	return res.ID, nil
+}
+
+func pullImage(ctx context.Context, cli *client.Client, ref string) error {
+	resp, err := cli.ImagePull(ctx, ref, client.ImagePullOptions{})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = resp.Close() }()
+	for msg, merr := range resp.JSONMessages(ctx) {
+		if merr != nil {
+			return merr
+		}
+		if msg.Error != nil {
+			return fmt.Errorf("%s", msg.Error.Message)
+		}
+	}
+	return ctx.Err()
 }
 
 func (m *Manager) ContainerAction(ctx context.Context, id int64, host, containerID, action string) error {

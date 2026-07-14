@@ -87,6 +87,55 @@ func TestContainerDetail(t *testing.T) {
 	}
 }
 
+func TestCreateContainer(t *testing.T) {
+	srv := newTestServer(t)
+	srv.docker = fakeDocker{createdContainerID: "newid123"}
+	seedEnvironment(t, srv)
+
+	ts := httptest.NewServer(srv.Router())
+	defer ts.Close()
+
+	body := `{"name":"web","image":"nginx:latest","command":"nginx -g 'daemon off;'","env":[{"key":"FOO","value":"bar"}],"ports":[{"hostPort":"8080","containerPort":"80","proto":"tcp"}],"mounts":[{"source":"app_data","target":"/data"}],"network":"bridge","restartPolicy":"unless-stopped","start":true}`
+
+	if code := postStatus(t, &http.Client{}, ts.URL+"/api/v1/environments/1/containers", body); code != http.StatusUnauthorized {
+		t.Fatalf("create without auth: want 401, got %d", code)
+	}
+
+	client := authedClient(t, ts)
+
+	var out struct {
+		ID string `json:"id"`
+	}
+	postJSONStatus(t, client, ts.URL+"/api/v1/environments/1/containers", body, http.StatusCreated, &out)
+	if out.ID != "newid123" {
+		t.Fatalf("create container: got %+v", out)
+	}
+
+	if code := postStatus(t, client, ts.URL+"/api/v1/environments/1/containers", `{"image":""}`); code != http.StatusBadRequest {
+		t.Fatalf("missing image: want 400, got %d", code)
+	}
+	if code := postStatus(t, client, ts.URL+"/api/v1/environments/1/containers", `{"image":"nginx","restartPolicy":"sometimes"}`); code != http.StatusBadRequest {
+		t.Fatalf("invalid restart policy: want 400, got %d", code)
+	}
+	if code := postStatus(t, client, ts.URL+"/api/v1/environments/1/containers", `{"image":"nginx","name":"bad name!"}`); code != http.StatusBadRequest {
+		t.Fatalf("invalid name: want 400, got %d", code)
+	}
+}
+
+func TestCreateContainerUnreachable(t *testing.T) {
+	srv := newTestServer(t)
+	srv.docker = fakeDocker{createContainerErr: errors.New("cannot connect")}
+	seedEnvironment(t, srv)
+
+	ts := httptest.NewServer(srv.Router())
+	defer ts.Close()
+
+	client := authedClient(t, ts)
+	if code := postStatus(t, client, ts.URL+"/api/v1/environments/1/containers", `{"image":"nginx:latest"}`); code != http.StatusBadGateway {
+		t.Fatalf("create unreachable: want 502, got %d", code)
+	}
+}
+
 func TestContainerStatsStream(t *testing.T) {
 	srv := newTestServer(t)
 	srv.docker = fakeDocker{statsData: []docker.Stats{{CPUPercent: 12.5, MemUsage: 100, MemLimit: 1000, MemPercent: 10}}}
