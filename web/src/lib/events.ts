@@ -17,6 +17,7 @@ const handlers: Record<
     queryClient.invalidateQueries({ queryKey: ['containers', env.id] })
     queryClient.invalidateQueries({ queryKey: ['images', env.id] })
     queryClient.invalidateQueries({ queryKey: ['volumes', env.id] })
+    queryClient.invalidateQueries({ queryKey: ['networks', env.id] })
   },
 }
 

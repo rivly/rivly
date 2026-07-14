@@ -5,6 +5,7 @@ import {
   LuHouse,
   LuLayers,
   LuLayoutDashboard,
+  LuNetwork,
   LuPanelLeftClose,
   LuPanelLeftOpen,
 } from 'react-icons/lu'
@@ -85,6 +86,16 @@ export function Sidebar({ open, collapsed, onNavigate, onToggleCollapse }: Props
             >
               <LuDatabase className={styles.icon} />
               <span className={styles.label}>Volumes</span>
+            </Link>
+            <Link
+              to="/environments/$id/networks"
+              params={{ id: String(currentEnv.id) }}
+              className={styles.link}
+              onClick={onNavigate}
+              title={collapsed ? 'Networks' : undefined}
+            >
+              <LuNetwork className={styles.icon} />
+              <span className={styles.label}>Networks</span>
             </Link>
           </div>
         )}
