@@ -26,6 +26,20 @@ export function useImages(envId: number) {
   return useQuery(imagesQueryOptions(envId))
 }
 
+export function useImagePrune(envId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (all: boolean) =>
+      api.post<{ imagesDeleted: number; spaceReclaimed: number }>(
+        `/environments/${envId}/images/prune`,
+        { all },
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['images', envId] })
+    },
+  })
+}
+
 export type ImageAction = 'remove'
 
 export function useImageActions(envId: number) {
