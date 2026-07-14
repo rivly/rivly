@@ -46,3 +46,21 @@ export function useStackActions(envId: number) {
     },
   })
 }
+
+export function fetchStackContent(envId: number, name: string) {
+  return api.get<{ name: string; content: string }>(
+    `/environments/${envId}/stacks/${name}`,
+  )
+}
+
+export function useDeployStack(envId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { name: string; content: string }) =>
+      api.post<{ name: string }>(`/environments/${envId}/stacks`, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['stacks', envId] })
+      queryClient.invalidateQueries({ queryKey: ['containers', envId] })
+    },
+  })
+}

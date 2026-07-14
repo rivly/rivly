@@ -1,9 +1,13 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
+import { LuPencil, LuPlus } from 'react-icons/lu'
+import { Button } from '../../../../components/Button'
 import { DataTable } from '../../../../components/DataTable'
 import { Loader } from '../../../../components/Loader'
 import { StackBulkBar } from '../../../../components/StackBulkBar'
+import { StackEditor, type EditorState } from '../../../../components/StackEditor'
+import { Tooltip } from '../../../../components/Tooltip'
 import { useStacks, type Stack } from '../../../../lib/stacks'
 import styles from './stacks.module.css'
 
@@ -27,6 +31,9 @@ const STATE_LABEL: Record<Stack['state'], string> = {
 function StacksPage() {
   const { id } = Route.useParams()
   const { data: stacks, isPending, isError } = useStacks(Number(id))
+  const [editor, setEditor] = useState<EditorState | null>(null)
+
+  const openEdit = useCallback((name: string) => setEditor({ mode: 'edit', name }), [])
 
   const columns = useMemo<ColumnDef<Stack>[]>(
     () => [
@@ -43,11 +50,32 @@ function StacksPage() {
             >
               {cell.row.original.name}
             </Link>
-            {cell.row.original.type === 'external' && (
-              <span className={styles.badge}>External</span>
-            )}
+            <span
+              className={`${styles.badge} ${cell.row.original.type === 'rivly' ? styles.rivly : ''}`}
+            >
+              {cell.row.original.type === 'rivly' ? 'Rivly' : 'External'}
+            </span>
           </span>
         ),
+      },
+      {
+        id: 'actions',
+        header: '',
+        enableSorting: false,
+        enableHiding: false,
+        cell: (cell) =>
+          cell.row.original.type === 'rivly' ? (
+            <Tooltip content="Edit">
+              <Button
+                variant="secondary"
+                size="sm"
+                iconOnly
+                icon={<LuPencil />}
+                aria-label="Edit stack"
+                onClick={() => openEdit(cell.row.original.name)}
+              />
+            </Tooltip>
+          ) : null,
       },
       {
         accessorKey: 'state',
@@ -79,13 +107,16 @@ function StacksPage() {
           ),
       },
     ],
-    [id],
+    [id, openEdit],
   )
 
   return (
     <div>
       <header className={styles.head}>
         <h1 className={styles.title}>Stacks</h1>
+        <Button size="sm" icon={<LuPlus />} onClick={() => setEditor({ mode: 'new' })}>
+          Deploy stack
+        </Button>
       </header>
 
       {isPending && <Loader />}
@@ -104,6 +135,8 @@ function StacksPage() {
           )}
         />
       )}
+
+      <StackEditor envId={Number(id)} state={editor} onClose={() => setEditor(null)} />
     </div>
   )
 }
