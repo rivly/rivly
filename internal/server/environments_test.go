@@ -19,6 +19,8 @@ type fakeDocker struct {
 	infoErr       error
 	containers    []docker.Container
 	containersErr error
+	logLines      []docker.LogLine
+	logErr        error
 }
 
 func (f fakeDocker) Info(_ context.Context, _ int64, _ string) (docker.SystemInfo, error) {
@@ -27,6 +29,18 @@ func (f fakeDocker) Info(_ context.Context, _ int64, _ string) (docker.SystemInf
 
 func (f fakeDocker) Containers(_ context.Context, _ int64, _ string) ([]docker.Container, error) {
 	return f.containers, f.containersErr
+}
+
+func (f fakeDocker) ContainerLogs(_ context.Context, _ int64, _, _ string, _ int, _ bool) (<-chan docker.LogLine, error) {
+	if f.logErr != nil {
+		return nil, f.logErr
+	}
+	out := make(chan docker.LogLine, len(f.logLines))
+	for _, line := range f.logLines {
+		out <- line
+	}
+	close(out)
+	return out, nil
 }
 
 const testCreds = `{"email":"admin@rivly.dev","password":"s3cret-password","displayName":"Admin"}`

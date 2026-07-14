@@ -21,6 +21,7 @@ import (
 type dockerService interface {
 	Info(ctx context.Context, id int64, host string) (docker.SystemInfo, error)
 	Containers(ctx context.Context, id int64, host string) ([]docker.Container, error)
+	ContainerLogs(ctx context.Context, id int64, host, containerID string, tail int, follow bool) (<-chan docker.LogLine, error)
 }
 
 type Server struct {
@@ -79,6 +80,7 @@ func (s *Server) Router() http.Handler {
 	r.Get("/api/health", s.handleHealth)
 	r.Route("/api/v1", func(r chi.Router) {
 		r.With(s.requireEventAuth).Get("/events", s.handleEvents)
+		r.With(s.requireEventAuth).Get("/environments/{id}/containers/{containerID}/logs", s.handleContainerLogs)
 
 		r.Group(func(r chi.Router) {
 			r.Use(s.sessions.LoadAndSave)
