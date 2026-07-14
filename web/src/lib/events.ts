@@ -15,6 +15,7 @@ const handlers: Record<
     )
     queryClient.setQueryData(['environments', env.id], env)
     queryClient.invalidateQueries({ queryKey: ['containers', env.id] })
+    queryClient.invalidateQueries({ queryKey: ['images', env.id] })
   },
 }
 

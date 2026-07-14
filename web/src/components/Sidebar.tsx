@@ -2,6 +2,7 @@ import { Link, useParams } from '@tanstack/react-router'
 import {
   LuBox,
   LuHouse,
+  LuLayers,
   LuLayoutDashboard,
   LuPanelLeftClose,
   LuPanelLeftOpen,
@@ -63,6 +64,16 @@ export function Sidebar({ open, collapsed, onNavigate, onToggleCollapse }: Props
             >
               <LuBox className={styles.icon} />
               <span className={styles.label}>Containers</span>
+            </Link>
+            <Link
+              to="/environments/$id/images"
+              params={{ id: String(currentEnv.id) }}
+              className={styles.link}
+              onClick={onNavigate}
+              title={collapsed ? 'Images' : undefined}
+            >
+              <LuLayers className={styles.icon} />
+              <span className={styles.label}>Images</span>
             </Link>
           </div>
         )}
