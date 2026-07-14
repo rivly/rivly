@@ -18,6 +18,8 @@ import (
 	"github.com/rivly/rivly/internal/database/db"
 	"github.com/rivly/rivly/internal/docker"
 	"github.com/rivly/rivly/internal/events"
+	"github.com/rivly/rivly/internal/registry"
+	"github.com/rivly/rivly/internal/secret"
 	"github.com/rivly/rivly/internal/server"
 )
 
@@ -47,14 +49,21 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 
+	cipher, err := secret.LoadOrCreate(cfg.DataDir)
+	if err != nil {
+		return err
+	}
+	registries := registry.NewStore(queries, cipher)
+
 	dockerManager := docker.NewManager()
+	dockerManager.SetAuthResolver(registries.AuthFor)
 	defer dockerManager.Close()
 
 	composeRunner := compose.NewRunner(cfg.ComposeBin, cfg.DataDir)
 	eventsHub := events.NewHub()
 	sessions := auth.NewSessionManager(sqlDB)
 	local := auth.NewLocal(queries)
-	srv := server.New(logger, queries, sessions, local, dockerManager, composeRunner, eventsHub, cfg)
+	srv := server.New(logger, queries, sessions, local, dockerManager, composeRunner, eventsHub, registries, cfg)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

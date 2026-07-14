@@ -29,6 +29,17 @@ type Environment struct {
 	SnapshotAt sql.NullInt64
 }
 
+type Registry struct {
+	ID          int64
+	Server      string
+	Username    string
+	PasswordEnc []byte
+	CreatedBy   string
+	CreatedAt   int64
+	UpdatedAt   int64
+	Name        string
+}
+
 type Session struct {
 	Token  string
 	Data   []byte

@@ -16,6 +16,7 @@ import (
 	"github.com/rivly/rivly/internal/database/db"
 	"github.com/rivly/rivly/internal/docker"
 	"github.com/rivly/rivly/internal/events"
+	"github.com/rivly/rivly/internal/registry"
 )
 
 type dockerService interface {
@@ -43,6 +44,7 @@ type dockerService interface {
 	ContainerExec(ctx context.Context, id int64, host, containerID string) (*docker.ExecSession, error)
 	ContainerAction(ctx context.Context, id int64, host, containerID, action string) error
 	WatchEvents(ctx context.Context, id int64, host string) (<-chan struct{}, <-chan error)
+	RegistryLogin(ctx context.Context, id int64, host, server, username, password string) error
 }
 
 type composeRunner interface {
@@ -59,6 +61,7 @@ type Server struct {
 	docker       dockerService
 	compose      composeRunner
 	events       *events.Hub
+	registries   *registry.Store
 	cfg          config.Config
 	setupMu      sync.Mutex
 	envStateMu   sync.Mutex
@@ -73,6 +76,7 @@ func New(
 	docker dockerService,
 	compose composeRunner,
 	eventsHub *events.Hub,
+	registries *registry.Store,
 	cfg config.Config,
 ) *Server {
 	return &Server{
@@ -83,6 +87,7 @@ func New(
 		docker:       docker,
 		compose:      compose,
 		events:       eventsHub,
+		registries:   registries,
 		cfg:          cfg,
 		lastEnvState: make(map[int64]string),
 	}
@@ -149,6 +154,15 @@ func (s *Server) Router() http.Handler {
 				r.Post("/{id}/networks", s.handleCreateNetwork)
 				r.Post("/{id}/networks/actions", s.handleNetworkActions)
 				r.Get("/{id}/networks/{networkID}", s.handleNetworkDetail)
+			})
+
+			r.Route("/registries", func(r chi.Router) {
+				r.Use(s.requireAuth)
+				r.Get("/", s.handleListRegistries)
+				r.Post("/", s.handleCreateRegistry)
+				r.Post("/test", s.handleTestRegistry)
+				r.Put("/{id}", s.handleUpdateRegistry)
+				r.Delete("/{id}", s.handleDeleteRegistry)
 			})
 		})
 	})

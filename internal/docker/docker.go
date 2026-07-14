@@ -35,13 +35,27 @@ const (
 	composeWorkingDirLabel = "com.docker.compose.project.working_dir"
 )
 
+type AuthResolver func(ctx context.Context, ref string) string
+
 type Manager struct {
 	mu      sync.Mutex
 	clients map[int64]*client.Client
+	authFor AuthResolver
 }
 
 func NewManager() *Manager {
 	return &Manager{clients: make(map[int64]*client.Client)}
+}
+
+func (m *Manager) SetAuthResolver(fn AuthResolver) {
+	m.authFor = fn
+}
+
+func (m *Manager) registryAuth(ctx context.Context, ref string) string {
+	if m.authFor == nil {
+		return ""
+	}
+	return m.authFor(ctx, ref)
 }
 
 type Status struct {
@@ -478,7 +492,7 @@ func (m *Manager) ImagePull(ctx context.Context, id int64, host, ref string) (<-
 	if err != nil {
 		return nil, err
 	}
-	resp, err := cli.ImagePull(ctx, ref, client.ImagePullOptions{})
+	resp, err := cli.ImagePull(ctx, ref, client.ImagePullOptions{RegistryAuth: m.registryAuth(ctx, ref)})
 	if err != nil {
 		return nil, err
 	}
@@ -554,6 +568,21 @@ func (m *Manager) ImagesPrune(ctx context.Context, id int64, host string, all bo
 		ImagesDeleted:  removed,
 		SpaceReclaimed: res.Report.SpaceReclaimed,
 	}, nil
+}
+
+func (m *Manager) RegistryLogin(ctx context.Context, id int64, host, server, username, password string) error {
+	cli, err := m.clientFor(id, host)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(ctx, actionTimeout)
+	defer cancel()
+	_, err = cli.RegistryLogin(ctx, client.RegistryLoginOptions{
+		Username:      username,
+		Password:      password,
+		ServerAddress: server,
+	})
+	return err
 }
 
 type ImageContainer struct {
@@ -1312,7 +1341,7 @@ func (m *Manager) ContainerCreate(ctx context.Context, id int64, host string, in
 	}
 	res, err := cli.ContainerCreate(ctx, opts)
 	if err != nil && strings.Contains(err.Error(), "No such image") {
-		if perr := pullImage(ctx, cli, in.Image); perr != nil {
+		if perr := m.pullImage(ctx, cli, in.Image); perr != nil {
 			return "", fmt.Errorf("pull image %q: %w", in.Image, perr)
 		}
 		res, err = cli.ContainerCreate(ctx, opts)
@@ -1329,8 +1358,8 @@ func (m *Manager) ContainerCreate(ctx context.Context, id int64, host string, in
 	return res.ID, nil
 }
 
-func pullImage(ctx context.Context, cli *client.Client, ref string) error {
-	resp, err := cli.ImagePull(ctx, ref, client.ImagePullOptions{})
+func (m *Manager) pullImage(ctx context.Context, cli *client.Client, ref string) error {
+	resp, err := cli.ImagePull(ctx, ref, client.ImagePullOptions{RegistryAuth: m.registryAuth(ctx, ref)})
 	if err != nil {
 		return err
 	}

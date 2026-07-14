@@ -55,6 +55,7 @@ type fakeDocker struct {
 	logErr             error
 	execErr            error
 	actionErr          error
+	registryLoginErr   error
 }
 
 func (f fakeDocker) Info(_ context.Context, _ int64, _ string) (docker.SystemInfo, error) {
@@ -175,6 +176,10 @@ func (f fakeDocker) ContainerAction(_ context.Context, _ int64, _, _, _ string) 
 
 func (f fakeDocker) WatchEvents(_ context.Context, _ int64, _ string) (<-chan struct{}, <-chan error) {
 	return nil, nil
+}
+
+func (f fakeDocker) RegistryLogin(_ context.Context, _ int64, _, _, _, _ string) error {
+	return f.registryLoginErr
 }
 
 type fakeCompose struct {
