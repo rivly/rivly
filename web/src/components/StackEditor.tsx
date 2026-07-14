@@ -47,9 +47,29 @@ export function StackEditor({ envId, name: editName }: Props) {
   const [env, setEnv] = useState<EnvVar[]>([])
   const [rawEnv, setRawEnv] = useState('')
   const [advanced, setAdvanced] = useState(false)
+  const [source, setSource] = useState<'editor' | 'upload'>('editor')
+  const [dragOver, setDragOver] = useState(false)
   const [loading, setLoading] = useState(editing)
   const [error, setError] = useState<string | null>(null)
   const deploy = useDeployStack(envId)
+
+  const loadFile = async (file: File | undefined) => {
+    if (!file) {
+      return
+    }
+    const lower = file.name.toLowerCase()
+    if (!lower.endsWith('.yml') && !lower.endsWith('.yaml')) {
+      toast.error('Unsupported file', 'Choose a .yml or .yaml file')
+      return
+    }
+    try {
+      setContent(await file.text())
+      setSource('editor')
+      toast.success(`Loaded ${file.name}`)
+    } catch {
+      toast.error('Could not read the file', 'Please try again')
+    }
+  }
 
   const addVar = () => setEnv((prev) => [...prev, { key: '', value: '' }])
   const removeVar = (index: number) =>
@@ -146,14 +166,25 @@ export function StackEditor({ envId, name: editName }: Props) {
 
       {!editing && (
         <div className={styles.sources} role="tablist" aria-label="Compose source">
-          <button type="button" className={`${styles.source} ${styles.sourceActive}`}>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={source === 'editor'}
+            className={`${styles.source} ${source === 'editor' ? styles.sourceActive : ''}`}
+            onClick={() => setSource('editor')}
+          >
             <LuPencil />
             Editor
           </button>
-          <button type="button" className={styles.source} disabled>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={source === 'upload'}
+            className={`${styles.source} ${source === 'upload' ? styles.sourceActive : ''}`}
+            onClick={() => setSource('upload')}
+          >
             <LuUpload />
             Upload
-            <span className={styles.soon}>Soon</span>
           </button>
           <button type="button" className={styles.source} disabled>
             <LuGitBranch />
@@ -163,16 +194,46 @@ export function StackEditor({ envId, name: editName }: Props) {
         </div>
       )}
 
-      <div className={styles.editor}>
-        <CodeMirror
-          value={content}
-          height="360px"
-          theme="light"
-          extensions={[yaml()]}
-          editable={!loading}
-          onChange={setContent}
-        />
-      </div>
+      {source === 'upload' ? (
+        <label
+          className={`${styles.dropzone} ${dragOver ? styles.dropzoneActive : ''}`}
+          onDragOver={(event) => {
+            event.preventDefault()
+            setDragOver(true)
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(event) => {
+            event.preventDefault()
+            setDragOver(false)
+            loadFile(event.dataTransfer.files?.[0])
+          }}
+        >
+          <input
+            type="file"
+            accept=".yml,.yaml"
+            className={styles.fileInput}
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              event.target.value = ''
+              loadFile(file)
+            }}
+          />
+          <LuUpload className={styles.dropIcon} />
+          <span className={styles.dropText}>Drop a compose file here, or click to browse</span>
+          <span className={styles.dropHint}>.yml or .yaml</span>
+        </label>
+      ) : (
+        <div className={styles.editor}>
+          <CodeMirror
+            value={content}
+            height="360px"
+            theme="light"
+            extensions={[yaml()]}
+            editable={!loading}
+            onChange={setContent}
+          />
+        </div>
+      )}
 
       <section className={styles.envSection}>
         <div className={styles.envHead}>
