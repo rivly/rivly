@@ -15,20 +15,23 @@ import (
 )
 
 type fakeDocker struct {
-	info            docker.SystemInfo
-	infoErr         error
-	containers      []docker.Container
-	containersErr   error
-	images          []docker.Image
-	imagesErr       error
-	imageActionErr  error
-	volumes         []docker.Volume
-	volumesErr      error
-	volumeActionErr error
-	logLines        []docker.LogLine
-	logErr          error
-	execErr         error
-	actionErr       error
+	info             docker.SystemInfo
+	infoErr          error
+	containers       []docker.Container
+	containersErr    error
+	images           []docker.Image
+	imagesErr        error
+	imageActionErr   error
+	volumes          []docker.Volume
+	volumesErr       error
+	volumeActionErr  error
+	networks         []docker.Network
+	networksErr      error
+	networkActionErr error
+	logLines         []docker.LogLine
+	logErr           error
+	execErr          error
+	actionErr        error
 }
 
 func (f fakeDocker) Info(_ context.Context, _ int64, _ string) (docker.SystemInfo, error) {
@@ -53,6 +56,14 @@ func (f fakeDocker) Volumes(_ context.Context, _ int64, _ string) ([]docker.Volu
 
 func (f fakeDocker) VolumeAction(_ context.Context, _ int64, _, _, _ string) error {
 	return f.volumeActionErr
+}
+
+func (f fakeDocker) Networks(_ context.Context, _ int64, _ string) ([]docker.Network, error) {
+	return f.networks, f.networksErr
+}
+
+func (f fakeDocker) NetworkAction(_ context.Context, _ int64, _, _, _ string) error {
+	return f.networkActionErr
 }
 
 func (f fakeDocker) ContainerLogs(_ context.Context, _ int64, _, _ string, _ int, _ bool) (<-chan docker.LogLine, error) {

@@ -320,6 +320,74 @@ func (m *Manager) VolumeAction(ctx context.Context, id int64, host, volumeName, 
 	return err
 }
 
+var predefinedNetworks = map[string]bool{"bridge": true, "host": true, "none": true}
+
+type Network struct {
+	ID      string
+	Name    string
+	Driver  string
+	Scope   string
+	Stack   string
+	Created int64
+	InUse   bool
+}
+
+func (m *Manager) Networks(ctx context.Context, id int64, host string) ([]Network, error) {
+	cli, err := m.clientFor(id, host)
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithTimeout(ctx, callTimeout)
+	defer cancel()
+	res, err := cli.NetworkList(ctx, client.NetworkListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	used := make(map[string]bool)
+	if containers, cerr := cli.ContainerList(ctx, client.ContainerListOptions{All: true}); cerr == nil {
+		for _, c := range containers.Items {
+			if c.NetworkSettings == nil {
+				continue
+			}
+			for name := range c.NetworkSettings.Networks {
+				used[name] = true
+			}
+		}
+	}
+
+	out := make([]Network, 0, len(res.Items))
+	for _, n := range res.Items {
+		out = append(out, Network{
+			ID:      n.ID,
+			Name:    n.Name,
+			Driver:  n.Driver,
+			Scope:   n.Scope,
+			Stack:   n.Labels[composeProjectLabel],
+			Created: n.Created.Unix(),
+			InUse:   used[n.Name] || predefinedNetworks[n.Name],
+		})
+	}
+	return out, nil
+}
+
+func (m *Manager) NetworkAction(ctx context.Context, id int64, host, networkID, action string) error {
+	cli, err := m.clientFor(id, host)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(ctx, actionTimeout)
+	defer cancel()
+
+	switch action {
+	case "remove":
+		_, err = cli.NetworkRemove(ctx, networkID, client.NetworkRemoveOptions{})
+	default:
+		return fmt.Errorf("unknown network action %q", action)
+	}
+	return err
+}
+
 type LogLine struct {
 	Stream  string
 	Message string
