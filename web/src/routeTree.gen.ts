@@ -17,10 +17,12 @@ import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppEnvironmentsIdRouteImport } from './routes/_app/environments/$id'
 import { Route as AppEnvironmentsIdIndexRouteImport } from './routes/_app/environments/$id/index'
 import { Route as AppEnvironmentsIdVolumesRouteImport } from './routes/_app/environments/$id/volumes'
-import { Route as AppEnvironmentsIdStacksRouteImport } from './routes/_app/environments/$id/stacks'
 import { Route as AppEnvironmentsIdNetworksRouteImport } from './routes/_app/environments/$id/networks'
 import { Route as AppEnvironmentsIdImagesRouteImport } from './routes/_app/environments/$id/images'
 import { Route as AppEnvironmentsIdContainersRouteImport } from './routes/_app/environments/$id/containers'
+import { Route as AppEnvironmentsIdStacksIndexRouteImport } from './routes/_app/environments/$id/stacks.index'
+import { Route as AppEnvironmentsIdStacksNewRouteImport } from './routes/_app/environments/$id/stacks.new'
+import { Route as AppEnvironmentsIdStacksNameEditRouteImport } from './routes/_app/environments/$id/stacks.$name.edit'
 
 const SetupRoute = SetupRouteImport.update({
   id: '/setup',
@@ -62,11 +64,6 @@ const AppEnvironmentsIdVolumesRoute =
     path: '/volumes',
     getParentRoute: () => AppEnvironmentsIdRoute,
   } as any)
-const AppEnvironmentsIdStacksRoute = AppEnvironmentsIdStacksRouteImport.update({
-  id: '/stacks',
-  path: '/stacks',
-  getParentRoute: () => AppEnvironmentsIdRoute,
-} as any)
 const AppEnvironmentsIdNetworksRoute =
   AppEnvironmentsIdNetworksRouteImport.update({
     id: '/networks',
@@ -84,6 +81,24 @@ const AppEnvironmentsIdContainersRoute =
     path: '/containers',
     getParentRoute: () => AppEnvironmentsIdRoute,
   } as any)
+const AppEnvironmentsIdStacksIndexRoute =
+  AppEnvironmentsIdStacksIndexRouteImport.update({
+    id: '/stacks/',
+    path: '/stacks/',
+    getParentRoute: () => AppEnvironmentsIdRoute,
+  } as any)
+const AppEnvironmentsIdStacksNewRoute =
+  AppEnvironmentsIdStacksNewRouteImport.update({
+    id: '/stacks/new',
+    path: '/stacks/new',
+    getParentRoute: () => AppEnvironmentsIdRoute,
+  } as any)
+const AppEnvironmentsIdStacksNameEditRoute =
+  AppEnvironmentsIdStacksNameEditRouteImport.update({
+    id: '/stacks/$name/edit',
+    path: '/stacks/$name/edit',
+    getParentRoute: () => AppEnvironmentsIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -94,9 +109,11 @@ export interface FileRoutesByFullPath {
   '/environments/$id/containers': typeof AppEnvironmentsIdContainersRoute
   '/environments/$id/images': typeof AppEnvironmentsIdImagesRoute
   '/environments/$id/networks': typeof AppEnvironmentsIdNetworksRoute
-  '/environments/$id/stacks': typeof AppEnvironmentsIdStacksRoute
   '/environments/$id/volumes': typeof AppEnvironmentsIdVolumesRoute
   '/environments/$id/': typeof AppEnvironmentsIdIndexRoute
+  '/environments/$id/stacks/new': typeof AppEnvironmentsIdStacksNewRoute
+  '/environments/$id/stacks/': typeof AppEnvironmentsIdStacksIndexRoute
+  '/environments/$id/stacks/$name/edit': typeof AppEnvironmentsIdStacksNameEditRoute
 }
 export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
@@ -106,9 +123,11 @@ export interface FileRoutesByTo {
   '/environments/$id/containers': typeof AppEnvironmentsIdContainersRoute
   '/environments/$id/images': typeof AppEnvironmentsIdImagesRoute
   '/environments/$id/networks': typeof AppEnvironmentsIdNetworksRoute
-  '/environments/$id/stacks': typeof AppEnvironmentsIdStacksRoute
   '/environments/$id/volumes': typeof AppEnvironmentsIdVolumesRoute
   '/environments/$id': typeof AppEnvironmentsIdIndexRoute
+  '/environments/$id/stacks/new': typeof AppEnvironmentsIdStacksNewRoute
+  '/environments/$id/stacks': typeof AppEnvironmentsIdStacksIndexRoute
+  '/environments/$id/stacks/$name/edit': typeof AppEnvironmentsIdStacksNameEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -121,9 +140,11 @@ export interface FileRoutesById {
   '/_app/environments/$id/containers': typeof AppEnvironmentsIdContainersRoute
   '/_app/environments/$id/images': typeof AppEnvironmentsIdImagesRoute
   '/_app/environments/$id/networks': typeof AppEnvironmentsIdNetworksRoute
-  '/_app/environments/$id/stacks': typeof AppEnvironmentsIdStacksRoute
   '/_app/environments/$id/volumes': typeof AppEnvironmentsIdVolumesRoute
   '/_app/environments/$id/': typeof AppEnvironmentsIdIndexRoute
+  '/_app/environments/$id/stacks/new': typeof AppEnvironmentsIdStacksNewRoute
+  '/_app/environments/$id/stacks/': typeof AppEnvironmentsIdStacksIndexRoute
+  '/_app/environments/$id/stacks/$name/edit': typeof AppEnvironmentsIdStacksNameEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -136,9 +157,11 @@ export interface FileRouteTypes {
     | '/environments/$id/containers'
     | '/environments/$id/images'
     | '/environments/$id/networks'
-    | '/environments/$id/stacks'
     | '/environments/$id/volumes'
     | '/environments/$id/'
+    | '/environments/$id/stacks/new'
+    | '/environments/$id/stacks/'
+    | '/environments/$id/stacks/$name/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/forgot-password'
@@ -148,9 +171,11 @@ export interface FileRouteTypes {
     | '/environments/$id/containers'
     | '/environments/$id/images'
     | '/environments/$id/networks'
-    | '/environments/$id/stacks'
     | '/environments/$id/volumes'
     | '/environments/$id'
+    | '/environments/$id/stacks/new'
+    | '/environments/$id/stacks'
+    | '/environments/$id/stacks/$name/edit'
   id:
     | '__root__'
     | '/_app'
@@ -162,9 +187,11 @@ export interface FileRouteTypes {
     | '/_app/environments/$id/containers'
     | '/_app/environments/$id/images'
     | '/_app/environments/$id/networks'
-    | '/_app/environments/$id/stacks'
     | '/_app/environments/$id/volumes'
     | '/_app/environments/$id/'
+    | '/_app/environments/$id/stacks/new'
+    | '/_app/environments/$id/stacks/'
+    | '/_app/environments/$id/stacks/$name/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -232,13 +259,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEnvironmentsIdVolumesRouteImport
       parentRoute: typeof AppEnvironmentsIdRoute
     }
-    '/_app/environments/$id/stacks': {
-      id: '/_app/environments/$id/stacks'
-      path: '/stacks'
-      fullPath: '/environments/$id/stacks'
-      preLoaderRoute: typeof AppEnvironmentsIdStacksRouteImport
-      parentRoute: typeof AppEnvironmentsIdRoute
-    }
     '/_app/environments/$id/networks': {
       id: '/_app/environments/$id/networks'
       path: '/networks'
@@ -260,6 +280,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEnvironmentsIdContainersRouteImport
       parentRoute: typeof AppEnvironmentsIdRoute
     }
+    '/_app/environments/$id/stacks/': {
+      id: '/_app/environments/$id/stacks/'
+      path: '/stacks'
+      fullPath: '/environments/$id/stacks/'
+      preLoaderRoute: typeof AppEnvironmentsIdStacksIndexRouteImport
+      parentRoute: typeof AppEnvironmentsIdRoute
+    }
+    '/_app/environments/$id/stacks/new': {
+      id: '/_app/environments/$id/stacks/new'
+      path: '/stacks/new'
+      fullPath: '/environments/$id/stacks/new'
+      preLoaderRoute: typeof AppEnvironmentsIdStacksNewRouteImport
+      parentRoute: typeof AppEnvironmentsIdRoute
+    }
+    '/_app/environments/$id/stacks/$name/edit': {
+      id: '/_app/environments/$id/stacks/$name/edit'
+      path: '/stacks/$name/edit'
+      fullPath: '/environments/$id/stacks/$name/edit'
+      preLoaderRoute: typeof AppEnvironmentsIdStacksNameEditRouteImport
+      parentRoute: typeof AppEnvironmentsIdRoute
+    }
   }
 }
 
@@ -267,18 +308,22 @@ interface AppEnvironmentsIdRouteChildren {
   AppEnvironmentsIdContainersRoute: typeof AppEnvironmentsIdContainersRoute
   AppEnvironmentsIdImagesRoute: typeof AppEnvironmentsIdImagesRoute
   AppEnvironmentsIdNetworksRoute: typeof AppEnvironmentsIdNetworksRoute
-  AppEnvironmentsIdStacksRoute: typeof AppEnvironmentsIdStacksRoute
   AppEnvironmentsIdVolumesRoute: typeof AppEnvironmentsIdVolumesRoute
   AppEnvironmentsIdIndexRoute: typeof AppEnvironmentsIdIndexRoute
+  AppEnvironmentsIdStacksNewRoute: typeof AppEnvironmentsIdStacksNewRoute
+  AppEnvironmentsIdStacksIndexRoute: typeof AppEnvironmentsIdStacksIndexRoute
+  AppEnvironmentsIdStacksNameEditRoute: typeof AppEnvironmentsIdStacksNameEditRoute
 }
 
 const AppEnvironmentsIdRouteChildren: AppEnvironmentsIdRouteChildren = {
   AppEnvironmentsIdContainersRoute: AppEnvironmentsIdContainersRoute,
   AppEnvironmentsIdImagesRoute: AppEnvironmentsIdImagesRoute,
   AppEnvironmentsIdNetworksRoute: AppEnvironmentsIdNetworksRoute,
-  AppEnvironmentsIdStacksRoute: AppEnvironmentsIdStacksRoute,
   AppEnvironmentsIdVolumesRoute: AppEnvironmentsIdVolumesRoute,
   AppEnvironmentsIdIndexRoute: AppEnvironmentsIdIndexRoute,
+  AppEnvironmentsIdStacksNewRoute: AppEnvironmentsIdStacksNewRoute,
+  AppEnvironmentsIdStacksIndexRoute: AppEnvironmentsIdStacksIndexRoute,
+  AppEnvironmentsIdStacksNameEditRoute: AppEnvironmentsIdStacksNameEditRoute,
 }
 
 const AppEnvironmentsIdRouteWithChildren =

@@ -17,6 +17,10 @@ export type Stack = {
   total: number
   state: StackState
   workingDir: string
+  createdAt: number
+  updatedAt: number
+  createdBy: string
+  updatedBy: string
 }
 
 export function stacksQueryOptions(envId: number) {
@@ -47,8 +51,10 @@ export function useStackActions(envId: number) {
   })
 }
 
+export type EnvVar = { key: string; value: string }
+
 export function fetchStackContent(envId: number, name: string) {
-  return api.get<{ name: string; content: string }>(
+  return api.get<{ name: string; content: string; env: EnvVar[] }>(
     `/environments/${envId}/stacks/${name}`,
   )
 }
@@ -56,7 +62,7 @@ export function fetchStackContent(envId: number, name: string) {
 export function useDeployStack(envId: number) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (input: { name: string; content: string }) =>
+    mutationFn: (input: { name: string; content: string; env: EnvVar[] }) =>
       api.post<{ name: string }>(`/environments/${envId}/stacks`, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stacks', envId] })

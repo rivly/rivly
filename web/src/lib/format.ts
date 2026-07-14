@@ -22,6 +22,16 @@ export function timeAgo(unixSeconds: number): string {
   return `${Math.floor(months / 12)}y ago`
 }
 
+export function formatDateTime(unixSeconds: number): string {
+  return new Date(unixSeconds * 1000).toLocaleString('en-US', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 const BYTE_UNITS = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB']
 
 export function formatBytes(bytes: number): string {

@@ -1,63 +1,85 @@
 import { useEffect, useState } from 'react'
-import { Dialog } from '@base-ui/react/dialog'
+import { Link, useNavigate } from '@tanstack/react-router'
 import CodeMirror from '@uiw/react-codemirror'
 import { yaml } from '@codemirror/lang-yaml'
-import { LuX } from 'react-icons/lu'
+import { LuArrowLeft, LuGitBranch, LuPencil, LuPlus, LuUpload, LuX } from 'react-icons/lu'
 import { ApiError } from '../lib/api'
-import { fetchStackContent, useDeployStack } from '../lib/stacks'
+import { fetchStackContent, useDeployStack, type EnvVar } from '../lib/stacks'
 import { toast } from '../lib/toast'
 import { Button } from './Button'
 import styles from './StackEditor.module.css'
 
-export type EditorState = { mode: 'new' } | { mode: 'edit'; name: string }
-
 type Props = {
   envId: number
-  state: EditorState | null
-  onClose: () => void
+  name?: string
 }
 
-export function StackEditor({ envId, state, onClose }: Props) {
-  return (
-    <Dialog.Root
-      open={state !== null}
-      onOpenChange={(open) => {
-        if (!open) {
-          onClose()
-        }
-      }}
-    >
-      <Dialog.Portal>
-        <Dialog.Backdrop className={styles.backdrop} />
-        <Dialog.Popup className={styles.popup}>
-          {state && <EditorBody key={editorKey(state)} envId={envId} state={state} onClose={onClose} />}
-        </Dialog.Popup>
-      </Dialog.Portal>
-    </Dialog.Root>
-  )
+function toRawEnv(vars: EnvVar[]): string {
+  return vars
+    .filter((v) => v.key.trim() !== '')
+    .map((v) => `${v.key}=${v.value}`)
+    .join('\n')
 }
 
-function editorKey(state: EditorState) {
-  return state.mode === 'edit' ? `edit:${state.name}` : 'new'
+function parseRawEnv(raw: string): EnvVar[] {
+  const out: EnvVar[] = []
+  for (const line of raw.split('\n')) {
+    const trimmed = line.trim()
+    if (trimmed === '' || trimmed.startsWith('#')) {
+      continue
+    }
+    const eq = trimmed.indexOf('=')
+    const key = (eq === -1 ? trimmed : trimmed.slice(0, eq)).trim()
+    if (key === '') {
+      continue
+    }
+    out.push({ key, value: eq === -1 ? '' : trimmed.slice(eq + 1) })
+  }
+  return out
 }
 
-function EditorBody({ envId, state, onClose }: { envId: number; state: EditorState; onClose: () => void }) {
-  const editing = state.mode === 'edit'
-  const [name, setName] = useState(editing ? state.name : '')
+export function StackEditor({ envId, name: editName }: Props) {
+  const editing = editName !== undefined
+  const navigate = useNavigate()
+  const [name, setName] = useState(editName ?? '')
   const [content, setContent] = useState('')
+  const [env, setEnv] = useState<EnvVar[]>([])
+  const [rawEnv, setRawEnv] = useState('')
+  const [advanced, setAdvanced] = useState(false)
   const [loading, setLoading] = useState(editing)
   const [error, setError] = useState<string | null>(null)
   const deploy = useDeployStack(envId)
+
+  const addVar = () => setEnv((prev) => [...prev, { key: '', value: '' }])
+  const removeVar = (index: number) =>
+    setEnv((prev) => prev.filter((_, i) => i !== index))
+  const updateVar = (index: number, field: keyof EnvVar, value: string) =>
+    setEnv((prev) => prev.map((v, i) => (i === index ? { ...v, [field]: value } : v)))
+
+  const toggleAdvanced = () => {
+    if (advanced) {
+      setEnv(parseRawEnv(rawEnv))
+    } else {
+      setRawEnv(toRawEnv(env))
+    }
+    setAdvanced((value) => !value)
+  }
+
+  const backTo = {
+    to: '/environments/$id/stacks' as const,
+    params: { id: String(envId) },
+  }
 
   useEffect(() => {
     if (!editing) {
       return
     }
     let active = true
-    fetchStackContent(envId, state.name)
+    fetchStackContent(envId, editName)
       .then((stack) => {
         if (active) {
           setContent(stack.content)
+          setEnv(stack.env ?? [])
         }
       })
       .catch(() => {
@@ -73,16 +95,19 @@ function EditorBody({ envId, state, onClose }: { envId: number; state: EditorSta
     return () => {
       active = false
     }
-  }, [editing, envId, state])
+  }, [editing, envId, editName])
 
   const submit = () => {
     setError(null)
+    const finalEnv = advanced
+      ? parseRawEnv(rawEnv)
+      : env.filter((v) => v.key.trim() !== '')
     deploy.mutate(
-      { name: name.trim(), content },
+      { name: name.trim(), content, env: finalEnv },
       {
         onSuccess: () => {
           toast.success(editing ? `Redeployed ${name}` : `Deployed ${name}`)
-          onClose()
+          navigate(backTo)
         },
         onError: (err) => {
           setError(err instanceof ApiError ? err.message : 'Deployment failed')
@@ -92,48 +117,120 @@ function EditorBody({ envId, state, onClose }: { envId: number; state: EditorSta
   }
 
   return (
-    <>
+    <div className={styles.page}>
       <header className={styles.header}>
-        <Dialog.Title className={styles.title}>
-          {editing ? `Edit ${state.name}` : 'Deploy a stack'}
-        </Dialog.Title>
-        <Dialog.Close
-          render={<Button variant="secondary" size="sm" iconOnly icon={<LuX />} aria-label="Close" />}
-        />
+        <Link {...backTo} className={styles.back} aria-label="Back to stacks">
+          <LuArrowLeft />
+        </Link>
+        <h1 className={styles.title}>{editing ? `Edit ${editName}` : 'Deploy a stack'}</h1>
       </header>
 
-      <div className={styles.body}>
-        {!editing && (
-          <label className={styles.nameField}>
-            <span className={styles.nameLabel}>Name</span>
-            <input
-              className={styles.nameInput}
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="my-app"
-              autoComplete="off"
-              spellCheck={false}
-            />
-          </label>
-        )}
-
-        <div className={styles.editor}>
-          <CodeMirror
-            value={content}
-            height="100%"
-            theme="light"
-            placeholder={'services:\n  app:\n    image: nginx\n    ports:\n      - "8080:80"'}
-            extensions={[yaml()]}
-            editable={!loading}
-            onChange={setContent}
+      {!editing && (
+        <label className={styles.nameField}>
+          <span className={styles.nameLabel}>Name</span>
+          <input
+            className={styles.nameInput}
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="my-app"
+            autoComplete="off"
+            spellCheck={false}
           />
-        </div>
+        </label>
+      )}
 
-        {error && <pre className={styles.error}>{error}</pre>}
+      {!editing && (
+        <div className={styles.sources} role="tablist" aria-label="Compose source">
+          <button type="button" className={`${styles.source} ${styles.sourceActive}`}>
+            <LuPencil />
+            Editor
+          </button>
+          <button type="button" className={styles.source} disabled>
+            <LuUpload />
+            Upload
+            <span className={styles.soon}>Soon</span>
+          </button>
+          <button type="button" className={styles.source} disabled>
+            <LuGitBranch />
+            Git Repository
+            <span className={styles.soon}>Soon</span>
+          </button>
+        </div>
+      )}
+
+      <div className={styles.editor}>
+        <CodeMirror
+          value={content}
+          height="360px"
+          theme="light"
+          extensions={[yaml()]}
+          editable={!loading}
+          onChange={setContent}
+        />
       </div>
 
+      <section className={styles.envSection}>
+        <div className={styles.envHead}>
+          <span className={styles.envTitle}>Environment variables</span>
+          <button type="button" className={styles.envToggle} onClick={toggleAdvanced}>
+            {advanced ? 'Simple editor' : 'Advanced'}
+          </button>
+        </div>
+
+        {advanced ? (
+          <textarea
+            className={styles.envTextarea}
+            value={rawEnv}
+            onChange={(e) => setRawEnv(e.target.value)}
+            spellCheck={false}
+          />
+        ) : (
+          <>
+            {env.length > 0 && (
+              <div className={styles.envRows}>
+                {env.map((variable, index) => (
+                  <div key={index} className={styles.envRow}>
+                    <input
+                      className={styles.envKey}
+                      value={variable.key}
+                      onChange={(e) => updateVar(index, 'key', e.target.value)}
+                      placeholder="KEY"
+                      autoComplete="off"
+                      spellCheck={false}
+                    />
+                    <input
+                      className={styles.envValue}
+                      value={variable.value}
+                      onChange={(e) => updateVar(index, 'value', e.target.value)}
+                      placeholder="value"
+                      autoComplete="off"
+                      spellCheck={false}
+                    />
+                    <button
+                      type="button"
+                      className={styles.envRemove}
+                      onClick={() => removeVar(index)}
+                      aria-label="Remove variable"
+                    >
+                      <LuX />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <Button variant="secondary" size="sm" icon={<LuPlus />} onClick={addVar}>
+              Add variable
+            </Button>
+          </>
+        )}
+      </section>
+
+      {error && <pre className={styles.error}>{error}</pre>}
+
       <footer className={styles.footer}>
-        <Dialog.Close render={<Button variant="secondary">Cancel</Button>} />
+        <Button variant="secondary" render={<Link {...backTo} />}>
+          Cancel
+        </Button>
         <Button
           onClick={submit}
           loading={deploy.isPending}
@@ -142,6 +239,6 @@ function EditorBody({ envId, state, onClose }: { envId: number; state: EditorSta
           {editing ? 'Redeploy' : 'Deploy'}
         </Button>
       </footer>
-    </>
+    </div>
   )
 }
