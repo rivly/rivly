@@ -13,6 +13,7 @@ import (
 const (
 	composeTimeout = 5 * time.Minute
 	composeFile    = "docker-compose.yml"
+	envFile        = ".env"
 )
 
 type Runner struct {
@@ -24,16 +25,16 @@ func NewRunner(bin, dataDir string) *Runner {
 	return &Runner{bin: bin, dataDir: dataDir}
 }
 
-func (r *Runner) Deploy(ctx context.Context, dockerHost string, envID int64, project, content string) (string, error) {
-	dir, err := r.materialize(envID, project, content)
+func (r *Runner) Deploy(ctx context.Context, dockerHost string, envID int64, project, content, env string) (string, error) {
+	dir, err := r.materialize(envID, project, content, env)
 	if err != nil {
 		return "", err
 	}
 	return r.run(ctx, dockerHost, dir, project, "up", "-d", "--remove-orphans")
 }
 
-func (r *Runner) Remove(ctx context.Context, dockerHost string, envID int64, project, content string) (string, error) {
-	dir, err := r.materialize(envID, project, content)
+func (r *Runner) Remove(ctx context.Context, dockerHost string, envID int64, project, content, env string) (string, error) {
+	dir, err := r.materialize(envID, project, content, env)
 	if err != nil {
 		return "", err
 	}
@@ -54,12 +55,15 @@ func (r *Runner) projectDir(envID int64, project string) string {
 	return filepath.Join(r.dataDir, "stacks", strconv.FormatInt(envID, 10), project)
 }
 
-func (r *Runner) materialize(envID int64, project, content string) (string, error) {
+func (r *Runner) materialize(envID int64, project, content, env string) (string, error) {
 	dir := r.projectDir(envID, project)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
 	}
 	if err := os.WriteFile(filepath.Join(dir, composeFile), []byte(content), 0o600); err != nil {
+		return "", err
+	}
+	if err := os.WriteFile(filepath.Join(dir, envFile), []byte(env), 0o600); err != nil {
 		return "", err
 	}
 	return dir, nil

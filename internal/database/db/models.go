@@ -42,6 +42,9 @@ type Stack struct {
 	Content   string
 	CreatedAt int64
 	UpdatedAt int64
+	Env       string
+	CreatedBy string
+	UpdatedBy string
 }
 
 type Token struct {

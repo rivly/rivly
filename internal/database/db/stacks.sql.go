@@ -24,7 +24,7 @@ func (q *Queries) DeleteStack(ctx context.Context, arg DeleteStackParams) error 
 }
 
 const getStack = `-- name: GetStack :one
-SELECT id, env_id, name, content, created_at, updated_at FROM stacks WHERE env_id = ? AND name = ? LIMIT 1
+SELECT id, env_id, name, content, created_at, updated_at, env, created_by, updated_by FROM stacks WHERE env_id = ? AND name = ? LIMIT 1
 `
 
 type GetStackParams struct {
@@ -42,12 +42,15 @@ func (q *Queries) GetStack(ctx context.Context, arg GetStackParams) (Stack, erro
 		&i.Content,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Env,
+		&i.CreatedBy,
+		&i.UpdatedBy,
 	)
 	return i, err
 }
 
 const listStacks = `-- name: ListStacks :many
-SELECT id, env_id, name, content, created_at, updated_at FROM stacks WHERE env_id = ? ORDER BY name
+SELECT id, env_id, name, content, created_at, updated_at, env, created_by, updated_by FROM stacks WHERE env_id = ? ORDER BY name
 `
 
 func (q *Queries) ListStacks(ctx context.Context, envID int64) ([]Stack, error) {
@@ -66,6 +69,9 @@ func (q *Queries) ListStacks(ctx context.Context, envID int64) ([]Stack, error) 
 			&i.Content,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Env,
+			&i.CreatedBy,
+			&i.UpdatedBy,
 		); err != nil {
 			return nil, err
 		}
@@ -81,22 +87,34 @@ func (q *Queries) ListStacks(ctx context.Context, envID int64) ([]Stack, error) 
 }
 
 const upsertStack = `-- name: UpsertStack :one
-INSERT INTO stacks (env_id, name, content)
-VALUES (?, ?, ?)
+INSERT INTO stacks (env_id, name, content, env, created_by, updated_by)
+VALUES (?, ?, ?, ?, ?, ?)
 ON CONFLICT (env_id, name) DO UPDATE SET
     content = excluded.content,
+    env = excluded.env,
+    updated_by = excluded.updated_by,
     updated_at = unixepoch()
-RETURNING id, env_id, name, content, created_at, updated_at
+RETURNING id, env_id, name, content, created_at, updated_at, env, created_by, updated_by
 `
 
 type UpsertStackParams struct {
-	EnvID   int64
-	Name    string
-	Content string
+	EnvID     int64
+	Name      string
+	Content   string
+	Env       string
+	CreatedBy string
+	UpdatedBy string
 }
 
 func (q *Queries) UpsertStack(ctx context.Context, arg UpsertStackParams) (Stack, error) {
-	row := q.db.QueryRowContext(ctx, upsertStack, arg.EnvID, arg.Name, arg.Content)
+	row := q.db.QueryRowContext(ctx, upsertStack,
+		arg.EnvID,
+		arg.Name,
+		arg.Content,
+		arg.Env,
+		arg.CreatedBy,
+		arg.UpdatedBy,
+	)
 	var i Stack
 	err := row.Scan(
 		&i.ID,
@@ -105,6 +123,9 @@ func (q *Queries) UpsertStack(ctx context.Context, arg UpsertStackParams) (Stack
 		&i.Content,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Env,
+		&i.CreatedBy,
+		&i.UpdatedBy,
 	)
 	return i, err
 }

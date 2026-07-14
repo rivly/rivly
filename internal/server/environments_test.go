@@ -107,11 +107,11 @@ type fakeCompose struct {
 	removeErr error
 }
 
-func (f fakeCompose) Deploy(_ context.Context, _ string, _ int64, _, _ string) (string, error) {
+func (f fakeCompose) Deploy(_ context.Context, _ string, _ int64, _, _, _ string) (string, error) {
 	return f.deployOut, f.deployErr
 }
 
-func (f fakeCompose) Remove(_ context.Context, _ string, _ int64, _, _ string) (string, error) {
+func (f fakeCompose) Remove(_ context.Context, _ string, _ int64, _, _, _ string) (string, error) {
 	return "", f.removeErr
 }
 

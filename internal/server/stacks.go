@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"regexp"
 	"sort"
@@ -24,6 +25,10 @@ type stackResponse struct {
 	Total      int    `json:"total"`
 	State      string `json:"state"`
 	WorkingDir string `json:"workingDir"`
+	CreatedAt  int64  `json:"createdAt"`
+	UpdatedAt  int64  `json:"updatedAt"`
+	CreatedBy  string `json:"createdBy"`
+	UpdatedBy  string `json:"updatedBy"`
 }
 
 var validStackActions = map[string]bool{
@@ -58,32 +63,44 @@ func (s *Server) handleListStacks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	managed := make(map[string]bool)
+	managed := make(map[string]db.Stack)
 	if list, lerr := s.queries.ListStacks(r.Context(), env.ID); lerr == nil {
 		for _, m := range list {
-			managed[m.Name] = true
+			managed[m.Name] = m
 		}
 	}
 
 	merged := make(map[string]stackResponse, len(discovered))
 	for _, d := range discovered {
-		typ := d.Type
-		if managed[d.Name] {
-			typ = "rivly"
-		}
-		merged[d.Name] = stackResponse{
+		sr := stackResponse{
 			Name:       d.Name,
-			Type:       typ,
+			Type:       d.Type,
 			Services:   d.Services,
 			Running:    d.Running,
 			Total:      d.Total,
 			State:      d.State,
 			WorkingDir: d.WorkingDir,
 		}
+		if m, ok := managed[d.Name]; ok {
+			sr.Type = "rivly"
+			sr.CreatedAt = m.CreatedAt
+			sr.UpdatedAt = m.UpdatedAt
+			sr.CreatedBy = m.CreatedBy
+			sr.UpdatedBy = m.UpdatedBy
+		}
+		merged[d.Name] = sr
 	}
-	for name := range managed {
+	for name, m := range managed {
 		if _, ok := merged[name]; !ok {
-			merged[name] = stackResponse{Name: name, Type: "rivly", State: "stopped"}
+			merged[name] = stackResponse{
+				Name:      name,
+				Type:      "rivly",
+				State:     "stopped",
+				CreatedAt: m.CreatedAt,
+				UpdatedAt: m.UpdatedAt,
+				CreatedBy: m.CreatedBy,
+				UpdatedBy: m.UpdatedBy,
+			}
 		}
 	}
 
@@ -100,9 +117,35 @@ func (s *Server) handleListStacks(w http.ResponseWriter, r *http.Request) {
 	s.writeJSON(w, http.StatusOK, out)
 }
 
+type envVar struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+func envFileContent(vars []envVar) string {
+	var b strings.Builder
+	for _, v := range vars {
+		key := strings.TrimSpace(v.Key)
+		if key == "" {
+			continue
+		}
+		fmt.Fprintf(&b, "%s=%s\n", key, v.Value)
+	}
+	return b.String()
+}
+
+func parseEnvVars(stored string) []envVar {
+	vars := []envVar{}
+	if stored != "" {
+		_ = json.Unmarshal([]byte(stored), &vars)
+	}
+	return vars
+}
+
 type deployStackRequest struct {
-	Name    string `json:"name"`
-	Content string `json:"content"`
+	Name    string   `json:"name"`
+	Content string   `json:"content"`
+	Env     []envVar `json:"env"`
 }
 
 func (s *Server) handleDeployStack(w http.ResponseWriter, r *http.Request) {
@@ -140,7 +183,13 @@ func (s *Server) handleDeployStack(w http.ResponseWriter, r *http.Request) {
 	_, getErr := s.queries.GetStack(r.Context(), db.GetStackParams{EnvID: env.ID, Name: name})
 	isNew := errors.Is(getErr, sql.ErrNoRows)
 
-	out, derr := s.compose.Deploy(r.Context(), env.Url, env.ID, name, req.Content)
+	envJSON, err := json.Marshal(req.Env)
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, "invalid environment variables")
+		return
+	}
+
+	out, derr := s.compose.Deploy(r.Context(), env.Url, env.ID, name, req.Content, envFileContent(req.Env))
 	if derr != nil {
 		s.logger.Warn("stack deploy failed", "stack", name, "err", derr)
 		if isNew {
@@ -150,10 +199,18 @@ func (s *Server) handleDeployStack(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	author := ""
+	if user, uerr := s.queries.GetUserByID(r.Context(), s.sessions.GetInt64(r.Context(), sessionUserID)); uerr == nil {
+		author = user.DisplayName
+	}
+
 	if _, err := s.queries.UpsertStack(r.Context(), db.UpsertStackParams{
-		EnvID:   env.ID,
-		Name:    name,
-		Content: req.Content,
+		EnvID:     env.ID,
+		Name:      name,
+		Content:   req.Content,
+		Env:       string(envJSON),
+		CreatedBy: author,
+		UpdatedBy: author,
 	}); err != nil {
 		s.serverError(w, r, "could not save stack", err)
 		return
@@ -190,7 +247,11 @@ func (s *Server) handleGetStack(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "could not load stack", err)
 		return
 	}
-	s.writeJSON(w, http.StatusOK, map[string]string{"name": stack.Name, "content": stack.Content})
+	s.writeJSON(w, http.StatusOK, map[string]any{
+		"name":    stack.Name,
+		"content": stack.Content,
+		"env":     parseEnvVars(stack.Env),
+	})
 }
 
 func (s *Server) handleStackActions(w http.ResponseWriter, r *http.Request) {
@@ -224,10 +285,10 @@ func (s *Server) handleStackActions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	managed := make(map[string]string)
+	managed := make(map[string]db.Stack)
 	if list, lerr := s.queries.ListStacks(r.Context(), env.ID); lerr == nil {
 		for _, m := range list {
-			managed[m.Name] = m.Content
+			managed[m.Name] = m
 		}
 	}
 
@@ -245,10 +306,10 @@ func (s *Server) handleStackActions(w http.ResponseWriter, r *http.Request) {
 	s.writeJSON(w, http.StatusOK, map[string]any{"results": results})
 }
 
-func (s *Server) runStackAction(ctx context.Context, env db.Environment, project, action string, managed map[string]string) actionResult {
+func (s *Server) runStackAction(ctx context.Context, env db.Environment, project, action string, managed map[string]db.Stack) actionResult {
 	if action == "remove" {
-		if content, ok := managed[project]; ok {
-			out, derr := s.compose.Remove(ctx, env.Url, env.ID, project, content)
+		if stack, ok := managed[project]; ok {
+			out, derr := s.compose.Remove(ctx, env.Url, env.ID, project, stack.Content, envFileContent(parseEnvVars(stack.Env)))
 			if derr != nil {
 				s.logger.Warn("managed stack remove failed", "stack", project, "err", derr, "out", out)
 				return actionResult{ID: project, OK: false, Error: "action failed"}

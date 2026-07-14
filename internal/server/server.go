@@ -36,8 +36,8 @@ type dockerService interface {
 }
 
 type composeRunner interface {
-	Deploy(ctx context.Context, dockerHost string, envID int64, project, content string) (string, error)
-	Remove(ctx context.Context, dockerHost string, envID int64, project, content string) (string, error)
+	Deploy(ctx context.Context, dockerHost string, envID int64, project, content, env string) (string, error)
+	Remove(ctx context.Context, dockerHost string, envID int64, project, content, env string) (string, error)
 	Discard(ctx context.Context, dockerHost string, envID int64, project string)
 }
 
