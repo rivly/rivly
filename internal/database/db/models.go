@@ -35,6 +35,15 @@ type Session struct {
 	Expiry float64
 }
 
+type Stack struct {
+	ID        int64
+	EnvID     int64
+	Name      string
+	Content   string
+	CreatedAt int64
+	UpdatedAt int64
+}
+
 type Token struct {
 	ID        int64
 	UserID    int64

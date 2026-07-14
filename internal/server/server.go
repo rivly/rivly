@@ -35,12 +35,19 @@ type dockerService interface {
 	WatchEvents(ctx context.Context, id int64, host string) (<-chan struct{}, <-chan error)
 }
 
+type composeRunner interface {
+	Deploy(ctx context.Context, dockerHost string, envID int64, project, content string) (string, error)
+	Remove(ctx context.Context, dockerHost string, envID int64, project, content string) (string, error)
+	Discard(ctx context.Context, dockerHost string, envID int64, project string)
+}
+
 type Server struct {
 	logger       *slog.Logger
 	queries      *db.Queries
 	sessions     *scs.SessionManager
 	local        *auth.Local
 	docker       dockerService
+	compose      composeRunner
 	events       *events.Hub
 	cfg          config.Config
 	setupMu      sync.Mutex
@@ -54,6 +61,7 @@ func New(
 	sessions *scs.SessionManager,
 	local *auth.Local,
 	docker dockerService,
+	compose composeRunner,
 	eventsHub *events.Hub,
 	cfg config.Config,
 ) *Server {
@@ -63,6 +71,7 @@ func New(
 		sessions:     sessions,
 		local:        local,
 		docker:       docker,
+		compose:      compose,
 		events:       eventsHub,
 		cfg:          cfg,
 		lastEnvState: make(map[int64]string),
@@ -109,6 +118,8 @@ func (s *Server) Router() http.Handler {
 				r.Get("/", s.handleListEnvironments)
 				r.Get("/{id}", s.handleGetEnvironment)
 				r.Get("/{id}/stacks", s.handleListStacks)
+				r.Post("/{id}/stacks", s.handleDeployStack)
+				r.Get("/{id}/stacks/{name}", s.handleGetStack)
 				r.Post("/{id}/stacks/actions", s.handleStackActions)
 				r.Get("/{id}/containers", s.handleListContainers)
 				r.Post("/{id}/containers/actions", s.handleContainerActions)

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/rivly/rivly/internal/auth"
+	"github.com/rivly/rivly/internal/compose"
 	"github.com/rivly/rivly/internal/config"
 	"github.com/rivly/rivly/internal/database"
 	"github.com/rivly/rivly/internal/database/db"
@@ -49,10 +50,11 @@ func run(logger *slog.Logger) error {
 	dockerManager := docker.NewManager()
 	defer dockerManager.Close()
 
+	composeRunner := compose.NewRunner(cfg.ComposeBin, cfg.DataDir)
 	eventsHub := events.NewHub()
 	sessions := auth.NewSessionManager(sqlDB)
 	local := auth.NewLocal(queries)
-	srv := server.New(logger, queries, sessions, local, dockerManager, eventsHub, cfg)
+	srv := server.New(logger, queries, sessions, local, dockerManager, composeRunner, eventsHub, cfg)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

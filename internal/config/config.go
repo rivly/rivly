@@ -12,6 +12,8 @@ type Config struct {
 	TrustedOrigins []string
 	DockerHost     string
 	PollInterval   time.Duration
+	DataDir        string
+	ComposeBin     string
 }
 
 func Load() Config {
@@ -21,6 +23,8 @@ func Load() Config {
 		TrustedOrigins: splitNonEmpty(os.Getenv("RIVLY_TRUSTED_ORIGINS")),
 		DockerHost:     env("DOCKER_HOST", "unix:///var/run/docker.sock"),
 		PollInterval:   envDuration("RIVLY_POLL_INTERVAL", 5*time.Second),
+		DataDir:        env("RIVLY_DATA", "data"),
+		ComposeBin:     env("RIVLY_COMPOSE_BIN", "docker-compose"),
 	}
 }
 

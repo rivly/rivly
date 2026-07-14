@@ -3,6 +3,8 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -47,16 +49,14 @@ func (s *Server) pollEnvironments(ctx context.Context) {
 	wg.Wait()
 
 	for _, detail := range details {
-		fingerprint := detail
-		fingerprint.LastSeen = nil
-		key, err := json.Marshal(fingerprint)
-		if err != nil {
+		key := s.envFingerprint(ctx, detail)
+		if key == "" {
 			continue
 		}
 		s.envStateMu.Lock()
-		changed := s.lastEnvState[detail.ID] != string(key)
+		changed := s.lastEnvState[detail.ID] != key
 		if changed {
-			s.lastEnvState[detail.ID] = string(key)
+			s.lastEnvState[detail.ID] = key
 		}
 		s.envStateMu.Unlock()
 		if changed {
@@ -67,12 +67,32 @@ func (s *Server) pollEnvironments(ctx context.Context) {
 
 func (s *Server) publishEnvironment(ctx context.Context, e db.Environment) {
 	detail := s.buildEnvironment(ctx, e)
-	fingerprint := detail
-	fingerprint.LastSeen = nil
-	if key, err := json.Marshal(fingerprint); err == nil {
+	if key := s.envFingerprint(ctx, detail); key != "" {
 		s.envStateMu.Lock()
-		s.lastEnvState[detail.ID] = string(key)
+		s.lastEnvState[detail.ID] = key
 		s.envStateMu.Unlock()
 	}
 	s.events.Publish("environment.updated", detail)
+}
+
+func (s *Server) envFingerprint(ctx context.Context, detail environmentDetailResponse) string {
+	fingerprint := detail
+	fingerprint.LastSeen = nil
+	key, err := json.Marshal(fingerprint)
+	if err != nil {
+		return ""
+	}
+	return string(key) + s.stacksSignature(ctx, detail.ID)
+}
+
+func (s *Server) stacksSignature(ctx context.Context, envID int64) string {
+	stacks, err := s.queries.ListStacks(ctx, envID)
+	if err != nil {
+		return ""
+	}
+	var b strings.Builder
+	for _, st := range stacks {
+		fmt.Fprintf(&b, "|%s:%d", st.Name, st.UpdatedAt)
+	}
+	return b.String()
 }

@@ -101,6 +101,22 @@ func (f fakeDocker) WatchEvents(_ context.Context, _ int64, _ string) (<-chan st
 	return nil, nil
 }
 
+type fakeCompose struct {
+	deployOut string
+	deployErr error
+	removeErr error
+}
+
+func (f fakeCompose) Deploy(_ context.Context, _ string, _ int64, _, _ string) (string, error) {
+	return f.deployOut, f.deployErr
+}
+
+func (f fakeCompose) Remove(_ context.Context, _ string, _ int64, _, _ string) (string, error) {
+	return "", f.removeErr
+}
+
+func (f fakeCompose) Discard(_ context.Context, _ string, _ int64, _ string) {}
+
 const testCreds = `{"email":"admin@rivly.dev","password":"s3cret-password","displayName":"Admin"}`
 
 func authedClient(t *testing.T, ts *httptest.Server) *http.Client {
