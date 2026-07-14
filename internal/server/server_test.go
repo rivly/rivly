@@ -16,6 +16,7 @@ import (
 	"github.com/rivly/rivly/internal/database"
 	"github.com/rivly/rivly/internal/database/db"
 	"github.com/rivly/rivly/internal/events"
+	"github.com/rivly/rivly/internal/gitcred"
 	"github.com/rivly/rivly/internal/registry"
 	"github.com/rivly/rivly/internal/secret"
 )
@@ -37,7 +38,8 @@ func newTestServer(t *testing.T) *Server {
 		t.Fatalf("secret: %v", err)
 	}
 	registries := registry.NewStore(queries, cipher)
-	return New(logger, queries, auth.NewSessionManager(sqlDB), auth.NewLocal(queries), fakeDocker{}, fakeCompose{}, events.NewHub(), registries, config.Config{})
+	gitCredentials := gitcred.NewStore(queries, cipher)
+	return New(logger, queries, auth.NewSessionManager(sqlDB), auth.NewLocal(queries), fakeDocker{}, fakeCompose{}, events.NewHub(), registries, gitCredentials, config.Config{})
 }
 
 func TestAuthFlow(t *testing.T) {

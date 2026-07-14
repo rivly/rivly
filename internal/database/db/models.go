@@ -29,6 +29,16 @@ type Environment struct {
 	SnapshotAt sql.NullInt64
 }
 
+type GitCredential struct {
+	ID        int64
+	Name      string
+	Username  string
+	TokenEnc  []byte
+	CreatedBy string
+	CreatedAt int64
+	UpdatedAt int64
+}
+
 type Registry struct {
 	ID          int64
 	Server      string

@@ -16,6 +16,7 @@ import (
 	"github.com/rivly/rivly/internal/database/db"
 	"github.com/rivly/rivly/internal/docker"
 	"github.com/rivly/rivly/internal/events"
+	"github.com/rivly/rivly/internal/gitcred"
 	"github.com/rivly/rivly/internal/registry"
 )
 
@@ -62,6 +63,7 @@ type Server struct {
 	compose      composeRunner
 	events       *events.Hub
 	registries   *registry.Store
+	gitcreds     *gitcred.Store
 	cfg          config.Config
 	setupMu      sync.Mutex
 	envStateMu   sync.Mutex
@@ -77,6 +79,7 @@ func New(
 	compose composeRunner,
 	eventsHub *events.Hub,
 	registries *registry.Store,
+	gitcreds *gitcred.Store,
 	cfg config.Config,
 ) *Server {
 	return &Server{
@@ -88,6 +91,7 @@ func New(
 		compose:      compose,
 		events:       eventsHub,
 		registries:   registries,
+		gitcreds:     gitcreds,
 		cfg:          cfg,
 		lastEnvState: make(map[int64]string),
 	}
@@ -163,6 +167,15 @@ func (s *Server) Router() http.Handler {
 				r.Post("/test", s.handleTestRegistry)
 				r.Put("/{id}", s.handleUpdateRegistry)
 				r.Delete("/{id}", s.handleDeleteRegistry)
+			})
+
+			r.Route("/git-credentials", func(r chi.Router) {
+				r.Use(s.requireAuth)
+				r.Get("/", s.handleListGitCredentials)
+				r.Post("/", s.handleCreateGitCredential)
+				r.Post("/test", s.handleTestGitCredential)
+				r.Put("/{id}", s.handleUpdateGitCredential)
+				r.Delete("/{id}", s.handleDeleteGitCredential)
 			})
 		})
 	})
