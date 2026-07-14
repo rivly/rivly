@@ -5,20 +5,6 @@
   max-width: 720px;
 }
 
-.back {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.875rem;
-  color: var(--fg-muted);
-  text-decoration: none;
-  transition: color 0.15s ease;
-}
-
-.back:hover {
-  color: var(--fg);
-}
-
 .title {
   font-size: 1.5rem;
   font-weight: 600;

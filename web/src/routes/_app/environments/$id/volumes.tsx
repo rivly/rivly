@@ -5,7 +5,9 @@ import { LuPlus } from 'react-icons/lu'
 import { Button } from '../../../../components/Button'
 import { CreateVolumeDialog } from '../../../../components/CreateVolumeDialog'
 import { DataTable } from '../../../../components/DataTable'
-import { Loader } from '../../../../components/Loader'
+import { NameCell } from '../../../../components/NameCell'
+import { PageHeader } from '../../../../components/PageHeader'
+import { QueryState } from '../../../../components/QueryState'
 import { Tooltip } from '../../../../components/Tooltip'
 import { VolumeBulkBar } from '../../../../components/VolumeBulkBar'
 import { useVolumes, type Volume } from '../../../../lib/volumes'
@@ -27,7 +29,9 @@ function VolumesPage() {
       {
         accessorKey: 'name',
         header: 'Name',
-        cell: (cell) => <NameCell volume={cell.row.original} />,
+        cell: (cell) => (
+          <NameCell inUse={cell.row.original.inUse}>{cell.row.original.name}</NameCell>
+        ),
       },
       {
         accessorKey: 'stack',
@@ -65,29 +69,31 @@ function VolumesPage() {
 
   return (
     <div>
-      <header className={styles.head}>
-        <h1 className={styles.title}>Volumes</h1>
-        <Button size="sm" icon={<LuPlus />} onClick={() => setCreateOpen(true)}>
-          Create volume
-        </Button>
-      </header>
+      <PageHeader
+        title="Volumes"
+        action={
+          <Button size="sm" icon={<LuPlus />} onClick={() => setCreateOpen(true)}>
+            Create volume
+          </Button>
+        }
+      />
 
-      {isPending && <Loader />}
-      {isError && <p className={styles.message}>Could not load volumes.</p>}
-      {volumes && (
-        <DataTable
-          data={volumes}
-          columns={columns}
-          searchPlaceholder="Search volumes…"
-          emptyMessage="No volumes on this host."
-          initialPageSize={25}
-          enableSelection
-          getRowId={(volume) => volume.name}
-          renderBulkActions={(selected, clear) => (
-            <VolumeBulkBar envId={Number(id)} selected={selected} clear={clear} />
-          )}
-        />
-      )}
+      <QueryState pending={isPending} error={isError} errorMessage="Could not load volumes.">
+        {volumes && (
+          <DataTable
+            data={volumes}
+            columns={columns}
+            searchPlaceholder="Search volumes…"
+            emptyMessage="No volumes on this host."
+            initialPageSize={25}
+            enableSelection
+            getRowId={(volume) => volume.name}
+            renderBulkActions={(selected, clear) => (
+              <VolumeBulkBar envId={Number(id)} selected={selected} clear={clear} />
+            )}
+          />
+        )}
+      </QueryState>
 
       <CreateVolumeDialog
         envId={Number(id)}
@@ -95,14 +101,5 @@ function VolumesPage() {
         onClose={() => setCreateOpen(false)}
       />
     </div>
-  )
-}
-
-function NameCell({ volume }: { volume: Volume }) {
-  return (
-    <span className={styles.nameCell}>
-      <span className={styles.name}>{volume.name}</span>
-      {!volume.inUse && <span className={styles.unusedBadge}>Unused</span>}
-    </span>
   )
 }

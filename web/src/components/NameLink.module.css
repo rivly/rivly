@@ -1,0 +1,14 @@
+.link {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  color: var(--fg);
+  text-decoration: none;
+}
+
+.link:hover {
+  color: var(--accent-strong);
+  text-decoration: underline;
+}

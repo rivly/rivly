@@ -1,117 +1,9 @@
-.head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 20px;
-}
-
-.headActions {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  background: rgba(16, 24, 40, 0.4);
-  opacity: 1;
-  transition: opacity 0.2s ease;
-}
-
-.backdrop[data-starting-style],
-.backdrop[data-ending-style] {
-  opacity: 0;
-}
-
-.dialog {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  z-index: 200;
-  width: min(440px, calc(100vw - 32px));
-  padding: 20px;
-  transform: translate(-50%, -50%);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: 0 20px 60px rgba(16, 24, 40, 0.24);
-  transition:
-    opacity 0.2s ease,
-    transform 0.2s ease;
-}
-
-.dialog[data-starting-style],
-.dialog[data-ending-style] {
-  opacity: 0;
-  transform: translate(-50%, -48%) scale(0.97);
-}
-
-.dialogTitle {
-  font-size: 1.0625rem;
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-
-.dialogText {
-  font-size: 0.875rem;
-  line-height: 1.5;
-  color: var(--fg-muted);
-  margin-bottom: 20px;
-}
-
-.dialogActions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-.message {
-  color: var(--fg-muted);
-  padding: 16px 0;
-}
-
 .muted {
   color: var(--fg-muted);
 }
 
-.imageCell {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.name {
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .untagged {
   color: var(--fg-muted);
-}
-
-.unusedBadge {
-  display: inline-flex;
-  align-items: center;
-  flex-shrink: 0;
-  padding: 1px 7px;
-  border-radius: 999px;
-  font-size: 0.6875rem;
-  font-weight: 500;
-  color: #9a6700;
-  background: color-mix(in srgb, #f0a92e 18%, transparent);
-  white-space: nowrap;
 }
 
 .id {
@@ -119,4 +11,3 @@
   font-size: 0.75rem;
   color: var(--fg-muted);
 }
-

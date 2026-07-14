@@ -1,5 +1,5 @@
 import { useImageActions, type Image } from '../lib/images'
-import { toast } from '../lib/toast'
+import { bulkActionError, reportBulk } from '../lib/bulk'
 import { RemoveBulkBar } from './RemoveBulkBar'
 
 type Props = {
@@ -15,20 +15,14 @@ export function ImageBulkBar({ envId, selected, clear }: Props) {
     mutation.mutate(
       { action: 'remove', ids: selected.map((image) => image.id) },
       {
-        onSuccess: (data) => {
-          const ok = data.results.filter((result) => result.ok).length
-          const failed = data.results.length - ok
-          if (failed === 0) {
-            toast.success(`Removed ${ok} image${ok > 1 ? 's' : ''}`)
-          } else {
-            toast.error(
-              `Removed ${ok}/${data.results.length} images`,
-              `${failed} still in use or shared`,
-            )
-          }
-          clear()
-        },
-        onError: () => toast.error('Action failed', 'Could not reach the environment'),
+        onSuccess: (data) =>
+          reportBulk(data.results, {
+            verb: 'Removed',
+            noun: 'image',
+            failHint: (failed) => `${failed} still in use or shared`,
+            clear,
+          }),
+        onError: bulkActionError,
       },
     )
   }

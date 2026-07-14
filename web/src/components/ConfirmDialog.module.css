@@ -1,50 +1,3 @@
-.bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 1;
-  min-width: 0;
-}
-
-.clear {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  flex-shrink: 0;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--surface);
-  color: var(--fg-muted);
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.clear:hover {
-  background: var(--bg-subtle);
-  color: var(--fg);
-}
-
-.clear svg {
-  width: 15px;
-  height: 15px;
-}
-
-.count {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--fg);
-  white-space: nowrap;
-}
-
-.actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
 .backdrop {
   position: fixed;
   inset: 0;
@@ -82,20 +35,20 @@
   transform: translate(-50%, -48%) scale(0.97);
 }
 
-.dialogTitle {
+.title {
   font-size: 1.0625rem;
   font-weight: 600;
   margin-bottom: 8px;
 }
 
-.dialogText {
+.text {
   font-size: 0.875rem;
   line-height: 1.5;
   color: var(--fg-muted);
   margin-bottom: 20px;
 }
 
-.dialogActions {
+.actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;

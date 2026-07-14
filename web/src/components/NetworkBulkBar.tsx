@@ -1,5 +1,5 @@
 import { useNetworkActions, type Network } from '../lib/networks'
-import { toast } from '../lib/toast'
+import { bulkActionError, reportBulk } from '../lib/bulk'
 import { RemoveBulkBar } from './RemoveBulkBar'
 
 type Props = {
@@ -15,20 +15,14 @@ export function NetworkBulkBar({ envId, selected, clear }: Props) {
     mutation.mutate(
       { action: 'remove', ids: selected.map((network) => network.id) },
       {
-        onSuccess: (data) => {
-          const ok = data.results.filter((result) => result.ok).length
-          const failed = data.results.length - ok
-          if (failed === 0) {
-            toast.success(`Removed ${ok} network${ok > 1 ? 's' : ''}`)
-          } else {
-            toast.error(
-              `Removed ${ok}/${data.results.length} networks`,
-              `${failed} in use or predefined`,
-            )
-          }
-          clear()
-        },
-        onError: () => toast.error('Action failed', 'Could not reach the environment'),
+        onSuccess: (data) =>
+          reportBulk(data.results, {
+            verb: 'Removed',
+            noun: 'network',
+            failHint: (failed) => `${failed} in use or predefined`,
+            clear,
+          }),
+        onError: bulkActionError,
       },
     )
   }

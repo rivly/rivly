@@ -5,8 +5,10 @@ import { LuPlus } from 'react-icons/lu'
 import { Button } from '../../../../components/Button'
 import { CreateNetworkDialog } from '../../../../components/CreateNetworkDialog'
 import { DataTable } from '../../../../components/DataTable'
-import { Loader } from '../../../../components/Loader'
+import { NameCell } from '../../../../components/NameCell'
 import { NetworkBulkBar } from '../../../../components/NetworkBulkBar'
+import { PageHeader } from '../../../../components/PageHeader'
+import { QueryState } from '../../../../components/QueryState'
 import { useNetworks, type Network } from '../../../../lib/networks'
 import { timeAgo } from '../../../../lib/format'
 import styles from './networks.module.css'
@@ -26,7 +28,9 @@ function NetworksPage() {
       {
         accessorKey: 'name',
         header: 'Name',
-        cell: (cell) => <NameCell network={cell.row.original} />,
+        cell: (cell) => (
+          <NameCell inUse={cell.row.original.inUse}>{cell.row.original.name}</NameCell>
+        ),
       },
       {
         accessorKey: 'stack',
@@ -60,29 +64,31 @@ function NetworksPage() {
 
   return (
     <div>
-      <header className={styles.head}>
-        <h1 className={styles.title}>Networks</h1>
-        <Button size="sm" icon={<LuPlus />} onClick={() => setCreateOpen(true)}>
-          Create network
-        </Button>
-      </header>
+      <PageHeader
+        title="Networks"
+        action={
+          <Button size="sm" icon={<LuPlus />} onClick={() => setCreateOpen(true)}>
+            Create network
+          </Button>
+        }
+      />
 
-      {isPending && <Loader />}
-      {isError && <p className={styles.message}>Could not load networks.</p>}
-      {networks && (
-        <DataTable
-          data={networks}
-          columns={columns}
-          searchPlaceholder="Search networks…"
-          emptyMessage="No networks on this host."
-          initialPageSize={25}
-          enableSelection
-          getRowId={(network) => network.id}
-          renderBulkActions={(selected, clear) => (
-            <NetworkBulkBar envId={Number(id)} selected={selected} clear={clear} />
-          )}
-        />
-      )}
+      <QueryState pending={isPending} error={isError} errorMessage="Could not load networks.">
+        {networks && (
+          <DataTable
+            data={networks}
+            columns={columns}
+            searchPlaceholder="Search networks…"
+            emptyMessage="No networks on this host."
+            initialPageSize={25}
+            enableSelection
+            getRowId={(network) => network.id}
+            renderBulkActions={(selected, clear) => (
+              <NetworkBulkBar envId={Number(id)} selected={selected} clear={clear} />
+            )}
+          />
+        )}
+      </QueryState>
 
       <CreateNetworkDialog
         envId={Number(id)}
@@ -90,14 +96,5 @@ function NetworksPage() {
         onClose={() => setCreateOpen(false)}
       />
     </div>
-  )
-}
-
-function NameCell({ network }: { network: Network }) {
-  return (
-    <span className={styles.nameCell}>
-      <span className={styles.name}>{network.name}</span>
-      {!network.inUse && <span className={styles.unusedBadge}>Unused</span>}
-    </span>
   )
 }

@@ -1,0 +1,32 @@
+.state {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: currentColor;
+}
+
+.running {
+  color: #1a7f42;
+  background: color-mix(in srgb, #1fab54 12%, transparent);
+}
+
+.partial {
+  color: #9a6700;
+  background: color-mix(in srgb, #f0a92e 16%, transparent);
+}
+
+.stopped {
+  color: var(--fg-muted);
+  background: var(--bg-subtle);
+}

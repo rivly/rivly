@@ -1,0 +1,33 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.message {
+  color: var(--fg-muted);
+  padding: 16px 0;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+}
+
+.dot {
+  color: var(--border-strong);
+}
+
+.image {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+}
+
+.muted {
+  color: var(--fg-muted);
+}

@@ -1,22 +1,3 @@
-.head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 20px;
-}
-
-.title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-.message {
-  color: var(--fg-muted);
-  padding: 16px 0;
-}
-
 .muted {
   color: var(--fg-muted);
 }
@@ -26,40 +7,6 @@
   align-items: center;
   gap: 8px;
   min-width: 0;
-}
-
-.name {
-  font-weight: 500;
-  color: var(--fg);
-  text-decoration: none;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.name:hover {
-  color: var(--accent-strong);
-  text-decoration: underline;
-}
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  flex-shrink: 0;
-  padding: 1px 7px 1px 5px;
-  border-radius: 999px;
-  font-size: 0.6875rem;
-  font-weight: 500;
-  color: #9a6700;
-  background: color-mix(in srgb, #f0a92e 18%, transparent);
-  white-space: nowrap;
-  cursor: default;
-}
-
-.badge svg {
-  width: 11px;
-  height: 11px;
 }
 
 .when {
@@ -78,37 +25,4 @@
 .whenBy {
   font-size: 0.75rem;
   color: var(--fg-muted);
-}
-
-.state {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 3px 9px;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.stateDot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  background: currentColor;
-}
-
-.running {
-  color: #1a7f42;
-  background: color-mix(in srgb, #1fab54 12%, transparent);
-}
-
-.partial {
-  color: #9a6700;
-  background: color-mix(in srgb, #f0a92e 16%, transparent);
-}
-
-.stopped {
-  color: var(--fg-muted);
-  background: var(--bg-subtle);
 }

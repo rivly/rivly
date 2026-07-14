@@ -24,6 +24,7 @@ import { Route as AppEnvironmentsIdContainersIndexRouteImport } from './routes/_
 import { Route as AppEnvironmentsIdStacksNewRouteImport } from './routes/_app/environments/$id/stacks.new'
 import { Route as AppEnvironmentsIdContainersNewRouteImport } from './routes/_app/environments/$id/containers.new'
 import { Route as AppEnvironmentsIdContainersContainerIdRouteImport } from './routes/_app/environments/$id/containers.$containerId'
+import { Route as AppEnvironmentsIdStacksNameIndexRouteImport } from './routes/_app/environments/$id/stacks.$name.index'
 import { Route as AppEnvironmentsIdStacksNameEditRouteImport } from './routes/_app/environments/$id/stacks.$name.edit'
 
 const SetupRoute = SetupRouteImport.update({
@@ -107,6 +108,12 @@ const AppEnvironmentsIdContainersContainerIdRoute =
     path: '/containers/$containerId',
     getParentRoute: () => AppEnvironmentsIdRoute,
   } as any)
+const AppEnvironmentsIdStacksNameIndexRoute =
+  AppEnvironmentsIdStacksNameIndexRouteImport.update({
+    id: '/stacks/$name/',
+    path: '/stacks/$name/',
+    getParentRoute: () => AppEnvironmentsIdRoute,
+  } as any)
 const AppEnvironmentsIdStacksNameEditRoute =
   AppEnvironmentsIdStacksNameEditRouteImport.update({
     id: '/stacks/$name/edit',
@@ -130,6 +137,7 @@ export interface FileRoutesByFullPath {
   '/environments/$id/containers/': typeof AppEnvironmentsIdContainersIndexRoute
   '/environments/$id/stacks/': typeof AppEnvironmentsIdStacksIndexRoute
   '/environments/$id/stacks/$name/edit': typeof AppEnvironmentsIdStacksNameEditRoute
+  '/environments/$id/stacks/$name/': typeof AppEnvironmentsIdStacksNameIndexRoute
 }
 export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
@@ -146,6 +154,7 @@ export interface FileRoutesByTo {
   '/environments/$id/containers': typeof AppEnvironmentsIdContainersIndexRoute
   '/environments/$id/stacks': typeof AppEnvironmentsIdStacksIndexRoute
   '/environments/$id/stacks/$name/edit': typeof AppEnvironmentsIdStacksNameEditRoute
+  '/environments/$id/stacks/$name': typeof AppEnvironmentsIdStacksNameIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -165,6 +174,7 @@ export interface FileRoutesById {
   '/_app/environments/$id/containers/': typeof AppEnvironmentsIdContainersIndexRoute
   '/_app/environments/$id/stacks/': typeof AppEnvironmentsIdStacksIndexRoute
   '/_app/environments/$id/stacks/$name/edit': typeof AppEnvironmentsIdStacksNameEditRoute
+  '/_app/environments/$id/stacks/$name/': typeof AppEnvironmentsIdStacksNameIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -184,6 +194,7 @@ export interface FileRouteTypes {
     | '/environments/$id/containers/'
     | '/environments/$id/stacks/'
     | '/environments/$id/stacks/$name/edit'
+    | '/environments/$id/stacks/$name/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/forgot-password'
@@ -200,6 +211,7 @@ export interface FileRouteTypes {
     | '/environments/$id/containers'
     | '/environments/$id/stacks'
     | '/environments/$id/stacks/$name/edit'
+    | '/environments/$id/stacks/$name'
   id:
     | '__root__'
     | '/_app'
@@ -218,6 +230,7 @@ export interface FileRouteTypes {
     | '/_app/environments/$id/containers/'
     | '/_app/environments/$id/stacks/'
     | '/_app/environments/$id/stacks/$name/edit'
+    | '/_app/environments/$id/stacks/$name/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -334,6 +347,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEnvironmentsIdContainersContainerIdRouteImport
       parentRoute: typeof AppEnvironmentsIdRoute
     }
+    '/_app/environments/$id/stacks/$name/': {
+      id: '/_app/environments/$id/stacks/$name/'
+      path: '/stacks/$name'
+      fullPath: '/environments/$id/stacks/$name/'
+      preLoaderRoute: typeof AppEnvironmentsIdStacksNameIndexRouteImport
+      parentRoute: typeof AppEnvironmentsIdRoute
+    }
     '/_app/environments/$id/stacks/$name/edit': {
       id: '/_app/environments/$id/stacks/$name/edit'
       path: '/stacks/$name/edit'
@@ -355,6 +375,7 @@ interface AppEnvironmentsIdRouteChildren {
   AppEnvironmentsIdContainersIndexRoute: typeof AppEnvironmentsIdContainersIndexRoute
   AppEnvironmentsIdStacksIndexRoute: typeof AppEnvironmentsIdStacksIndexRoute
   AppEnvironmentsIdStacksNameEditRoute: typeof AppEnvironmentsIdStacksNameEditRoute
+  AppEnvironmentsIdStacksNameIndexRoute: typeof AppEnvironmentsIdStacksNameIndexRoute
 }
 
 const AppEnvironmentsIdRouteChildren: AppEnvironmentsIdRouteChildren = {
@@ -369,6 +390,7 @@ const AppEnvironmentsIdRouteChildren: AppEnvironmentsIdRouteChildren = {
   AppEnvironmentsIdContainersIndexRoute: AppEnvironmentsIdContainersIndexRoute,
   AppEnvironmentsIdStacksIndexRoute: AppEnvironmentsIdStacksIndexRoute,
   AppEnvironmentsIdStacksNameEditRoute: AppEnvironmentsIdStacksNameEditRoute,
+  AppEnvironmentsIdStacksNameIndexRoute: AppEnvironmentsIdStacksNameIndexRoute,
 }
 
 const AppEnvironmentsIdRouteWithChildren =

@@ -1,12 +1,15 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useMemo } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
-import { LuInfo, LuPencil, LuPlus } from 'react-icons/lu'
+import { LuPencil, LuPlus } from 'react-icons/lu'
 import { Button } from '../../../../components/Button'
 import { DataTable } from '../../../../components/DataTable'
-import { Loader } from '../../../../components/Loader'
+import { LimitedBadge } from '../../../../components/LimitedBadge'
+import { NameLink } from '../../../../components/NameLink'
+import { PageHeader } from '../../../../components/PageHeader'
+import { QueryState } from '../../../../components/QueryState'
 import { StackBulkBar } from '../../../../components/StackBulkBar'
-import { Tooltip } from '../../../../components/Tooltip'
+import { StackStateBadge } from '../../../../components/StackStateBadge'
 import { useStacks, type Stack } from '../../../../lib/stacks'
 import { formatDateTime } from '../../../../lib/format'
 import styles from './stacks.module.css'
@@ -15,18 +18,6 @@ export const Route = createFileRoute('/_app/environments/$id/stacks/')({
   head: () => ({ meta: [{ title: 'Stacks · Rivly' }] }),
   component: StacksPage,
 })
-
-const STATE_TONE: Record<Stack['state'], string> = {
-  running: styles.running,
-  partial: styles.partial,
-  stopped: styles.stopped,
-}
-
-const STATE_LABEL: Record<Stack['state'], string> = {
-  running: 'Running',
-  partial: 'Partial',
-  stopped: 'Stopped',
-}
 
 function StacksPage() {
   const { id } = Route.useParams()
@@ -40,34 +31,20 @@ function StacksPage() {
         header: 'Name',
         cell: (cell) => (
           <span className={styles.nameCell}>
-            <Link
-              to="/environments/$id/containers"
-              params={{ id }}
-              search={{ stack: cell.row.original.name }}
-              className={styles.name}
+            <NameLink
+              to="/environments/$id/stacks/$name"
+              params={{ id, name: cell.row.original.name }}
             >
               {cell.row.original.name}
-            </Link>
-            {cell.row.original.type === 'external' && (
-              <Tooltip content="This stack was created outside Rivly, so control over it is limited.">
-                <span className={styles.badge}>
-                  <LuInfo />
-                  Limited
-                </span>
-              </Tooltip>
-            )}
+            </NameLink>
+            {cell.row.original.type === 'external' && <LimitedBadge />}
           </span>
         ),
       },
       {
         accessorKey: 'state',
         header: 'State',
-        cell: (cell) => (
-          <span className={`${styles.state} ${STATE_TONE[cell.row.original.state]}`}>
-            <span className={styles.stateDot} />
-            {STATE_LABEL[cell.row.original.state]}
-          </span>
-        ),
+        cell: (cell) => <StackStateBadge state={cell.row.original.state} />,
       },
       {
         accessorKey: 'services',
@@ -120,33 +97,35 @@ function StacksPage() {
 
   return (
     <div>
-      <header className={styles.head}>
-        <h1 className={styles.title}>Stacks</h1>
-        <Button
-          size="sm"
-          icon={<LuPlus />}
-          render={<Link to="/environments/$id/stacks/new" params={{ id }} />}
-        >
-          Deploy stack
-        </Button>
-      </header>
+      <PageHeader
+        title="Stacks"
+        action={
+          <Button
+            size="sm"
+            icon={<LuPlus />}
+            render={<Link to="/environments/$id/stacks/new" params={{ id }} />}
+          >
+            Deploy stack
+          </Button>
+        }
+      />
 
-      {isPending && <Loader />}
-      {isError && <p className={styles.message}>Could not load stacks.</p>}
-      {stacks && (
-        <DataTable
-          data={stacks}
-          columns={columns}
-          searchPlaceholder="Search stacks…"
-          emptyMessage="No stacks on this host."
-          initialPageSize={25}
-          enableSelection
-          getRowId={(stack) => stack.name}
-          renderBulkActions={(selected, clear) => (
-            <StackBulkBar envId={Number(id)} selected={selected} clear={clear} />
-          )}
-        />
-      )}
+      <QueryState pending={isPending} error={isError} errorMessage="Could not load stacks.">
+        {stacks && (
+          <DataTable
+            data={stacks}
+            columns={columns}
+            searchPlaceholder="Search stacks…"
+            emptyMessage="No stacks on this host."
+            initialPageSize={25}
+            enableSelection
+            getRowId={(stack) => stack.name}
+            renderBulkActions={(selected, clear) => (
+              <StackBulkBar envId={Number(id)} selected={selected} clear={clear} />
+            )}
+          />
+        )}
+      </QueryState>
     </div>
   )
 }

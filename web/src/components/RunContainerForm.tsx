@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
-import { LuArrowLeft, LuPlus, LuX } from 'react-icons/lu'
+import { LuPlus, LuX } from 'react-icons/lu'
 import { ApiError } from '../lib/api'
 import { useCreateContainer } from '../lib/containers'
 import { useNetworks } from '../lib/networks'
 import { toast } from '../lib/toast'
+import { BackLink } from './BackLink'
 import { Button } from './Button'
 import { Checkbox } from './Checkbox'
 import { RequiredMark } from './RequiredMark'
@@ -90,9 +91,7 @@ export function RunContainerForm({ envId }: { envId: number }) {
   return (
     <div className={styles.page}>
       <div>
-        <Link {...backTo} className={styles.back}>
-          <LuArrowLeft /> Containers
-        </Link>
+        <BackLink {...backTo}>Containers</BackLink>
       </div>
       <h1 className={styles.title}>Run a container</h1>
 

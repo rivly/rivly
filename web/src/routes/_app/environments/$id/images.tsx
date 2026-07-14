@@ -1,13 +1,15 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useMemo, useState } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
-import { AlertDialog } from '@base-ui/react/alert-dialog'
 import { LuDownload, LuTrash2 } from 'react-icons/lu'
 import { Button } from '../../../../components/Button'
+import { ConfirmDialog } from '../../../../components/ConfirmDialog'
 import { DataTable } from '../../../../components/DataTable'
 import { ImageBulkBar } from '../../../../components/ImageBulkBar'
-import { Loader } from '../../../../components/Loader'
+import { NameCell } from '../../../../components/NameCell'
+import { PageHeader } from '../../../../components/PageHeader'
 import { PullImageDialog } from '../../../../components/PullImageDialog'
+import { QueryState } from '../../../../components/QueryState'
 import { useImages, useImagePrune, type Image } from '../../../../lib/images'
 import { formatBytes, timeAgo } from '../../../../lib/format'
 import { toast } from '../../../../lib/toast'
@@ -58,32 +60,34 @@ function ImagesPage() {
 
   return (
     <div>
-      <header className={styles.head}>
-        <h1 className={styles.title}>Images</h1>
-        <div className={styles.headActions}>
-          <PruneButton envId={Number(id)} />
-          <Button size="sm" icon={<LuDownload />} onClick={() => setPullOpen(true)}>
-            Pull image
-          </Button>
-        </div>
-      </header>
+      <PageHeader
+        title="Images"
+        action={
+          <>
+            <PruneButton envId={Number(id)} />
+            <Button size="sm" icon={<LuDownload />} onClick={() => setPullOpen(true)}>
+              Pull image
+            </Button>
+          </>
+        }
+      />
 
-      {isPending && <Loader />}
-      {isError && <p className={styles.message}>Could not load images.</p>}
-      {images && (
-        <DataTable
-          data={images}
-          columns={columns}
-          searchPlaceholder="Search images…"
-          emptyMessage="No images on this host."
-          initialPageSize={25}
-          enableSelection
-          getRowId={(image) => image.id}
-          renderBulkActions={(selected, clear) => (
-            <ImageBulkBar envId={Number(id)} selected={selected} clear={clear} />
-          )}
-        />
-      )}
+      <QueryState pending={isPending} error={isError} errorMessage="Could not load images.">
+        {images && (
+          <DataTable
+            data={images}
+            columns={columns}
+            searchPlaceholder="Search images…"
+            emptyMessage="No images on this host."
+            initialPageSize={25}
+            enableSelection
+            getRowId={(image) => image.id}
+            renderBulkActions={(selected, clear) => (
+              <ImageBulkBar envId={Number(id)} selected={selected} clear={clear} />
+            )}
+          />
+        )}
+      </QueryState>
 
       <PullImageDialog envId={Number(id)} open={pullOpen} onClose={() => setPullOpen(false)} />
     </div>
@@ -92,10 +96,8 @@ function ImagesPage() {
 
 function PruneButton({ envId }: { envId: number }) {
   const mutation = useImagePrune(envId)
-  const [open, setOpen] = useState(false)
 
   const prune = () => {
-    setOpen(false)
     mutation.mutate(true, {
       onSuccess: (data) => {
         if (data.imagesDeleted === 0 && data.spaceReclaimed === 0) {
@@ -114,42 +116,28 @@ function PruneButton({ envId }: { envId: number }) {
   }
 
   return (
-    <AlertDialog.Root open={open} onOpenChange={setOpen}>
-      <AlertDialog.Trigger
-        render={
-          <Button variant="danger" size="sm" icon={<LuTrash2 />} loading={mutation.isPending}>
-            Prune
-          </Button>
-        }
-      />
-      <AlertDialog.Portal>
-        <AlertDialog.Backdrop className={styles.backdrop} />
-        <AlertDialog.Popup className={styles.dialog}>
-          <AlertDialog.Title className={styles.dialogTitle}>Prune unused images?</AlertDialog.Title>
-          <AlertDialog.Description className={styles.dialogText}>
-            This removes every image not used by a container. This cannot be undone.
-          </AlertDialog.Description>
-          <div className={styles.dialogActions}>
-            <AlertDialog.Close render={<Button variant="secondary" size="sm">Cancel</Button>} />
-            <Button variant="danger" size="sm" onClick={prune}>
-              Prune
-            </Button>
-          </div>
-        </AlertDialog.Popup>
-      </AlertDialog.Portal>
-    </AlertDialog.Root>
+    <ConfirmDialog
+      trigger={
+        <Button variant="danger" size="sm" icon={<LuTrash2 />} loading={mutation.isPending}>
+          Prune
+        </Button>
+      }
+      title="Prune unused images?"
+      description="This removes every image not used by a container. This cannot be undone."
+      confirmLabel="Prune"
+      onConfirm={prune}
+    />
   )
 }
 
 function ImageCell({ image }: { image: Image }) {
   return (
-    <span className={styles.imageCell}>
+    <NameCell inUse={image.inUse}>
       {image.tags.length > 0 ? (
-        <span className={styles.name}>{image.tags.join(', ')}</span>
+        image.tags.join(', ')
       ) : (
         <span className={styles.untagged}>{'<none>'}</span>
       )}
-      {!image.inUse && <span className={styles.unusedBadge}>Unused</span>}
-    </span>
+    </NameCell>
   )
 }

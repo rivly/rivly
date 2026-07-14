@@ -1,18 +1,16 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useState, type ReactNode } from 'react'
-import { LuArrowLeft, LuPlay, LuRotateCw, LuScrollText, LuSquare, LuTerminal } from 'react-icons/lu'
+import { LuScrollText, LuTerminal } from 'react-icons/lu'
+import { BackLink } from '../../../../components/BackLink'
 import { Button } from '../../../../components/Button'
+import { ContainerActionButtons } from '../../../../components/ContainerActionButtons'
+import { ContainerStateBadge } from '../../../../components/ContainerStateBadge'
+import { DetailHeader } from '../../../../components/DetailHeader'
 import { Loader } from '../../../../components/Loader'
 import { LogsViewer } from '../../../../components/LogsViewer'
 import { TerminalViewer } from '../../../../components/TerminalViewer'
-import {
-  useContainerActions,
-  useContainerDetail,
-  type ContainerDetail,
-  type ContainerPort,
-} from '../../../../lib/containers'
+import { useContainerDetail, type ContainerPort } from '../../../../lib/containers'
 import { useContainerStats } from '../../../../lib/stats'
-import { toast } from '../../../../lib/toast'
 import { formatBytes, formatDateTime } from '../../../../lib/format'
 import styles from './containerDetail.module.css'
 
@@ -21,18 +19,10 @@ export const Route = createFileRoute('/_app/environments/$id/containers/$contain
   component: ContainerDetailPage,
 })
 
-const STATE_TONE: Record<string, string> = {
-  running: styles.running,
-  paused: styles.paused,
-  restarting: styles.paused,
-  created: styles.info,
-  exited: styles.danger,
-  dead: styles.danger,
-}
-
 function ContainerDetailPage() {
   const { id, containerId } = Route.useParams()
   const envId = Number(id)
+  const navigate = useNavigate()
   const { data, isPending, isError } = useContainerDetail(envId, containerId)
   const [logsOpen, setLogsOpen] = useState(false)
   const [execOpen, setExecOpen] = useState(false)
@@ -48,9 +38,7 @@ function ContainerDetailPage() {
   if (isError || !data) {
     return (
       <div>
-        <Link {...backTo} className={styles.backLink}>
-          <LuArrowLeft /> Containers
-        </Link>
+        <BackLink {...backTo}>Containers</BackLink>
         <p className={styles.message}>Could not load this container.</p>
       </div>
     )
@@ -62,35 +50,38 @@ function ContainerDetailPage() {
   return (
     <div className={styles.page}>
       <div>
-        <Link {...backTo} className={styles.backLink}>
-          <LuArrowLeft /> Containers
-        </Link>
+        <BackLink {...backTo}>Containers</BackLink>
       </div>
 
-      <header className={styles.head}>
-        <div className={styles.heading}>
-          <h1 className={styles.title}>{data.name}</h1>
-          <span className={`${styles.state} ${STATE_TONE[data.state] ?? styles.neutral}`}>
-            <span className={styles.stateDot} />
-            {data.state}
-          </span>
-        </div>
-        <div className={styles.actions}>
-          <Button variant="secondary" size="sm" icon={<LuScrollText />} onClick={() => setLogsOpen(true)}>
-            Logs
-          </Button>
-          {running && (
-            <Button variant="secondary" size="sm" icon={<LuTerminal />} onClick={() => setExecOpen(true)}>
-              Terminal
+      <DetailHeader
+        title={data.name}
+        badges={<ContainerStateBadge state={data.state} />}
+        actions={
+          <>
+            <Button variant="secondary" size="sm" icon={<LuScrollText />} onClick={() => setLogsOpen(true)}>
+              Logs
             </Button>
-          )}
-          <ActionButtons envId={envId} detail={data} />
-        </div>
-      </header>
+            {running && (
+              <Button variant="secondary" size="sm" icon={<LuTerminal />} onClick={() => setExecOpen(true)}>
+                Terminal
+              </Button>
+            )}
+            <ContainerActionButtons
+              envId={envId}
+              items={[{ id: data.id, state: data.state }]}
+              onDone={(action) => {
+                if (action === 'remove') {
+                  navigate(backTo)
+                }
+              }}
+            />
+          </>
+        }
+      />
 
       <code className={styles.image}>{data.image}</code>
 
-      <StatsRow envId={envId} containerId={containerId} running={running} />
+      {running && <StatsRow envId={envId} containerId={containerId} />}
 
       <div className={styles.sections}>
         <Section title="Labels">
@@ -176,68 +167,8 @@ function ContainerDetailPage() {
   )
 }
 
-function ActionButtons({ envId, detail }: { envId: number; detail: ContainerDetail }) {
-  const mutation = useContainerActions(envId)
-  const running = detail.state === 'running'
-
-  const run = (action: 'start' | 'stop' | 'restart') => {
-    mutation.mutate(
-      { action, ids: [detail.id] },
-      {
-        onSuccess: () => toast.success(`${action[0].toUpperCase()}${action.slice(1)} sent`),
-        onError: () => toast.error('Action failed', 'Could not reach the environment'),
-      },
-    )
-  }
-
-  return (
-    <>
-      {running ? (
-        <>
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={<LuRotateCw />}
-            disabled={mutation.isPending}
-            onClick={() => run('restart')}
-          >
-            Restart
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={<LuSquare />}
-            disabled={mutation.isPending}
-            onClick={() => run('stop')}
-          >
-            Stop
-          </Button>
-        </>
-      ) : (
-        <Button size="sm" icon={<LuPlay />} disabled={mutation.isPending} onClick={() => run('start')}>
-          Start
-        </Button>
-      )}
-    </>
-  )
-}
-
-function StatsRow({
-  envId,
-  containerId,
-  running,
-}: {
-  envId: number
-  containerId: string
-  running: boolean
-}) {
+function StatsRow({ envId, containerId }: { envId: number; containerId: string }) {
   const { stats } = useContainerStats(envId, containerId)
-
-  if (!running) {
-    return (
-      <div className={styles.statsIdle}>Live stats are available while the container is running.</div>
-    )
-  }
 
   return (
     <div className={styles.stats}>

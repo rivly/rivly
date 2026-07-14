@@ -1,0 +1,22 @@
+.ports {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.portTag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 5px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--accent-strong);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  white-space: nowrap;
+  cursor: default;
+}
+
+.muted {
+  color: var(--fg-muted);
+}
