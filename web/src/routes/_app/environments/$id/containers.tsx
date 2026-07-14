@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { LuScrollText, LuTerminal } from 'react-icons/lu'
 import { Button } from '../../../../components/Button'
+import { ContainerBulkBar } from '../../../../components/ContainerBulkBar'
 import { DataTable } from '../../../../components/DataTable'
 import { Loader } from '../../../../components/Loader'
 import { LogsViewer } from '../../../../components/LogsViewer'
@@ -117,6 +118,15 @@ function ContainersPage() {
           searchPlaceholder="Search containers…"
           emptyMessage="No containers on this host."
           initialPageSize={25}
+          enableSelection
+          getRowId={(container) => container.id}
+          renderBulkActions={(selected, clear) => (
+            <ContainerBulkBar
+              envId={Number(id)}
+              selected={selected}
+              clear={clear}
+            />
+          )}
         />
       )}
 

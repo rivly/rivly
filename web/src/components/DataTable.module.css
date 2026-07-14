@@ -52,6 +52,53 @@
   box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
+.bulkBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.checkbox {
+  position: relative;
+  display: block;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--border-strong);
+  border-radius: 5px;
+  background: var(--surface);
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.checkbox[data-checked],
+.checkbox[data-indeterminate] {
+  background: var(--accent);
+  border-color: var(--accent-border);
+}
+
+.checkboxIndicator {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-contrast);
+}
+
+.checkboxIndicator svg {
+  width: 0.8em;
+  height: 0.8em;
+}
+
+.selectCell {
+  padding-right: 0;
+}
+
 .menuPositioner {
   z-index: 50;
 }

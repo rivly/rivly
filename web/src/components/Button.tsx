@@ -3,7 +3,7 @@ import { Button as BaseButton } from '@base-ui/react/button'
 import styles from './Button.module.css'
 
 type Props = Omit<ComponentProps<typeof BaseButton>, 'className'> & {
-  variant?: 'primary' | 'secondary'
+  variant?: 'primary' | 'secondary' | 'danger'
   size?: 'md' | 'sm'
   icon?: ReactNode
   iconPosition?: 'start' | 'end'
