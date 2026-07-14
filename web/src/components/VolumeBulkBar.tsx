@@ -1,29 +1,29 @@
-import { useImageActions, type Image } from '../lib/images'
+import { useVolumeActions, type Volume } from '../lib/volumes'
 import { toast } from '../lib/toast'
 import { RemoveBulkBar } from './RemoveBulkBar'
 
 type Props = {
   envId: number
-  selected: Image[]
+  selected: Volume[]
   clear: () => void
 }
 
-export function ImageBulkBar({ envId, selected, clear }: Props) {
-  const mutation = useImageActions(envId)
+export function VolumeBulkBar({ envId, selected, clear }: Props) {
+  const mutation = useVolumeActions(envId)
 
   const remove = () => {
     mutation.mutate(
-      { action: 'remove', ids: selected.map((image) => image.id) },
+      { action: 'remove', ids: selected.map((volume) => volume.name) },
       {
         onSuccess: (data) => {
           const ok = data.results.filter((result) => result.ok).length
           const failed = data.results.length - ok
           if (failed === 0) {
-            toast.success(`Removed ${ok} image${ok > 1 ? 's' : ''}`)
+            toast.success(`Removed ${ok} volume${ok > 1 ? 's' : ''}`)
           } else {
             toast.error(
-              `Removed ${ok}/${data.results.length} images`,
-              `${failed} still in use or shared`,
+              `Removed ${ok}/${data.results.length} volumes`,
+              `${failed} still in use`,
             )
           }
           clear()
@@ -36,8 +36,8 @@ export function ImageBulkBar({ envId, selected, clear }: Props) {
   return (
     <RemoveBulkBar
       selectedCount={selected.length}
-      inUseCount={selected.filter((image) => image.inUse).length}
-      noun="image"
+      inUseCount={selected.filter((volume) => volume.inUse).length}
+      noun="volume"
       pending={mutation.isPending}
       onRemove={remove}
       clear={clear}

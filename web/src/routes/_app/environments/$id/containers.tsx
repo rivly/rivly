@@ -62,15 +62,15 @@ function ContainersPage() {
         ),
       },
       {
-        accessorKey: 'state',
-        header: 'State',
-        cell: (cell) => <StateCell state={cell.row.original.state} />,
-      },
-      {
         accessorKey: 'stack',
         header: 'Stack',
         cell: (cell) =>
           cell.row.original.stack || <span className={styles.muted}>-</span>,
+      },
+      {
+        accessorKey: 'state',
+        header: 'State',
+        cell: (cell) => <StateCell state={cell.row.original.state} />,
       },
       {
         accessorKey: 'image',
