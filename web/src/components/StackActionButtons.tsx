@@ -22,7 +22,7 @@ const PAST: Record<StackAction, string> = {
   start: 'Started',
   stop: 'Stopped',
   restart: 'Restarted',
-  remove: 'Removed',
+  remove: 'Deleted',
 }
 
 type Props = {
@@ -80,11 +80,12 @@ export function StackActionButtons({ envId, items, onDone }: Props) {
             loading={loading('remove')}
             disabled={mutation.isPending}
           >
-            Remove
+            Delete
           </Button>
         }
-        title={`Remove ${items.length} stack${items.length > 1 ? 's' : ''}?`}
-        description="This removes every container in the selected stacks. Volumes and networks are kept. This cannot be undone."
+        title={`Delete ${items.length} stack${items.length > 1 ? 's' : ''}?`}
+        description="This deletes the selected stacks and removes their containers. Volumes and networks are kept. This cannot be undone."
+        confirmLabel="Delete"
         onConfirm={() => run('remove', items.map((stack) => stack.name))}
       />
     </>

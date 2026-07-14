@@ -22,12 +22,6 @@
   color: var(--border-strong);
 }
 
-.image {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  color: var(--fg-muted);
-}
-
 .muted {
   color: var(--fg-muted);
 }

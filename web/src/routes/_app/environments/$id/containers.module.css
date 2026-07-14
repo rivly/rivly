@@ -2,16 +2,6 @@
   color: var(--fg-muted);
 }
 
-.image {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: var(--bg-subtle);
-  border: 1px solid var(--border);
-  color: var(--fg);
-}
-
 .actions {
   display: inline-flex;
   align-items: center;

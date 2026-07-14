@@ -6,6 +6,7 @@ import { Button } from '../../../../components/Button'
 import { ContainerBulkBar } from '../../../../components/ContainerBulkBar'
 import { ContainerStateBadge } from '../../../../components/ContainerStateBadge'
 import { DataTable } from '../../../../components/DataTable'
+import { ImageTag } from '../../../../components/ImageTag'
 import { LogsViewer } from '../../../../components/LogsViewer'
 import { NameLink } from '../../../../components/NameLink'
 import { PageHeader } from '../../../../components/PageHeader'
@@ -76,7 +77,7 @@ function ContainersPage() {
       {
         accessorKey: 'image',
         header: 'Image',
-        cell: (cell) => <code className={styles.image}>{cell.row.original.image}</code>,
+        cell: (cell) => <ImageTag image={cell.row.original.image} />,
       },
       {
         id: 'ports',

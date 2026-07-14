@@ -7,9 +7,11 @@ import { useStacks } from '../lib/stacks'
 import { formatDateTime, timeAgo } from '../lib/format'
 import { BackLink } from './BackLink'
 import { Button } from './Button'
+import { ContainerBulkBar } from './ContainerBulkBar'
 import { ContainerStateBadge } from './ContainerStateBadge'
 import { DataTable } from './DataTable'
 import { DetailHeader } from './DetailHeader'
+import { ImageTag } from './ImageTag'
 import { LimitedBadge } from './LimitedBadge'
 import { Loader } from './Loader'
 import { NameLink } from './NameLink'
@@ -50,7 +52,7 @@ export function StackDetail({ envId, name }: { envId: number; name: string }) {
       {
         accessorKey: 'image',
         header: 'Image',
-        cell: (cell) => <code className={styles.image}>{cell.row.original.image}</code>,
+        cell: (cell) => <ImageTag image={cell.row.original.image} />,
       },
       {
         id: 'ports',
@@ -157,6 +159,11 @@ export function StackDetail({ envId, name }: { envId: number; name: string }) {
         searchPlaceholder="Search containers…"
         emptyMessage="No containers in this stack."
         initialPageSize={25}
+        enableSelection
+        getRowId={(container) => container.id}
+        renderBulkActions={(selected, clear) => (
+          <ContainerBulkBar envId={envId} selected={selected} clear={clear} />
+        )}
       />
     </div>
   )
