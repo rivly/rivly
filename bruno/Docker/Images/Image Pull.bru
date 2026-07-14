@@ -1,0 +1,21 @@
+meta {
+  name: Image Pull
+  type: http
+  seq: 24
+}
+
+get {
+  url: {{baseUrl}}/api/v1/environments/1/images/pull?ref=alpine:latest
+  body: none
+  auth: none
+}
+
+params:query {
+  ref: alpine:latest
+}
+
+docs {
+  Server-Sent Events stream (text/event-stream) of image pull progress. Emits a
+  final "end" event when the pull finishes. The response streams until complete
+  or the connection is closed.
+}

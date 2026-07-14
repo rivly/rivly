@@ -1,0 +1,18 @@
+meta {
+  name: Container Stats
+  type: http
+  seq: 23
+}
+
+get {
+  url: {{baseUrl}}/api/v1/environments/1/containers/REPLACE_WITH_CONTAINER_ID/stats
+  body: none
+  auth: none
+}
+
+docs {
+  Server-Sent Events stream (text/event-stream) of live container stats: CPU,
+  memory, network, block I/O and PIDs. Only running containers emit stats. The
+  response streams until the connection is closed, so this request will not
+  "complete" on its own.
+}
