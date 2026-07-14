@@ -102,11 +102,14 @@ export function StackDetail({ envId, name }: { envId: number; name: string }) {
         </div>
       )}
 
-      <ContainerMiniTable
-        envId={envId}
-        containers={stackContainers}
-        emptyMessage="No containers in this stack."
-      />
+      <section className={styles.section}>
+        <span className={styles.sectionTitle}>Containers</span>
+        <ContainerMiniTable
+          envId={envId}
+          containers={stackContainers}
+          emptyMessage="No containers in this stack."
+        />
+      </section>
     </div>
   )
 }

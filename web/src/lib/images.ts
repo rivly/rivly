@@ -26,6 +26,33 @@ export function useImages(envId: number) {
   return useQuery(imagesQueryOptions(envId))
 }
 
+export type ImageContainer = { id: string; name: string }
+
+export type ImageDetail = {
+  id: string
+  tags: string[]
+  digests: string[]
+  size: number
+  created: number
+  architecture: string
+  os: string
+  author: string
+  workingDir: string
+  command: string[] | null
+  entrypoint: string[] | null
+  env: string[] | null
+  exposedPorts: string[] | null
+  labels: Record<string, string> | null
+  containers: ImageContainer[]
+}
+
+export function useImageDetail(envId: number, imageId: string) {
+  return useQuery({
+    queryKey: ['image', envId, imageId],
+    queryFn: () => api.get<ImageDetail>(`/environments/${envId}/images/${imageId}`),
+  })
+}
+
 export function useImagePrune(envId: number) {
   const queryClient = useQueryClient()
   return useMutation({

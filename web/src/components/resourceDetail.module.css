@@ -60,3 +60,18 @@
 .labelValue {
   overflow-wrap: anywhere;
 }
+
+.codeList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 240px;
+  overflow: auto;
+}
+
+.codeLine {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--fg);
+  word-break: break-all;
+}

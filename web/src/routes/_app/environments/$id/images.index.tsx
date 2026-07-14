@@ -6,16 +6,17 @@ import { Button } from '../../../../components/Button'
 import { ConfirmDialog } from '../../../../components/ConfirmDialog'
 import { DataTable } from '../../../../components/DataTable'
 import { ImageBulkBar } from '../../../../components/ImageBulkBar'
-import { NameCell } from '../../../../components/NameCell'
+import { NameLink } from '../../../../components/NameLink'
 import { PageHeader } from '../../../../components/PageHeader'
 import { PullImageDialog } from '../../../../components/PullImageDialog'
 import { QueryState } from '../../../../components/QueryState'
+import { UnusedBadge } from '../../../../components/UnusedBadge'
 import { useImages, useImagePrune, type Image } from '../../../../lib/images'
 import { formatBytes, timeAgo } from '../../../../lib/format'
 import { toast } from '../../../../lib/toast'
 import styles from './images.module.css'
 
-export const Route = createFileRoute('/_app/environments/$id/images')({
+export const Route = createFileRoute('/_app/environments/$id/images/')({
   head: () => ({ meta: [{ title: 'Images · Rivly' }] }),
   component: ImagesPage,
 })
@@ -31,7 +32,7 @@ function ImagesPage() {
         id: 'image',
         header: 'Image',
         accessorFn: (row) => row.tags.join(' '),
-        cell: (cell) => <ImageCell image={cell.row.original} />,
+        cell: (cell) => <ImageCell image={cell.row.original} envId={id} />,
       },
       {
         accessorKey: 'id',
@@ -55,7 +56,7 @@ function ImagesPage() {
         ),
       },
     ],
-    [],
+    [id],
   )
 
   return (
@@ -130,14 +131,17 @@ function PruneButton({ envId }: { envId: number }) {
   )
 }
 
-function ImageCell({ image }: { image: Image }) {
+function ImageCell({ image, envId }: { image: Image; envId: string }) {
   return (
-    <NameCell inUse={image.inUse}>
-      {image.tags.length > 0 ? (
-        image.tags.join(', ')
-      ) : (
-        <span className={styles.untagged}>{'<none>'}</span>
-      )}
-    </NameCell>
+    <span className={styles.nameCell}>
+      <NameLink to="/environments/$id/images/$imageId" params={{ id: envId, imageId: image.id }}>
+        {image.tags.length > 0 ? (
+          image.tags.join(', ')
+        ) : (
+          <span className={styles.untagged}>{'<none>'}</span>
+        )}
+      </NameLink>
+      {!image.inUse && <UnusedBadge />}
+    </span>
   )
 }
