@@ -28,6 +28,22 @@ export function useNetworks(envId: number) {
   return useQuery(networksQueryOptions(envId))
 }
 
+export type CreateNetworkInput = { name: string; driver?: string; subnet?: string }
+
+export function useCreateNetwork(envId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: CreateNetworkInput) =>
+      api.post<{ id: string; name: string; warning?: string }>(
+        `/environments/${envId}/networks`,
+        input,
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['networks', envId] })
+    },
+  })
+}
+
 export type NetworkAction = 'remove'
 
 export function useNetworkActions(envId: number) {

@@ -27,6 +27,19 @@ export function useVolumes(envId: number) {
   return useQuery(volumesQueryOptions(envId))
 }
 
+export type CreateVolumeInput = { name: string; driver?: string }
+
+export function useCreateVolume(envId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: CreateVolumeInput) =>
+      api.post<Volume>(`/environments/${envId}/volumes`, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['volumes', envId] })
+    },
+  })
+}
+
 export type VolumeAction = 'remove'
 
 export function useVolumeActions(envId: number) {

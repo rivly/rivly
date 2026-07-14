@@ -1,6 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
+import { LuPlus } from 'react-icons/lu'
+import { Button } from '../../../../components/Button'
+import { CreateNetworkDialog } from '../../../../components/CreateNetworkDialog'
 import { DataTable } from '../../../../components/DataTable'
 import { Loader } from '../../../../components/Loader'
 import { NetworkBulkBar } from '../../../../components/NetworkBulkBar'
@@ -16,6 +19,7 @@ export const Route = createFileRoute('/_app/environments/$id/networks')({
 function NetworksPage() {
   const { id } = Route.useParams()
   const { data: networks, isPending, isError } = useNetworks(Number(id))
+  const [createOpen, setCreateOpen] = useState(false)
 
   const columns = useMemo<ColumnDef<Network>[]>(
     () => [
@@ -58,6 +62,9 @@ function NetworksPage() {
     <div>
       <header className={styles.head}>
         <h1 className={styles.title}>Networks</h1>
+        <Button size="sm" icon={<LuPlus />} onClick={() => setCreateOpen(true)}>
+          Create network
+        </Button>
       </header>
 
       {isPending && <Loader />}
@@ -76,6 +83,12 @@ function NetworksPage() {
           )}
         />
       )}
+
+      <CreateNetworkDialog
+        envId={Number(id)}
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+      />
     </div>
   )
 }

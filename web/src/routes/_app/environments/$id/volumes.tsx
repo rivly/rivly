@@ -1,6 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
+import { LuPlus } from 'react-icons/lu'
+import { Button } from '../../../../components/Button'
+import { CreateVolumeDialog } from '../../../../components/CreateVolumeDialog'
 import { DataTable } from '../../../../components/DataTable'
 import { Loader } from '../../../../components/Loader'
 import { Tooltip } from '../../../../components/Tooltip'
@@ -17,6 +20,7 @@ export const Route = createFileRoute('/_app/environments/$id/volumes')({
 function VolumesPage() {
   const { id } = Route.useParams()
   const { data: volumes, isPending, isError } = useVolumes(Number(id))
+  const [createOpen, setCreateOpen] = useState(false)
 
   const columns = useMemo<ColumnDef<Volume>[]>(
     () => [
@@ -63,6 +67,9 @@ function VolumesPage() {
     <div>
       <header className={styles.head}>
         <h1 className={styles.title}>Volumes</h1>
+        <Button size="sm" icon={<LuPlus />} onClick={() => setCreateOpen(true)}>
+          Create volume
+        </Button>
       </header>
 
       {isPending && <Loader />}
@@ -81,6 +88,12 @@ function VolumesPage() {
           )}
         />
       )}
+
+      <CreateVolumeDialog
+        envId={Number(id)}
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+      />
     </div>
   )
 }
