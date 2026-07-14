@@ -26,6 +26,10 @@ type fakeDocker struct {
 	images           []docker.Image
 	imagesErr        error
 	imageActionErr   error
+	pullData         []docker.PullProgress
+	pullErr          error
+	pruneResult      docker.PruneResult
+	pruneErr         error
 	volumes          []docker.Volume
 	volumesErr       error
 	volumeActionErr  error
@@ -71,6 +75,22 @@ func (f fakeDocker) Images(_ context.Context, _ int64, _ string) ([]docker.Image
 
 func (f fakeDocker) ImageAction(_ context.Context, _ int64, _, _, _ string) error {
 	return f.imageActionErr
+}
+
+func (f fakeDocker) ImagePull(_ context.Context, _ int64, _, _ string) (<-chan docker.PullProgress, error) {
+	if f.pullErr != nil {
+		return nil, f.pullErr
+	}
+	out := make(chan docker.PullProgress, len(f.pullData))
+	for _, p := range f.pullData {
+		out <- p
+	}
+	close(out)
+	return out, nil
+}
+
+func (f fakeDocker) ImagesPrune(_ context.Context, _ int64, _ string, _ bool) (docker.PruneResult, error) {
+	return f.pruneResult, f.pruneErr
 }
 
 func (f fakeDocker) Volumes(_ context.Context, _ int64, _ string) ([]docker.Volume, error) {

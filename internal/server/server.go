@@ -25,6 +25,8 @@ type dockerService interface {
 	ContainerStats(ctx context.Context, id int64, host, containerID string) (<-chan docker.Stats, error)
 	Images(ctx context.Context, id int64, host string) ([]docker.Image, error)
 	ImageAction(ctx context.Context, id int64, host, imageID, action string) error
+	ImagePull(ctx context.Context, id int64, host, ref string) (<-chan docker.PullProgress, error)
+	ImagesPrune(ctx context.Context, id int64, host string, all bool) (docker.PruneResult, error)
 	Volumes(ctx context.Context, id int64, host string) ([]docker.Volume, error)
 	VolumeAction(ctx context.Context, id int64, host, volumeName, action string) error
 	Networks(ctx context.Context, id int64, host string) ([]docker.Network, error)
@@ -105,6 +107,7 @@ func (s *Server) Router() http.Handler {
 		r.With(s.requireEventAuth).Get("/events", s.handleEvents)
 		r.With(s.requireEventAuth).Get("/environments/{id}/containers/{containerID}/logs", s.handleContainerLogs)
 		r.With(s.requireEventAuth).Get("/environments/{id}/containers/{containerID}/stats", s.handleContainerStats)
+		r.With(s.requireEventAuth).Get("/environments/{id}/images/pull", s.handleImagePull)
 		r.With(s.requireEventAuth).Get("/environments/{id}/containers/{containerID}/exec", s.handleContainerExec)
 
 		r.Group(func(r chi.Router) {
@@ -129,6 +132,7 @@ func (s *Server) Router() http.Handler {
 				r.Post("/{id}/containers/actions", s.handleContainerActions)
 				r.Get("/{id}/images", s.handleListImages)
 				r.Post("/{id}/images/actions", s.handleImageActions)
+				r.Post("/{id}/images/prune", s.handleImagePrune)
 				r.Get("/{id}/volumes", s.handleListVolumes)
 				r.Post("/{id}/volumes/actions", s.handleVolumeActions)
 				r.Get("/{id}/networks", s.handleListNetworks)

@@ -4,9 +4,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -106,4 +109,132 @@ func (s *Server) handleImageActions(w http.ResponseWriter, r *http.Request) {
 	wg.Wait()
 
 	s.writeJSON(w, http.StatusOK, map[string]any{"results": results})
+}
+
+type pullProgressResponse struct {
+	Status  string `json:"status,omitempty"`
+	ID      string `json:"id,omitempty"`
+	Current int64  `json:"current,omitempty"`
+	Total   int64  `json:"total,omitempty"`
+	Error   string `json:"error,omitempty"`
+}
+
+func (s *Server) handleImagePull(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, "invalid environment id")
+		return
+	}
+	ref := strings.TrimSpace(r.URL.Query().Get("ref"))
+	if ref == "" {
+		s.writeError(w, http.StatusBadRequest, "image reference is required")
+		return
+	}
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		s.writeError(w, http.StatusInternalServerError, "streaming is not supported")
+		return
+	}
+
+	env, err := s.queries.GetEnvironment(r.Context(), id)
+	if errors.Is(err, sql.ErrNoRows) {
+		s.writeError(w, http.StatusNotFound, "environment not found")
+		return
+	}
+	if err != nil {
+		s.serverError(w, r, "could not load environment", err)
+		return
+	}
+
+	stream, err := s.docker.ImagePull(r.Context(), env.ID, env.Url, ref)
+	if err != nil {
+		s.writeError(w, http.StatusBadGateway, "could not pull image")
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
+
+	if _, err := fmt.Fprint(w, ": connected\n\n"); err != nil {
+		return
+	}
+	flusher.Flush()
+
+	heartbeat := time.NewTicker(eventHeartbeat)
+	defer heartbeat.Stop()
+
+	ctx := r.Context()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-heartbeat.C:
+			if _, err := fmt.Fprint(w, ": ping\n\n"); err != nil {
+				return
+			}
+			flusher.Flush()
+		case p, ok := <-stream:
+			if !ok {
+				if _, err := fmt.Fprint(w, "event: end\ndata: {}\n\n"); err != nil {
+					return
+				}
+				flusher.Flush()
+				s.publishEnvironment(ctx, env)
+				return
+			}
+			data, err := json.Marshal(pullProgressResponse{
+				Status:  p.Status,
+				ID:      p.ID,
+				Current: p.Current,
+				Total:   p.Total,
+				Error:   p.Error,
+			})
+			if err != nil {
+				continue
+			}
+			if _, err := fmt.Fprintf(w, "data: %s\n\n", data); err != nil {
+				return
+			}
+			flusher.Flush()
+		}
+	}
+}
+
+type imagePruneRequest struct {
+	All bool `json:"all"`
+}
+
+func (s *Server) handleImagePrune(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, "invalid environment id")
+		return
+	}
+
+	var req imagePruneRequest
+	_ = json.NewDecoder(r.Body).Decode(&req)
+
+	env, err := s.queries.GetEnvironment(r.Context(), id)
+	if errors.Is(err, sql.ErrNoRows) {
+		s.writeError(w, http.StatusNotFound, "environment not found")
+		return
+	}
+	if err != nil {
+		s.serverError(w, r, "could not load environment", err)
+		return
+	}
+
+	res, err := s.docker.ImagesPrune(r.Context(), env.ID, env.Url, req.All)
+	if err != nil {
+		s.writeError(w, http.StatusBadGateway, "could not prune images")
+		return
+	}
+	s.publishEnvironment(r.Context(), env)
+	s.writeJSON(w, http.StatusOK, map[string]any{
+		"imagesDeleted":  res.ImagesDeleted,
+		"spaceReclaimed": res.SpaceReclaimed,
+	})
 }

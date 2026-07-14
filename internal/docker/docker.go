@@ -459,6 +459,97 @@ func (m *Manager) ImageAction(ctx context.Context, id int64, host, imageID, acti
 	return err
 }
 
+type PullProgress struct {
+	Status  string
+	ID      string
+	Current int64
+	Total   int64
+	Error   string
+}
+
+func (m *Manager) ImagePull(ctx context.Context, id int64, host, ref string) (<-chan PullProgress, error) {
+	cli, err := m.clientFor(id, host)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := cli.ImagePull(ctx, ref, client.ImagePullOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	out := make(chan PullProgress)
+	go func() {
+		defer close(out)
+		defer func() { _ = resp.Close() }()
+		for msg, merr := range resp.JSONMessages(ctx) {
+			var p PullProgress
+			if merr != nil {
+				p.Error = merr.Error()
+			} else {
+				p.Status = msg.Status
+				p.ID = msg.ID
+				if msg.Progress != nil {
+					p.Current = msg.Progress.Current
+					p.Total = msg.Progress.Total
+				}
+				if msg.Error != nil {
+					p.Error = msg.Error.Message
+				}
+			}
+			select {
+			case out <- p:
+			case <-ctx.Done():
+				return
+			}
+			if merr != nil {
+				return
+			}
+		}
+	}()
+	return out, nil
+}
+
+type PruneResult struct {
+	ImagesDeleted  int
+	SpaceReclaimed uint64
+}
+
+func (m *Manager) ImagesPrune(ctx context.Context, id int64, host string, all bool) (PruneResult, error) {
+	cli, err := m.clientFor(id, host)
+	if err != nil {
+		return PruneResult{}, err
+	}
+	ctx, cancel := context.WithTimeout(ctx, actionTimeout)
+	defer cancel()
+
+	imageIDs := make(map[string]bool)
+	if list, lerr := cli.ImageList(ctx, client.ImageListOptions{}); lerr == nil {
+		for _, img := range list.Items {
+			imageIDs[img.ID] = true
+		}
+	}
+
+	filters := client.Filters{}
+	if all {
+		filters = filters.Add("dangling", "false")
+	}
+	res, err := cli.ImagePrune(ctx, client.ImagePruneOptions{Filters: filters})
+	if err != nil {
+		return PruneResult{}, err
+	}
+
+	removed := 0
+	for _, d := range res.Report.ImagesDeleted {
+		if d.Deleted != "" && imageIDs[d.Deleted] {
+			removed++
+		}
+	}
+	return PruneResult{
+		ImagesDeleted:  removed,
+		SpaceReclaimed: res.Report.SpaceReclaimed,
+	}, nil
+}
+
 type Volume struct {
 	Name       string
 	Driver     string

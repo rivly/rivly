@@ -2,8 +2,10 @@ package server
 
 import (
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/rivly/rivly/internal/docker"
@@ -58,6 +60,57 @@ func TestImageActions(t *testing.T) {
 
 	if code := postStatus(t, client, ts.URL+"/api/v1/environments/1/images/actions", `{"action":"pull","ids":["abc"]}`); code != http.StatusBadRequest {
 		t.Fatalf("invalid image action: want 400, got %d", code)
+	}
+}
+
+func TestImagePull(t *testing.T) {
+	srv := newTestServer(t)
+	srv.docker = fakeDocker{pullData: []docker.PullProgress{
+		{Status: "Pulling from library/nginx", ID: "latest"},
+		{Status: "Downloading", ID: "abc123", Current: 500, Total: 1000},
+	}}
+	seedEnvironment(t, srv)
+
+	ts := httptest.NewServer(srv.Router())
+	defer ts.Close()
+
+	if code := getStatus(t, &http.Client{}, ts.URL+"/api/v1/environments/1/images/pull?ref=nginx"); code != http.StatusUnauthorized {
+		t.Fatalf("pull without auth: want 401, got %d", code)
+	}
+
+	client := authedClient(t, ts)
+	if code := getStatus(t, client, ts.URL+"/api/v1/environments/1/images/pull"); code != http.StatusBadRequest {
+		t.Fatalf("pull without ref: want 400, got %d", code)
+	}
+
+	resp, err := client.Get(ts.URL + "/api/v1/environments/1/images/pull?ref=nginx:latest")
+	if err != nil {
+		t.Fatalf("pull: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	body, _ := io.ReadAll(resp.Body)
+	stream := string(body)
+	if !strings.Contains(stream, `"status":"Downloading"`) || !strings.Contains(stream, "event: end") {
+		t.Fatalf("pull stream: %q", stream)
+	}
+}
+
+func TestImagePrune(t *testing.T) {
+	srv := newTestServer(t)
+	srv.docker = fakeDocker{pruneResult: docker.PruneResult{ImagesDeleted: 3, SpaceReclaimed: 4096}}
+	seedEnvironment(t, srv)
+
+	ts := httptest.NewServer(srv.Router())
+	defer ts.Close()
+
+	client := authedClient(t, ts)
+	var out struct {
+		ImagesDeleted  int    `json:"imagesDeleted"`
+		SpaceReclaimed uint64 `json:"spaceReclaimed"`
+	}
+	postJSON(t, client, ts.URL+"/api/v1/environments/1/images/prune", `{"all":true}`, &out)
+	if out.ImagesDeleted != 3 || out.SpaceReclaimed != 4096 {
+		t.Fatalf("prune: got %+v", out)
 	}
 }
 
