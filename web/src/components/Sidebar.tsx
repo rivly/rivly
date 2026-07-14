@@ -4,6 +4,7 @@ import {
   LuBoxes,
   LuDatabase,
   LuHouse,
+  LuKeyRound,
   LuLayers,
   LuLayoutDashboard,
   LuNetwork,
@@ -124,6 +125,15 @@ export function Sidebar({ open, collapsed, onNavigate, onToggleCollapse }: Props
           >
             <LuHouse className={styles.icon} />
             <span className={styles.label}>Home</span>
+          </Link>
+          <Link
+            to="/registries"
+            className={styles.link}
+            onClick={onNavigate}
+            title={collapsed ? 'Registries' : undefined}
+          >
+            <LuKeyRound className={styles.icon} />
+            <span className={styles.label}>Registries</span>
           </Link>
         </div>
       </nav>

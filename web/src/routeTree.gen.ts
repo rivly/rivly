@@ -14,6 +14,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AppRegistriesRouteImport } from './routes/_app/registries'
 import { Route as AppEnvironmentsIdRouteImport } from './routes/_app/environments/$id'
 import { Route as AppEnvironmentsIdIndexRouteImport } from './routes/_app/environments/$id/index'
 import { Route as AppEnvironmentsIdVolumesIndexRouteImport } from './routes/_app/environments/$id/volumes.index'
@@ -52,6 +53,11 @@ const AppRoute = AppRouteImport.update({
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRegistriesRoute = AppRegistriesRouteImport.update({
+  id: '/registries',
+  path: '/registries',
   getParentRoute: () => AppRoute,
 } as any)
 const AppEnvironmentsIdRoute = AppEnvironmentsIdRouteImport.update({
@@ -148,6 +154,7 @@ export interface FileRoutesByFullPath {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
+  '/registries': typeof AppRegistriesRoute
   '/environments/$id': typeof AppEnvironmentsIdRouteWithChildren
   '/environments/$id/': typeof AppEnvironmentsIdIndexRoute
   '/environments/$id/containers/$containerId': typeof AppEnvironmentsIdContainersContainerIdRoute
@@ -168,6 +175,7 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
+  '/registries': typeof AppRegistriesRoute
   '/': typeof AppIndexRoute
   '/environments/$id': typeof AppEnvironmentsIdIndexRoute
   '/environments/$id/containers/$containerId': typeof AppEnvironmentsIdContainersContainerIdRoute
@@ -190,6 +198,7 @@ export interface FileRoutesById {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
+  '/_app/registries': typeof AppRegistriesRoute
   '/_app/': typeof AppIndexRoute
   '/_app/environments/$id': typeof AppEnvironmentsIdRouteWithChildren
   '/_app/environments/$id/': typeof AppEnvironmentsIdIndexRoute
@@ -214,6 +223,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/setup'
+    | '/registries'
     | '/environments/$id'
     | '/environments/$id/'
     | '/environments/$id/containers/$containerId'
@@ -234,6 +244,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/setup'
+    | '/registries'
     | '/'
     | '/environments/$id'
     | '/environments/$id/containers/$containerId'
@@ -255,6 +266,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/setup'
+    | '/_app/registries'
     | '/_app/'
     | '/_app/environments/$id'
     | '/_app/environments/$id/'
@@ -315,6 +327,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/registries': {
+      id: '/_app/registries'
+      path: '/registries'
+      fullPath: '/registries'
+      preLoaderRoute: typeof AppRegistriesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/environments/$id': {
@@ -465,11 +484,13 @@ const AppEnvironmentsIdRouteWithChildren =
   AppEnvironmentsIdRoute._addFileChildren(AppEnvironmentsIdRouteChildren)
 
 interface AppRouteChildren {
+  AppRegistriesRoute: typeof AppRegistriesRoute
   AppIndexRoute: typeof AppIndexRoute
   AppEnvironmentsIdRoute: typeof AppEnvironmentsIdRouteWithChildren
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppRegistriesRoute: AppRegistriesRoute,
   AppIndexRoute: AppIndexRoute,
   AppEnvironmentsIdRoute: AppEnvironmentsIdRouteWithChildren,
 }

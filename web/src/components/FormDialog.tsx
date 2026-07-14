@@ -14,6 +14,7 @@ type Props = {
   pending?: boolean
   error?: string | null
   canSubmit?: boolean
+  extraAction?: ReactNode
   children: ReactNode
 }
 
@@ -26,6 +27,7 @@ export function FormDialog({
   pending = false,
   error,
   canSubmit = true,
+  extraAction,
   children,
 }: Props) {
   return (
@@ -58,10 +60,13 @@ export function FormDialog({
               {error && <p className={styles.error}>{error}</p>}
             </div>
             <div className={styles.footer}>
-              <Dialog.Close render={<Button type="button" variant="secondary" size="sm">Cancel</Button>} />
-              <Button type="submit" size="sm" loading={pending} disabled={!canSubmit}>
-                {submitLabel}
-              </Button>
+              {extraAction}
+              <div className={styles.footerRight}>
+                <Dialog.Close render={<Button type="button" variant="secondary" size="sm">Cancel</Button>} />
+                <Button type="submit" size="sm" loading={pending} disabled={!canSubmit}>
+                  {submitLabel}
+                </Button>
+              </div>
             </div>
           </form>
         </Dialog.Popup>
