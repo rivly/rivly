@@ -1,0 +1,15 @@
+meta {
+  name: Volume Detail
+  type: http
+  seq: 29
+}
+
+get {
+  url: {{baseUrl}}/api/v1/environments/1/volumes/REPLACE_WITH_VOLUME_NAME
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}

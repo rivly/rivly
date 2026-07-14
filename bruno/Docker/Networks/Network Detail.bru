@@ -1,0 +1,15 @@
+meta {
+  name: Network Detail
+  type: http
+  seq: 30
+}
+
+get {
+  url: {{baseUrl}}/api/v1/environments/1/networks/REPLACE_WITH_NETWORK_ID
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
