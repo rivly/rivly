@@ -54,7 +54,7 @@ export function CreateVolumeDialog({ envId, open, onClose }: Props) {
       error={error}
       canSubmit={name.trim() !== ''}
     >
-      <Field label="Name">
+      <Field label="Name" required>
         <TextField
           value={name}
           onChange={(event) => setName(event.target.value)}
@@ -62,7 +62,7 @@ export function CreateVolumeDialog({ envId, open, onClose }: Props) {
           autoFocus
         />
       </Field>
-      <Field label="Driver" optional hint="Defaults to local.">
+      <Field label="Driver" hint="Defaults to local.">
         <TextField
           value={driver}
           onChange={(event) => setDriver(event.target.value)}

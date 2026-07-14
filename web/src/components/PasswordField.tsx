@@ -1,6 +1,7 @@
 import { Field as BaseField } from '@base-ui/react/field'
 import { useState, type ComponentProps, type ReactNode } from 'react'
 import { LuEye, LuEyeOff } from 'react-icons/lu'
+import { RequiredMark } from './RequiredMark'
 import styles from './PasswordField.module.css'
 
 type Props = Omit<ComponentProps<typeof BaseField.Control>, 'className' | 'type'> & {
@@ -14,7 +15,10 @@ export function PasswordField({ label, name, action, ...props }: Props) {
   return (
     <BaseField.Root name={name} className={styles.root}>
       <div className={styles.labelRow}>
-        <BaseField.Label className={styles.label}>{label}</BaseField.Label>
+        <BaseField.Label className={styles.label}>
+          {label}
+          {props.required && <RequiredMark />}
+        </BaseField.Label>
         {action}
       </div>
       <div className={styles.controlWrap}>

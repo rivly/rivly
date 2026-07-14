@@ -7,6 +7,7 @@ import { ApiError } from '../lib/api'
 import { fetchStackContent, useDeployStack, type EnvVar } from '../lib/stacks'
 import { toast } from '../lib/toast'
 import { Button } from './Button'
+import { RequiredMark } from './RequiredMark'
 import styles from './StackEditor.module.css'
 
 type Props = {
@@ -127,7 +128,10 @@ export function StackEditor({ envId, name: editName }: Props) {
 
       {!editing && (
         <label className={styles.nameField}>
-          <span className={styles.nameLabel}>Name</span>
+          <span className={styles.nameLabel}>
+            Name
+            <RequiredMark />
+          </span>
           <input
             className={styles.nameInput}
             value={name}
@@ -135,6 +139,7 @@ export function StackEditor({ envId, name: editName }: Props) {
             placeholder="my-app"
             autoComplete="off"
             spellCheck={false}
+            required
           />
         </label>
       )}

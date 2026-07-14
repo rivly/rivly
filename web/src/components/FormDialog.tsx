@@ -2,6 +2,7 @@ import type { InputHTMLAttributes, ReactNode } from 'react'
 import { Dialog } from '@base-ui/react/dialog'
 import { LuX } from 'react-icons/lu'
 import { Button } from './Button'
+import { RequiredMark } from './RequiredMark'
 import styles from './FormDialog.module.css'
 
 type Props = {
@@ -71,12 +72,12 @@ export function FormDialog({
 
 export function Field({
   label,
-  optional,
+  required,
   hint,
   children,
 }: {
   label: string
-  optional?: boolean
+  required?: boolean
   hint?: string
   children: ReactNode
 }) {
@@ -84,7 +85,7 @@ export function Field({
     <label className={styles.field}>
       <span className={styles.label}>
         {label}
-        {optional && <span className={styles.optional}>optional</span>}
+        {required && <RequiredMark />}
       </span>
       {children}
       {hint && <span className={styles.hint}>{hint}</span>}

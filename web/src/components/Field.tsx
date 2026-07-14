@@ -1,5 +1,6 @@
 import { Field as BaseField } from '@base-ui/react/field'
 import type { ComponentProps } from 'react'
+import { RequiredMark } from './RequiredMark'
 import styles from './Field.module.css'
 
 type Props = Omit<ComponentProps<typeof BaseField.Control>, 'className'> & {
@@ -10,7 +11,10 @@ type Props = Omit<ComponentProps<typeof BaseField.Control>, 'className'> & {
 export function Field({ label, name, ...props }: Props) {
   return (
     <BaseField.Root name={name} className={styles.root}>
-      <BaseField.Label className={styles.label}>{label}</BaseField.Label>
+      <BaseField.Label className={styles.label}>
+        {label}
+        {props.required && <RequiredMark />}
+      </BaseField.Label>
       <BaseField.Control className={styles.control} {...props} />
       <BaseField.Error className={styles.error} match="valueMissing">
         This field is required.

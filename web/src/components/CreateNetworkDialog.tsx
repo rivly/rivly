@@ -60,7 +60,7 @@ export function CreateNetworkDialog({ envId, open, onClose }: Props) {
       error={error}
       canSubmit={name.trim() !== ''}
     >
-      <Field label="Name">
+      <Field label="Name" required>
         <TextField
           value={name}
           onChange={(event) => setName(event.target.value)}
@@ -68,14 +68,14 @@ export function CreateNetworkDialog({ envId, open, onClose }: Props) {
           autoFocus
         />
       </Field>
-      <Field label="Driver" optional hint="Defaults to bridge.">
+      <Field label="Driver" hint="Defaults to bridge.">
         <TextField
           value={driver}
           onChange={(event) => setDriver(event.target.value)}
           placeholder="bridge"
         />
       </Field>
-      <Field label="Subnet" optional hint="Leave empty for Docker to assign one.">
+      <Field label="Subnet" hint="Leave empty for Docker to assign one.">
         <TextField
           value={subnet}
           onChange={(event) => setSubnet(event.target.value)}

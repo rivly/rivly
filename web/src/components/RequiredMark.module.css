@@ -1,0 +1,5 @@
+.mark {
+  margin-left: 3px;
+  color: var(--danger);
+  font-weight: 600;
+}
