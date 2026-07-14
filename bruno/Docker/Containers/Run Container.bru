@@ -1,0 +1,37 @@
+meta {
+  name: Run Container
+  type: http
+  seq: 28
+}
+
+post {
+  url: {{baseUrl}}/api/v1/environments/1/containers
+  body: json
+  auth: none
+}
+
+headers {
+  content-type: application/json
+}
+
+body:json {
+  {
+    "name": "rivly-demo",
+    "image": "nginx:latest",
+    "command": "",
+    "env": [
+      { "key": "FOO", "value": "bar" }
+    ],
+    "ports": [
+      { "hostPort": "8088", "containerPort": "80", "proto": "tcp" }
+    ],
+    "mounts": [],
+    "network": "bridge",
+    "restartPolicy": "unless-stopped",
+    "start": true
+  }
+}
+
+assert {
+  res.status: eq 201
+}
