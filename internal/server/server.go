@@ -23,6 +23,7 @@ type dockerService interface {
 	Containers(ctx context.Context, id int64, host string) ([]docker.Container, error)
 	ContainerLogs(ctx context.Context, id int64, host, containerID string, tail int, follow bool) (<-chan docker.LogLine, error)
 	ContainerExec(ctx context.Context, id int64, host, containerID string) (*docker.ExecSession, error)
+	ContainerAction(ctx context.Context, id int64, host, containerID, action string) error
 }
 
 type Server struct {
@@ -98,6 +99,7 @@ func (s *Server) Router() http.Handler {
 				r.Get("/", s.handleListEnvironments)
 				r.Get("/{id}", s.handleGetEnvironment)
 				r.Get("/{id}/containers", s.handleListContainers)
+				r.Post("/{id}/containers/actions", s.handleContainerActions)
 			})
 		})
 	})

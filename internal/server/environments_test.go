@@ -22,6 +22,7 @@ type fakeDocker struct {
 	logLines      []docker.LogLine
 	logErr        error
 	execErr       error
+	actionErr     error
 }
 
 func (f fakeDocker) Info(_ context.Context, _ int64, _ string) (docker.SystemInfo, error) {
@@ -46,6 +47,10 @@ func (f fakeDocker) ContainerLogs(_ context.Context, _ int64, _, _ string, _ int
 
 func (f fakeDocker) ContainerExec(_ context.Context, _ int64, _, _ string) (*docker.ExecSession, error) {
 	return nil, f.execErr
+}
+
+func (f fakeDocker) ContainerAction(_ context.Context, _ int64, _, _, _ string) error {
+	return f.actionErr
 }
 
 const testCreds = `{"email":"admin@rivly.dev","password":"s3cret-password","displayName":"Admin"}`

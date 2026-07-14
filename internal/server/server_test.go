@@ -120,3 +120,18 @@ func postStatus(t *testing.T, c *http.Client, url, body string) int {
 	defer func() { _ = resp.Body.Close() }()
 	return resp.StatusCode
 }
+
+func postJSON(t *testing.T, c *http.Client, url, body string, dst any) {
+	t.Helper()
+	resp, err := c.Post(url, "application/json", bytes.NewBufferString(body))
+	if err != nil {
+		t.Fatalf("POST %s: %v", url, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("POST %s: want 200, got %d", url, resp.StatusCode)
+	}
+	if err := json.NewDecoder(resp.Body).Decode(dst); err != nil {
+		t.Fatalf("decode %s: %v", url, err)
+	}
+}

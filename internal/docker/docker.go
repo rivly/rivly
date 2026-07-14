@@ -3,6 +3,7 @@ package docker
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"strconv"
 	"strings"
@@ -12,6 +13,8 @@ import (
 	"github.com/moby/moby/api/pkg/stdcopy"
 	"github.com/moby/moby/client"
 )
+
+const actionTimeout = 60 * time.Second
 
 var execShell = []string{"/bin/sh", "-c", "exec $(command -v bash || command -v sh)"}
 
@@ -324,6 +327,35 @@ func (s *ExecSession) Resize(ctx context.Context, rows, cols uint) error {
 
 func (s *ExecSession) Close() {
 	s.closed.Do(func() { s.resp.Close() })
+}
+
+func (m *Manager) ContainerAction(ctx context.Context, id int64, host, containerID, action string) error {
+	cli, err := m.clientFor(id, host)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(ctx, actionTimeout)
+	defer cancel()
+
+	switch action {
+	case "start":
+		_, err = cli.ContainerStart(ctx, containerID, client.ContainerStartOptions{})
+	case "stop":
+		_, err = cli.ContainerStop(ctx, containerID, client.ContainerStopOptions{})
+	case "restart":
+		_, err = cli.ContainerRestart(ctx, containerID, client.ContainerRestartOptions{})
+	case "pause":
+		_, err = cli.ContainerPause(ctx, containerID, client.ContainerPauseOptions{})
+	case "unpause":
+		_, err = cli.ContainerUnpause(ctx, containerID, client.ContainerUnpauseOptions{})
+	case "kill":
+		_, err = cli.ContainerKill(ctx, containerID, client.ContainerKillOptions{})
+	case "remove":
+		_, err = cli.ContainerRemove(ctx, containerID, client.ContainerRemoveOptions{Force: true})
+	default:
+		return fmt.Errorf("unknown action %q", action)
+	}
+	return err
 }
 
 func (m *Manager) Close() {
