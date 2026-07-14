@@ -28,6 +28,9 @@ type fakeDocker struct {
 	networks         []docker.Network
 	networksErr      error
 	networkActionErr error
+	stacks           []docker.Stack
+	stacksErr        error
+	stackActionErr   error
 	logLines         []docker.LogLine
 	logErr           error
 	execErr          error
@@ -64,6 +67,14 @@ func (f fakeDocker) Networks(_ context.Context, _ int64, _ string) ([]docker.Net
 
 func (f fakeDocker) NetworkAction(_ context.Context, _ int64, _, _, _ string) error {
 	return f.networkActionErr
+}
+
+func (f fakeDocker) Stacks(_ context.Context, _ int64, _ string) ([]docker.Stack, error) {
+	return f.stacks, f.stacksErr
+}
+
+func (f fakeDocker) StackAction(_ context.Context, _ int64, _, _, _ string) error {
+	return f.stackActionErr
 }
 
 func (f fakeDocker) ContainerLogs(_ context.Context, _ int64, _, _ string, _ int, _ bool) (<-chan docker.LogLine, error) {

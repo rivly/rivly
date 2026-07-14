@@ -27,6 +27,8 @@ type dockerService interface {
 	VolumeAction(ctx context.Context, id int64, host, volumeName, action string) error
 	Networks(ctx context.Context, id int64, host string) ([]docker.Network, error)
 	NetworkAction(ctx context.Context, id int64, host, networkID, action string) error
+	Stacks(ctx context.Context, id int64, host string) ([]docker.Stack, error)
+	StackAction(ctx context.Context, id int64, host, project, action string) error
 	ContainerLogs(ctx context.Context, id int64, host, containerID string, tail int, follow bool) (<-chan docker.LogLine, error)
 	ContainerExec(ctx context.Context, id int64, host, containerID string) (*docker.ExecSession, error)
 	ContainerAction(ctx context.Context, id int64, host, containerID, action string) error
@@ -106,6 +108,8 @@ func (s *Server) Router() http.Handler {
 				r.Use(s.requireAuth)
 				r.Get("/", s.handleListEnvironments)
 				r.Get("/{id}", s.handleGetEnvironment)
+				r.Get("/{id}/stacks", s.handleListStacks)
+				r.Post("/{id}/stacks/actions", s.handleStackActions)
 				r.Get("/{id}/containers", s.handleListContainers)
 				r.Post("/{id}/containers/actions", s.handleContainerActions)
 				r.Get("/{id}/images", s.handleListImages)
