@@ -6,6 +6,7 @@ import { Button } from '../../../../components/Button'
 import { DataTable } from '../../../../components/DataTable'
 import { Loader } from '../../../../components/Loader'
 import { LogsViewer } from '../../../../components/LogsViewer'
+import { TerminalViewer } from '../../../../components/TerminalViewer'
 import { Tooltip } from '../../../../components/Tooltip'
 import {
   useContainers,
@@ -13,7 +14,6 @@ import {
   type ContainerPort,
 } from '../../../../lib/containers'
 import { timeAgo } from '../../../../lib/format'
-import { toast } from '../../../../lib/toast'
 import styles from './containers.module.css'
 
 export const Route = createFileRoute('/_app/environments/$id/containers')({
@@ -35,8 +35,10 @@ function ContainersPage() {
   const { id } = Route.useParams()
   const { data: containers, isPending, isError } = useContainers(Number(id))
   const [logsFor, setLogsFor] = useState<Container | null>(null)
+  const [execFor, setExecFor] = useState<Container | null>(null)
 
   const openLogs = useCallback((container: Container) => setLogsFor(container), [])
+  const openExec = useCallback((container: Container) => setExecFor(container), [])
 
   const columns = useMemo<ColumnDef<Container>[]>(
     () => [
@@ -54,7 +56,9 @@ function ContainersPage() {
         enableSorting: false,
         enableHiding: false,
         meta: { sticky: 'left' },
-        cell: (cell) => <RowActions container={cell.row.original} onLogs={openLogs} />,
+        cell: (cell) => (
+          <RowActions container={cell.row.original} onLogs={openLogs} onExec={openExec} />
+        ),
       },
       {
         accessorKey: 'state',
@@ -93,7 +97,7 @@ function ContainersPage() {
         ),
       },
     ],
-    [openLogs],
+    [openLogs, openExec],
   )
 
   return (
@@ -117,6 +121,7 @@ function ContainersPage() {
       )}
 
       <LogsViewer envId={Number(id)} container={logsFor} onClose={() => setLogsFor(null)} />
+      <TerminalViewer envId={Number(id)} container={execFor} onClose={() => setExecFor(null)} />
     </div>
   )
 }
@@ -124,9 +129,11 @@ function ContainersPage() {
 function RowActions({
   container,
   onLogs,
+  onExec,
 }: {
   container: Container
   onLogs: (container: Container) => void
+  onExec: (container: Container) => void
 }) {
   return (
     <span className={styles.actions}>
@@ -147,7 +154,7 @@ function RowActions({
           iconOnly
           icon={<LuTerminal />}
           aria-label="Terminal"
-          onClick={() => toast.info('Coming soon', `Terminal for ${container.name}`)}
+          onClick={() => onExec(container)}
         />
       </Tooltip>
     </span>
