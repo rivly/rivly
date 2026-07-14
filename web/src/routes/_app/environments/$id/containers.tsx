@@ -147,13 +147,15 @@ function RowActions({
           onClick={() => onLogs(container)}
         />
       </Tooltip>
-      <Tooltip content="Terminal">
+      <Tooltip content={container.state === 'running' ? 'Terminal' : 'Container is not running'}>
         <Button
           variant="secondary"
           size="sm"
           iconOnly
           icon={<LuTerminal />}
           aria-label="Terminal"
+          disabled={container.state !== 'running'}
+          focusableWhenDisabled
           onClick={() => onExec(container)}
         />
       </Tooltip>
