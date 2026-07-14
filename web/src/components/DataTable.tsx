@@ -85,6 +85,7 @@ type DataTableProps<T> = {
   searchPlaceholder?: string
   emptyMessage?: string
   initialPageSize?: number
+  initialGlobalFilter?: string
   onRowClick?: (row: T) => void
   enableSelection?: boolean
   getRowId?: (row: T) => string
@@ -97,13 +98,14 @@ export function DataTable<T>({
   searchPlaceholder = 'Search…',
   emptyMessage = 'No results.',
   initialPageSize = 10,
+  initialGlobalFilter = '',
   onRowClick,
   enableSelection = false,
   getRowId,
   renderBulkActions,
 }: DataTableProps<T>) {
   const [sorting, setSorting] = useState<SortingState>([])
-  const [globalFilter, setGlobalFilter] = useState('')
+  const [globalFilter, setGlobalFilter] = useState(initialGlobalFilter)
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
 

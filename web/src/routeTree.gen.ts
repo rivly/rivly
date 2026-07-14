@@ -17,6 +17,7 @@ import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppEnvironmentsIdRouteImport } from './routes/_app/environments/$id'
 import { Route as AppEnvironmentsIdIndexRouteImport } from './routes/_app/environments/$id/index'
 import { Route as AppEnvironmentsIdVolumesRouteImport } from './routes/_app/environments/$id/volumes'
+import { Route as AppEnvironmentsIdStacksRouteImport } from './routes/_app/environments/$id/stacks'
 import { Route as AppEnvironmentsIdNetworksRouteImport } from './routes/_app/environments/$id/networks'
 import { Route as AppEnvironmentsIdImagesRouteImport } from './routes/_app/environments/$id/images'
 import { Route as AppEnvironmentsIdContainersRouteImport } from './routes/_app/environments/$id/containers'
@@ -61,6 +62,11 @@ const AppEnvironmentsIdVolumesRoute =
     path: '/volumes',
     getParentRoute: () => AppEnvironmentsIdRoute,
   } as any)
+const AppEnvironmentsIdStacksRoute = AppEnvironmentsIdStacksRouteImport.update({
+  id: '/stacks',
+  path: '/stacks',
+  getParentRoute: () => AppEnvironmentsIdRoute,
+} as any)
 const AppEnvironmentsIdNetworksRoute =
   AppEnvironmentsIdNetworksRouteImport.update({
     id: '/networks',
@@ -88,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/environments/$id/containers': typeof AppEnvironmentsIdContainersRoute
   '/environments/$id/images': typeof AppEnvironmentsIdImagesRoute
   '/environments/$id/networks': typeof AppEnvironmentsIdNetworksRoute
+  '/environments/$id/stacks': typeof AppEnvironmentsIdStacksRoute
   '/environments/$id/volumes': typeof AppEnvironmentsIdVolumesRoute
   '/environments/$id/': typeof AppEnvironmentsIdIndexRoute
 }
@@ -99,6 +106,7 @@ export interface FileRoutesByTo {
   '/environments/$id/containers': typeof AppEnvironmentsIdContainersRoute
   '/environments/$id/images': typeof AppEnvironmentsIdImagesRoute
   '/environments/$id/networks': typeof AppEnvironmentsIdNetworksRoute
+  '/environments/$id/stacks': typeof AppEnvironmentsIdStacksRoute
   '/environments/$id/volumes': typeof AppEnvironmentsIdVolumesRoute
   '/environments/$id': typeof AppEnvironmentsIdIndexRoute
 }
@@ -113,6 +121,7 @@ export interface FileRoutesById {
   '/_app/environments/$id/containers': typeof AppEnvironmentsIdContainersRoute
   '/_app/environments/$id/images': typeof AppEnvironmentsIdImagesRoute
   '/_app/environments/$id/networks': typeof AppEnvironmentsIdNetworksRoute
+  '/_app/environments/$id/stacks': typeof AppEnvironmentsIdStacksRoute
   '/_app/environments/$id/volumes': typeof AppEnvironmentsIdVolumesRoute
   '/_app/environments/$id/': typeof AppEnvironmentsIdIndexRoute
 }
@@ -127,6 +136,7 @@ export interface FileRouteTypes {
     | '/environments/$id/containers'
     | '/environments/$id/images'
     | '/environments/$id/networks'
+    | '/environments/$id/stacks'
     | '/environments/$id/volumes'
     | '/environments/$id/'
   fileRoutesByTo: FileRoutesByTo
@@ -138,6 +148,7 @@ export interface FileRouteTypes {
     | '/environments/$id/containers'
     | '/environments/$id/images'
     | '/environments/$id/networks'
+    | '/environments/$id/stacks'
     | '/environments/$id/volumes'
     | '/environments/$id'
   id:
@@ -151,6 +162,7 @@ export interface FileRouteTypes {
     | '/_app/environments/$id/containers'
     | '/_app/environments/$id/images'
     | '/_app/environments/$id/networks'
+    | '/_app/environments/$id/stacks'
     | '/_app/environments/$id/volumes'
     | '/_app/environments/$id/'
   fileRoutesById: FileRoutesById
@@ -220,6 +232,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEnvironmentsIdVolumesRouteImport
       parentRoute: typeof AppEnvironmentsIdRoute
     }
+    '/_app/environments/$id/stacks': {
+      id: '/_app/environments/$id/stacks'
+      path: '/stacks'
+      fullPath: '/environments/$id/stacks'
+      preLoaderRoute: typeof AppEnvironmentsIdStacksRouteImport
+      parentRoute: typeof AppEnvironmentsIdRoute
+    }
     '/_app/environments/$id/networks': {
       id: '/_app/environments/$id/networks'
       path: '/networks'
@@ -248,6 +267,7 @@ interface AppEnvironmentsIdRouteChildren {
   AppEnvironmentsIdContainersRoute: typeof AppEnvironmentsIdContainersRoute
   AppEnvironmentsIdImagesRoute: typeof AppEnvironmentsIdImagesRoute
   AppEnvironmentsIdNetworksRoute: typeof AppEnvironmentsIdNetworksRoute
+  AppEnvironmentsIdStacksRoute: typeof AppEnvironmentsIdStacksRoute
   AppEnvironmentsIdVolumesRoute: typeof AppEnvironmentsIdVolumesRoute
   AppEnvironmentsIdIndexRoute: typeof AppEnvironmentsIdIndexRoute
 }
@@ -256,6 +276,7 @@ const AppEnvironmentsIdRouteChildren: AppEnvironmentsIdRouteChildren = {
   AppEnvironmentsIdContainersRoute: AppEnvironmentsIdContainersRoute,
   AppEnvironmentsIdImagesRoute: AppEnvironmentsIdImagesRoute,
   AppEnvironmentsIdNetworksRoute: AppEnvironmentsIdNetworksRoute,
+  AppEnvironmentsIdStacksRoute: AppEnvironmentsIdStacksRoute,
   AppEnvironmentsIdVolumesRoute: AppEnvironmentsIdVolumesRoute,
   AppEnvironmentsIdIndexRoute: AppEnvironmentsIdIndexRoute,
 }

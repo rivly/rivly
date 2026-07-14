@@ -19,6 +19,9 @@ import styles from './containers.module.css'
 
 export const Route = createFileRoute('/_app/environments/$id/containers')({
   head: () => ({ meta: [{ title: 'Containers · Rivly' }] }),
+  validateSearch: (search: Record<string, unknown>): { stack?: string } => ({
+    stack: typeof search.stack === 'string' ? search.stack : undefined,
+  }),
   component: ContainersPage,
 })
 
@@ -34,6 +37,7 @@ const STATE_TONE: Record<string, string> = {
 
 function ContainersPage() {
   const { id } = Route.useParams()
+  const { stack } = Route.useSearch()
   const { data: containers, isPending, isError } = useContainers(Number(id))
   const [logsFor, setLogsFor] = useState<Container | null>(null)
   const [execFor, setExecFor] = useState<Container | null>(null)
@@ -118,6 +122,7 @@ function ContainersPage() {
           searchPlaceholder="Search containers…"
           emptyMessage="No containers on this host."
           initialPageSize={25}
+          initialGlobalFilter={stack}
           enableSelection
           getRowId={(container) => container.id}
           renderBulkActions={(selected, clear) => (

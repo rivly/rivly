@@ -1,6 +1,7 @@
 import { Link, useParams } from '@tanstack/react-router'
 import {
   LuBox,
+  LuBoxes,
   LuDatabase,
   LuHouse,
   LuLayers,
@@ -56,6 +57,16 @@ export function Sidebar({ open, collapsed, onNavigate, onToggleCollapse }: Props
             >
               <LuLayoutDashboard className={styles.icon} />
               <span className={styles.label}>Overview</span>
+            </Link>
+            <Link
+              to="/environments/$id/stacks"
+              params={{ id: String(currentEnv.id) }}
+              className={styles.link}
+              onClick={onNavigate}
+              title={collapsed ? 'Stacks' : undefined}
+            >
+              <LuBoxes className={styles.icon} />
+              <span className={styles.label}>Stacks</span>
             </Link>
             <Link
               to="/environments/$id/containers"
