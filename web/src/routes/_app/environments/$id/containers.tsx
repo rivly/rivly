@@ -1,10 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { LuScrollText, LuTerminal } from 'react-icons/lu'
 import { Button } from '../../../../components/Button'
 import { DataTable } from '../../../../components/DataTable'
 import { Loader } from '../../../../components/Loader'
+import { LogsViewer } from '../../../../components/LogsViewer'
 import { Tooltip } from '../../../../components/Tooltip'
 import {
   useContainers,
@@ -33,6 +34,9 @@ const STATE_TONE: Record<string, string> = {
 function ContainersPage() {
   const { id } = Route.useParams()
   const { data: containers, isPending, isError } = useContainers(Number(id))
+  const [logsFor, setLogsFor] = useState<Container | null>(null)
+
+  const openLogs = useCallback((container: Container) => setLogsFor(container), [])
 
   const columns = useMemo<ColumnDef<Container>[]>(
     () => [
@@ -50,7 +54,7 @@ function ContainersPage() {
         enableSorting: false,
         enableHiding: false,
         meta: { sticky: 'left' },
-        cell: (cell) => <RowActions container={cell.row.original} />,
+        cell: (cell) => <RowActions container={cell.row.original} onLogs={openLogs} />,
       },
       {
         accessorKey: 'state',
@@ -89,7 +93,7 @@ function ContainersPage() {
         ),
       },
     ],
-    [],
+    [openLogs],
   )
 
   return (
@@ -111,11 +115,19 @@ function ContainersPage() {
           initialPageSize={25}
         />
       )}
+
+      <LogsViewer envId={Number(id)} container={logsFor} onClose={() => setLogsFor(null)} />
     </div>
   )
 }
 
-function RowActions({ container }: { container: Container }) {
+function RowActions({
+  container,
+  onLogs,
+}: {
+  container: Container
+  onLogs: (container: Container) => void
+}) {
   return (
     <span className={styles.actions}>
       <Tooltip content="Logs">
@@ -125,7 +137,7 @@ function RowActions({ container }: { container: Container }) {
           iconOnly
           icon={<LuScrollText />}
           aria-label="Logs"
-          onClick={() => toast.info('Coming soon', `Logs for ${container.name}`)}
+          onClick={() => onLogs(container)}
         />
       </Tooltip>
       <Tooltip content="Terminal">
