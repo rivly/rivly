@@ -18,6 +18,13 @@
   overflow: hidden;
   text-overflow: ellipsis;
   font-weight: 500;
+  color: var(--fg);
+  text-decoration: none;
+}
+
+.name:hover {
+  color: var(--accent-strong);
+  text-decoration: underline;
 }
 
 .muted {

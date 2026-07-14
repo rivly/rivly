@@ -19,9 +19,10 @@ import { Route as AppEnvironmentsIdIndexRouteImport } from './routes/_app/enviro
 import { Route as AppEnvironmentsIdVolumesRouteImport } from './routes/_app/environments/$id/volumes'
 import { Route as AppEnvironmentsIdNetworksRouteImport } from './routes/_app/environments/$id/networks'
 import { Route as AppEnvironmentsIdImagesRouteImport } from './routes/_app/environments/$id/images'
-import { Route as AppEnvironmentsIdContainersRouteImport } from './routes/_app/environments/$id/containers'
 import { Route as AppEnvironmentsIdStacksIndexRouteImport } from './routes/_app/environments/$id/stacks.index'
+import { Route as AppEnvironmentsIdContainersIndexRouteImport } from './routes/_app/environments/$id/containers.index'
 import { Route as AppEnvironmentsIdStacksNewRouteImport } from './routes/_app/environments/$id/stacks.new'
+import { Route as AppEnvironmentsIdContainersContainerIdRouteImport } from './routes/_app/environments/$id/containers.$containerId'
 import { Route as AppEnvironmentsIdStacksNameEditRouteImport } from './routes/_app/environments/$id/stacks.$name.edit'
 
 const SetupRoute = SetupRouteImport.update({
@@ -75,22 +76,28 @@ const AppEnvironmentsIdImagesRoute = AppEnvironmentsIdImagesRouteImport.update({
   path: '/images',
   getParentRoute: () => AppEnvironmentsIdRoute,
 } as any)
-const AppEnvironmentsIdContainersRoute =
-  AppEnvironmentsIdContainersRouteImport.update({
-    id: '/containers',
-    path: '/containers',
-    getParentRoute: () => AppEnvironmentsIdRoute,
-  } as any)
 const AppEnvironmentsIdStacksIndexRoute =
   AppEnvironmentsIdStacksIndexRouteImport.update({
     id: '/stacks/',
     path: '/stacks/',
     getParentRoute: () => AppEnvironmentsIdRoute,
   } as any)
+const AppEnvironmentsIdContainersIndexRoute =
+  AppEnvironmentsIdContainersIndexRouteImport.update({
+    id: '/containers/',
+    path: '/containers/',
+    getParentRoute: () => AppEnvironmentsIdRoute,
+  } as any)
 const AppEnvironmentsIdStacksNewRoute =
   AppEnvironmentsIdStacksNewRouteImport.update({
     id: '/stacks/new',
     path: '/stacks/new',
+    getParentRoute: () => AppEnvironmentsIdRoute,
+  } as any)
+const AppEnvironmentsIdContainersContainerIdRoute =
+  AppEnvironmentsIdContainersContainerIdRouteImport.update({
+    id: '/containers/$containerId',
+    path: '/containers/$containerId',
     getParentRoute: () => AppEnvironmentsIdRoute,
   } as any)
 const AppEnvironmentsIdStacksNameEditRoute =
@@ -106,12 +113,13 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
   '/environments/$id': typeof AppEnvironmentsIdRouteWithChildren
-  '/environments/$id/containers': typeof AppEnvironmentsIdContainersRoute
   '/environments/$id/images': typeof AppEnvironmentsIdImagesRoute
   '/environments/$id/networks': typeof AppEnvironmentsIdNetworksRoute
   '/environments/$id/volumes': typeof AppEnvironmentsIdVolumesRoute
   '/environments/$id/': typeof AppEnvironmentsIdIndexRoute
+  '/environments/$id/containers/$containerId': typeof AppEnvironmentsIdContainersContainerIdRoute
   '/environments/$id/stacks/new': typeof AppEnvironmentsIdStacksNewRoute
+  '/environments/$id/containers/': typeof AppEnvironmentsIdContainersIndexRoute
   '/environments/$id/stacks/': typeof AppEnvironmentsIdStacksIndexRoute
   '/environments/$id/stacks/$name/edit': typeof AppEnvironmentsIdStacksNameEditRoute
 }
@@ -120,12 +128,13 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
   '/': typeof AppIndexRoute
-  '/environments/$id/containers': typeof AppEnvironmentsIdContainersRoute
   '/environments/$id/images': typeof AppEnvironmentsIdImagesRoute
   '/environments/$id/networks': typeof AppEnvironmentsIdNetworksRoute
   '/environments/$id/volumes': typeof AppEnvironmentsIdVolumesRoute
   '/environments/$id': typeof AppEnvironmentsIdIndexRoute
+  '/environments/$id/containers/$containerId': typeof AppEnvironmentsIdContainersContainerIdRoute
   '/environments/$id/stacks/new': typeof AppEnvironmentsIdStacksNewRoute
+  '/environments/$id/containers': typeof AppEnvironmentsIdContainersIndexRoute
   '/environments/$id/stacks': typeof AppEnvironmentsIdStacksIndexRoute
   '/environments/$id/stacks/$name/edit': typeof AppEnvironmentsIdStacksNameEditRoute
 }
@@ -137,12 +146,13 @@ export interface FileRoutesById {
   '/setup': typeof SetupRoute
   '/_app/': typeof AppIndexRoute
   '/_app/environments/$id': typeof AppEnvironmentsIdRouteWithChildren
-  '/_app/environments/$id/containers': typeof AppEnvironmentsIdContainersRoute
   '/_app/environments/$id/images': typeof AppEnvironmentsIdImagesRoute
   '/_app/environments/$id/networks': typeof AppEnvironmentsIdNetworksRoute
   '/_app/environments/$id/volumes': typeof AppEnvironmentsIdVolumesRoute
   '/_app/environments/$id/': typeof AppEnvironmentsIdIndexRoute
+  '/_app/environments/$id/containers/$containerId': typeof AppEnvironmentsIdContainersContainerIdRoute
   '/_app/environments/$id/stacks/new': typeof AppEnvironmentsIdStacksNewRoute
+  '/_app/environments/$id/containers/': typeof AppEnvironmentsIdContainersIndexRoute
   '/_app/environments/$id/stacks/': typeof AppEnvironmentsIdStacksIndexRoute
   '/_app/environments/$id/stacks/$name/edit': typeof AppEnvironmentsIdStacksNameEditRoute
 }
@@ -154,12 +164,13 @@ export interface FileRouteTypes {
     | '/login'
     | '/setup'
     | '/environments/$id'
-    | '/environments/$id/containers'
     | '/environments/$id/images'
     | '/environments/$id/networks'
     | '/environments/$id/volumes'
     | '/environments/$id/'
+    | '/environments/$id/containers/$containerId'
     | '/environments/$id/stacks/new'
+    | '/environments/$id/containers/'
     | '/environments/$id/stacks/'
     | '/environments/$id/stacks/$name/edit'
   fileRoutesByTo: FileRoutesByTo
@@ -168,12 +179,13 @@ export interface FileRouteTypes {
     | '/login'
     | '/setup'
     | '/'
-    | '/environments/$id/containers'
     | '/environments/$id/images'
     | '/environments/$id/networks'
     | '/environments/$id/volumes'
     | '/environments/$id'
+    | '/environments/$id/containers/$containerId'
     | '/environments/$id/stacks/new'
+    | '/environments/$id/containers'
     | '/environments/$id/stacks'
     | '/environments/$id/stacks/$name/edit'
   id:
@@ -184,12 +196,13 @@ export interface FileRouteTypes {
     | '/setup'
     | '/_app/'
     | '/_app/environments/$id'
-    | '/_app/environments/$id/containers'
     | '/_app/environments/$id/images'
     | '/_app/environments/$id/networks'
     | '/_app/environments/$id/volumes'
     | '/_app/environments/$id/'
+    | '/_app/environments/$id/containers/$containerId'
     | '/_app/environments/$id/stacks/new'
+    | '/_app/environments/$id/containers/'
     | '/_app/environments/$id/stacks/'
     | '/_app/environments/$id/stacks/$name/edit'
   fileRoutesById: FileRoutesById
@@ -273,13 +286,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEnvironmentsIdImagesRouteImport
       parentRoute: typeof AppEnvironmentsIdRoute
     }
-    '/_app/environments/$id/containers': {
-      id: '/_app/environments/$id/containers'
-      path: '/containers'
-      fullPath: '/environments/$id/containers'
-      preLoaderRoute: typeof AppEnvironmentsIdContainersRouteImport
-      parentRoute: typeof AppEnvironmentsIdRoute
-    }
     '/_app/environments/$id/stacks/': {
       id: '/_app/environments/$id/stacks/'
       path: '/stacks'
@@ -287,11 +293,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEnvironmentsIdStacksIndexRouteImport
       parentRoute: typeof AppEnvironmentsIdRoute
     }
+    '/_app/environments/$id/containers/': {
+      id: '/_app/environments/$id/containers/'
+      path: '/containers'
+      fullPath: '/environments/$id/containers/'
+      preLoaderRoute: typeof AppEnvironmentsIdContainersIndexRouteImport
+      parentRoute: typeof AppEnvironmentsIdRoute
+    }
     '/_app/environments/$id/stacks/new': {
       id: '/_app/environments/$id/stacks/new'
       path: '/stacks/new'
       fullPath: '/environments/$id/stacks/new'
       preLoaderRoute: typeof AppEnvironmentsIdStacksNewRouteImport
+      parentRoute: typeof AppEnvironmentsIdRoute
+    }
+    '/_app/environments/$id/containers/$containerId': {
+      id: '/_app/environments/$id/containers/$containerId'
+      path: '/containers/$containerId'
+      fullPath: '/environments/$id/containers/$containerId'
+      preLoaderRoute: typeof AppEnvironmentsIdContainersContainerIdRouteImport
       parentRoute: typeof AppEnvironmentsIdRoute
     }
     '/_app/environments/$id/stacks/$name/edit': {
@@ -305,23 +325,26 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppEnvironmentsIdRouteChildren {
-  AppEnvironmentsIdContainersRoute: typeof AppEnvironmentsIdContainersRoute
   AppEnvironmentsIdImagesRoute: typeof AppEnvironmentsIdImagesRoute
   AppEnvironmentsIdNetworksRoute: typeof AppEnvironmentsIdNetworksRoute
   AppEnvironmentsIdVolumesRoute: typeof AppEnvironmentsIdVolumesRoute
   AppEnvironmentsIdIndexRoute: typeof AppEnvironmentsIdIndexRoute
+  AppEnvironmentsIdContainersContainerIdRoute: typeof AppEnvironmentsIdContainersContainerIdRoute
   AppEnvironmentsIdStacksNewRoute: typeof AppEnvironmentsIdStacksNewRoute
+  AppEnvironmentsIdContainersIndexRoute: typeof AppEnvironmentsIdContainersIndexRoute
   AppEnvironmentsIdStacksIndexRoute: typeof AppEnvironmentsIdStacksIndexRoute
   AppEnvironmentsIdStacksNameEditRoute: typeof AppEnvironmentsIdStacksNameEditRoute
 }
 
 const AppEnvironmentsIdRouteChildren: AppEnvironmentsIdRouteChildren = {
-  AppEnvironmentsIdContainersRoute: AppEnvironmentsIdContainersRoute,
   AppEnvironmentsIdImagesRoute: AppEnvironmentsIdImagesRoute,
   AppEnvironmentsIdNetworksRoute: AppEnvironmentsIdNetworksRoute,
   AppEnvironmentsIdVolumesRoute: AppEnvironmentsIdVolumesRoute,
   AppEnvironmentsIdIndexRoute: AppEnvironmentsIdIndexRoute,
+  AppEnvironmentsIdContainersContainerIdRoute:
+    AppEnvironmentsIdContainersContainerIdRoute,
   AppEnvironmentsIdStacksNewRoute: AppEnvironmentsIdStacksNewRoute,
+  AppEnvironmentsIdContainersIndexRoute: AppEnvironmentsIdContainersIndexRoute,
   AppEnvironmentsIdStacksIndexRoute: AppEnvironmentsIdStacksIndexRoute,
   AppEnvironmentsIdStacksNameEditRoute: AppEnvironmentsIdStacksNameEditRoute,
 }

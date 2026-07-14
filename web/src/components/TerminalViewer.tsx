@@ -4,14 +4,14 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { LuEraser, LuX } from 'react-icons/lu'
 import '@xterm/xterm/css/xterm.css'
-import type { Container } from '../lib/containers'
+import type { ContainerRef } from '../lib/containers'
 import { Button } from './Button'
 import { Tooltip } from './Tooltip'
 import styles from './TerminalViewer.module.css'
 
 type Props = {
   envId: number
-  container: Container | null
+  container: ContainerRef | null
   onClose: () => void
 }
 
@@ -49,7 +49,7 @@ const THEME = {
 }
 
 export function TerminalViewer({ envId, container, onClose }: Props) {
-  const [active, setActive] = useState<Container | null>(container)
+  const [active, setActive] = useState<ContainerRef | null>(container)
 
   useEffect(() => {
     if (container) {
@@ -81,7 +81,7 @@ export function TerminalViewer({ envId, container, onClose }: Props) {
   )
 }
 
-function TerminalPanel({ envId, container }: { envId: number; container: Container }) {
+function TerminalPanel({ envId, container }: { envId: number; container: ContainerRef }) {
   const mountRef = useRef<HTMLDivElement>(null)
   const termRef = useRef<Terminal | null>(null)
   const [status, setStatus] = useState<TermStatus>('connecting')

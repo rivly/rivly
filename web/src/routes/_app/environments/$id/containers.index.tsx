@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { useCallback, useMemo, useState } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { LuScrollText, LuTerminal } from 'react-icons/lu'
@@ -17,7 +17,7 @@ import {
 import { timeAgo } from '../../../../lib/format'
 import styles from './containers.module.css'
 
-export const Route = createFileRoute('/_app/environments/$id/containers')({
+export const Route = createFileRoute('/_app/environments/$id/containers/')({
   head: () => ({ meta: [{ title: 'Containers · Rivly' }] }),
   validateSearch: (search: Record<string, unknown>): { stack?: string } => ({
     stack: typeof search.stack === 'string' ? search.stack : undefined,
@@ -52,7 +52,15 @@ function ContainersPage() {
         header: 'Name',
         size: 200,
         meta: { sticky: 'left' },
-        cell: (cell) => <span className={styles.name}>{cell.row.original.name}</span>,
+        cell: (cell) => (
+          <Link
+            to="/environments/$id/containers/$containerId"
+            params={{ id, containerId: cell.row.original.id }}
+            className={styles.name}
+          >
+            {cell.row.original.name}
+          </Link>
+        ),
       },
       {
         id: 'actions',
@@ -102,7 +110,7 @@ function ContainersPage() {
         ),
       },
     ],
-    [openLogs, openExec],
+    [openLogs, openExec, id],
   )
 
   return (

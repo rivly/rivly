@@ -13,6 +13,8 @@ export type ContainerPort = {
   ip?: string
 }
 
+export type ContainerRef = { id: string; name: string }
+
 export type Container = {
   id: string
   name: string
@@ -34,6 +36,43 @@ export function containersQueryOptions(envId: number) {
 
 export function useContainers(envId: number) {
   return useQuery(containersQueryOptions(envId))
+}
+
+export type NetworkAttachment = { name: string; ip: string }
+export type ContainerMount = {
+  type: string
+  source: string
+  destination: string
+  name: string
+  rw: boolean
+}
+
+export type ContainerDetail = {
+  id: string
+  name: string
+  image: string
+  state: string
+  created: number
+  startedAt: string
+  command: string
+  restartPolicy: string
+  ports: ContainerPort[]
+  networks: NetworkAttachment[]
+  mounts: ContainerMount[]
+  env: string[]
+  labels: Record<string, string>
+}
+
+export function containerDetailQueryOptions(envId: number, containerId: string) {
+  return queryOptions({
+    queryKey: ['container', envId, containerId],
+    queryFn: () =>
+      api.get<ContainerDetail>(`/environments/${envId}/containers/${containerId}`),
+  })
+}
+
+export function useContainerDetail(envId: number, containerId: string) {
+  return useQuery(containerDetailQueryOptions(envId, containerId))
 }
 
 export type ContainerAction =

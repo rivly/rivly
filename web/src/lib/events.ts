@@ -16,6 +16,7 @@ const handlers: Record<
     queryClient.setQueryData(['environments', env.id], env)
     queryClient.invalidateQueries({ queryKey: ['stacks', env.id] })
     queryClient.invalidateQueries({ queryKey: ['containers', env.id] })
+    queryClient.invalidateQueries({ queryKey: ['container', env.id] })
     queryClient.invalidateQueries({ queryKey: ['images', env.id] })
     queryClient.invalidateQueries({ queryKey: ['volumes', env.id] })
     queryClient.invalidateQueries({ queryKey: ['networks', env.id] })

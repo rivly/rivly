@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Dialog } from '@base-ui/react/dialog'
 import { LuArrowDown, LuTrash2, LuWrapText, LuX } from 'react-icons/lu'
-import type { Container } from '../lib/containers'
+import type { ContainerRef } from '../lib/containers'
 import { useContainerLogs, type LogStatus } from '../lib/logs'
 import { Button } from './Button'
 import { Loader } from './Loader'
@@ -10,12 +10,12 @@ import styles from './LogsViewer.module.css'
 
 type Props = {
   envId: number
-  container: Container | null
+  container: ContainerRef | null
   onClose: () => void
 }
 
 export function LogsViewer({ envId, container, onClose }: Props) {
-  const [active, setActive] = useState<Container | null>(container)
+  const [active, setActive] = useState<ContainerRef | null>(container)
 
   useEffect(() => {
     if (container) {
@@ -63,7 +63,7 @@ function streamBadge(status: LogStatus, paused: boolean, styles: Record<string, 
   return { label: 'Live', tone: styles.streaming }
 }
 
-function LogsPanel({ envId, container }: { envId: number; container: Container }) {
+function LogsPanel({ envId, container }: { envId: number; container: ContainerRef }) {
   const { lines, status } = useContainerLogs(envId, container.id)
   const [wrap, setWrap] = useState(true)
   const [clearedAt, setClearedAt] = useState(-1)
