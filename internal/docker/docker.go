@@ -188,6 +188,70 @@ func (m *Manager) Containers(ctx context.Context, id int64, host string) ([]Cont
 	return out, nil
 }
 
+type Image struct {
+	ID      string
+	Tags    []string
+	Size    int64
+	Created int64
+	InUse   bool
+}
+
+func (m *Manager) Images(ctx context.Context, id int64, host string) ([]Image, error) {
+	cli, err := m.clientFor(id, host)
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithTimeout(ctx, callTimeout)
+	defer cancel()
+	res, err := cli.ImageList(ctx, client.ImageListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	used := make(map[string]bool)
+	if containers, cerr := cli.ContainerList(ctx, client.ContainerListOptions{All: true}); cerr == nil {
+		for _, c := range containers.Items {
+			used[c.ImageID] = true
+		}
+	}
+
+	out := make([]Image, 0, len(res.Items))
+	for _, img := range res.Items {
+		tags := make([]string, 0, len(img.RepoTags))
+		for _, tag := range img.RepoTags {
+			if tag == "<none>:<none>" {
+				continue
+			}
+			tags = append(tags, tag)
+		}
+		out = append(out, Image{
+			ID:      strings.TrimPrefix(img.ID, "sha256:"),
+			Tags:    tags,
+			Size:    img.Size,
+			Created: img.Created,
+			InUse:   used[img.ID],
+		})
+	}
+	return out, nil
+}
+
+func (m *Manager) ImageAction(ctx context.Context, id int64, host, imageID, action string) error {
+	cli, err := m.clientFor(id, host)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(ctx, actionTimeout)
+	defer cancel()
+
+	switch action {
+	case "remove":
+		_, err = cli.ImageRemove(ctx, imageID, client.ImageRemoveOptions{Force: true, PruneChildren: true})
+	default:
+		return fmt.Errorf("unknown image action %q", action)
+	}
+	return err
+}
+
 type LogLine struct {
 	Stream  string
 	Message string

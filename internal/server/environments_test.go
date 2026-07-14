@@ -15,14 +15,17 @@ import (
 )
 
 type fakeDocker struct {
-	info          docker.SystemInfo
-	infoErr       error
-	containers    []docker.Container
-	containersErr error
-	logLines      []docker.LogLine
-	logErr        error
-	execErr       error
-	actionErr     error
+	info           docker.SystemInfo
+	infoErr        error
+	containers     []docker.Container
+	containersErr  error
+	images         []docker.Image
+	imagesErr      error
+	imageActionErr error
+	logLines       []docker.LogLine
+	logErr         error
+	execErr        error
+	actionErr      error
 }
 
 func (f fakeDocker) Info(_ context.Context, _ int64, _ string) (docker.SystemInfo, error) {
@@ -31,6 +34,14 @@ func (f fakeDocker) Info(_ context.Context, _ int64, _ string) (docker.SystemInf
 
 func (f fakeDocker) Containers(_ context.Context, _ int64, _ string) ([]docker.Container, error) {
 	return f.containers, f.containersErr
+}
+
+func (f fakeDocker) Images(_ context.Context, _ int64, _ string) ([]docker.Image, error) {
+	return f.images, f.imagesErr
+}
+
+func (f fakeDocker) ImageAction(_ context.Context, _ int64, _, _, _ string) error {
+	return f.imageActionErr
 }
 
 func (f fakeDocker) ContainerLogs(_ context.Context, _ int64, _, _ string, _ int, _ bool) (<-chan docker.LogLine, error) {

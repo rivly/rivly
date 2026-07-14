@@ -21,6 +21,8 @@ import (
 type dockerService interface {
 	Info(ctx context.Context, id int64, host string) (docker.SystemInfo, error)
 	Containers(ctx context.Context, id int64, host string) ([]docker.Container, error)
+	Images(ctx context.Context, id int64, host string) ([]docker.Image, error)
+	ImageAction(ctx context.Context, id int64, host, imageID, action string) error
 	ContainerLogs(ctx context.Context, id int64, host, containerID string, tail int, follow bool) (<-chan docker.LogLine, error)
 	ContainerExec(ctx context.Context, id int64, host, containerID string) (*docker.ExecSession, error)
 	ContainerAction(ctx context.Context, id int64, host, containerID, action string) error
@@ -100,6 +102,8 @@ func (s *Server) Router() http.Handler {
 				r.Get("/{id}", s.handleGetEnvironment)
 				r.Get("/{id}/containers", s.handleListContainers)
 				r.Post("/{id}/containers/actions", s.handleContainerActions)
+				r.Get("/{id}/images", s.handleListImages)
+				r.Post("/{id}/images/actions", s.handleImageActions)
 			})
 		})
 	})
