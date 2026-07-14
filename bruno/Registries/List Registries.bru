@@ -1,0 +1,15 @@
+meta {
+  name: List Registries
+  type: http
+  seq: 32
+}
+
+get {
+  url: {{baseUrl}}/api/v1/registries
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}

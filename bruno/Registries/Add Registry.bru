@@ -1,0 +1,27 @@
+meta {
+  name: Add Registry
+  type: http
+  seq: 33
+}
+
+post {
+  url: {{baseUrl}}/api/v1/registries
+  body: json
+  auth: none
+}
+
+headers {
+  content-type: application/json
+}
+
+body:json {
+  {
+    "server": "ghcr.io",
+    "username": "REPLACE_WITH_USERNAME",
+    "password": "REPLACE_WITH_TOKEN"
+  }
+}
+
+assert {
+  res.status: eq 201
+}
