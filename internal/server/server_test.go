@@ -135,3 +135,20 @@ func postJSON(t *testing.T, c *http.Client, url, body string, dst any) {
 		t.Fatalf("decode %s: %v", url, err)
 	}
 }
+
+func postJSONStatus(t *testing.T, c *http.Client, url, body string, want int, dst any) {
+	t.Helper()
+	resp, err := c.Post(url, "application/json", bytes.NewBufferString(body))
+	if err != nil {
+		t.Fatalf("POST %s: %v", url, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != want {
+		t.Fatalf("POST %s: want %d, got %d", url, want, resp.StatusCode)
+	}
+	if dst != nil {
+		if err := json.NewDecoder(resp.Body).Decode(dst); err != nil {
+			t.Fatalf("decode %s: %v", url, err)
+		}
+	}
+}

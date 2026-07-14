@@ -5,11 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/rivly/rivly/internal/docker"
 )
+
+var resourceNamePattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}$`)
 
 type volumeResponse struct {
 	Name       string `json:"name"`
@@ -57,6 +62,58 @@ func (s *Server) handleListVolumes(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	s.writeJSON(w, http.StatusOK, out)
+}
+
+type createVolumeRequest struct {
+	Name   string `json:"name"`
+	Driver string `json:"driver"`
+}
+
+func (s *Server) handleCreateVolume(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, "invalid environment id")
+		return
+	}
+
+	var req createVolumeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		s.writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	req.Name = strings.TrimSpace(req.Name)
+	if !resourceNamePattern.MatchString(req.Name) {
+		s.writeError(w, http.StatusBadRequest, "invalid volume name")
+		return
+	}
+
+	env, err := s.queries.GetEnvironment(r.Context(), id)
+	if errors.Is(err, sql.ErrNoRows) {
+		s.writeError(w, http.StatusNotFound, "environment not found")
+		return
+	}
+	if err != nil {
+		s.serverError(w, r, "could not load environment", err)
+		return
+	}
+
+	vol, err := s.docker.VolumeCreate(r.Context(), env.ID, env.Url, docker.VolumeCreateInput{
+		Name:   req.Name,
+		Driver: strings.TrimSpace(req.Driver),
+	})
+	if err != nil {
+		s.writeError(w, http.StatusBadGateway, "could not create volume")
+		return
+	}
+	s.publishEnvironment(r.Context(), env)
+	s.writeJSON(w, http.StatusCreated, volumeResponse{
+		Name:       vol.Name,
+		Driver:     vol.Driver,
+		Mountpoint: vol.Mountpoint,
+		Stack:      vol.Stack,
+		Created:    vol.Created,
+		InUse:      vol.InUse,
+	})
 }
 
 func (s *Server) handleVolumeActions(w http.ResponseWriter, r *http.Request) {

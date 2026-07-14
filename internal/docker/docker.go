@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/netip"
 	"strconv"
 	"strings"
 	"sync"
@@ -14,6 +15,7 @@ import (
 	"github.com/moby/moby/api/pkg/stdcopy"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/api/types/events"
+	"github.com/moby/moby/api/types/network"
 	"github.com/moby/moby/client"
 )
 
@@ -617,6 +619,46 @@ func (m *Manager) VolumeAction(ctx context.Context, id int64, host, volumeName, 
 	return err
 }
 
+type VolumeCreateInput struct {
+	Name   string
+	Driver string
+}
+
+func (m *Manager) VolumeCreate(ctx context.Context, id int64, host string, in VolumeCreateInput) (Volume, error) {
+	cli, err := m.clientFor(id, host)
+	if err != nil {
+		return Volume{}, err
+	}
+	ctx, cancel := context.WithTimeout(ctx, actionTimeout)
+	defer cancel()
+
+	driver := in.Driver
+	if driver == "" {
+		driver = "local"
+	}
+	res, err := cli.VolumeCreate(ctx, client.VolumeCreateOptions{
+		Name:   in.Name,
+		Driver: driver,
+	})
+	if err != nil {
+		return Volume{}, err
+	}
+
+	v := res.Volume
+	created := int64(0)
+	if t, perr := time.Parse(time.RFC3339, v.CreatedAt); perr == nil {
+		created = t.Unix()
+	}
+	return Volume{
+		Name:       v.Name,
+		Driver:     v.Driver,
+		Mountpoint: v.Mountpoint,
+		Stack:      v.Labels[composeProjectLabel],
+		Created:    created,
+		InUse:      false,
+	}, nil
+}
+
 var predefinedNetworks = map[string]bool{"bridge": true, "host": true, "none": true}
 
 type Network struct {
@@ -683,6 +725,45 @@ func (m *Manager) NetworkAction(ctx context.Context, id int64, host, networkID, 
 		return fmt.Errorf("unknown network action %q", action)
 	}
 	return err
+}
+
+type NetworkCreateInput struct {
+	Name   string
+	Driver string
+	Subnet string
+}
+
+type CreatedNetwork struct {
+	ID      string
+	Warning string
+}
+
+func (m *Manager) NetworkCreate(ctx context.Context, id int64, host string, in NetworkCreateInput) (CreatedNetwork, error) {
+	cli, err := m.clientFor(id, host)
+	if err != nil {
+		return CreatedNetwork{}, err
+	}
+	ctx, cancel := context.WithTimeout(ctx, actionTimeout)
+	defer cancel()
+
+	driver := in.Driver
+	if driver == "" {
+		driver = "bridge"
+	}
+	opts := client.NetworkCreateOptions{Driver: driver}
+	if in.Subnet != "" {
+		prefix, perr := netip.ParsePrefix(in.Subnet)
+		if perr != nil {
+			return CreatedNetwork{}, fmt.Errorf("invalid subnet: %w", perr)
+		}
+		opts.IPAM = &network.IPAM{Config: []network.IPAMConfig{{Subnet: prefix}}}
+	}
+
+	res, err := cli.NetworkCreate(ctx, in.Name, opts)
+	if err != nil {
+		return CreatedNetwork{}, err
+	}
+	return CreatedNetwork{ID: res.ID, Warning: strings.Join(res.Warning, "; ")}, nil
 }
 
 type Stack struct {

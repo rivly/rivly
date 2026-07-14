@@ -57,6 +57,47 @@ func TestVolumeActions(t *testing.T) {
 	}
 }
 
+func TestCreateVolume(t *testing.T) {
+	srv := newTestServer(t)
+	srv.docker = fakeDocker{
+		volumeCreated: docker.Volume{Name: "app_data", Driver: "local", Mountpoint: "/data"},
+	}
+	seedEnvironment(t, srv)
+
+	ts := httptest.NewServer(srv.Router())
+	defer ts.Close()
+
+	if code := postStatus(t, &http.Client{}, ts.URL+"/api/v1/environments/1/volumes", `{"name":"app_data"}`); code != http.StatusUnauthorized {
+		t.Fatalf("create without auth: want 401, got %d", code)
+	}
+
+	client := authedClient(t, ts)
+
+	var vol volumeResponse
+	postJSONStatus(t, client, ts.URL+"/api/v1/environments/1/volumes", `{"name":"app_data","driver":"local"}`, http.StatusCreated, &vol)
+	if vol.Name != "app_data" || vol.Driver != "local" {
+		t.Fatalf("create volume: got %+v", vol)
+	}
+
+	if code := postStatus(t, client, ts.URL+"/api/v1/environments/1/volumes", `{"name":"bad name!"}`); code != http.StatusBadRequest {
+		t.Fatalf("invalid volume name: want 400, got %d", code)
+	}
+}
+
+func TestCreateVolumeUnreachable(t *testing.T) {
+	srv := newTestServer(t)
+	srv.docker = fakeDocker{volumeCreateErr: errors.New("cannot connect")}
+	seedEnvironment(t, srv)
+
+	ts := httptest.NewServer(srv.Router())
+	defer ts.Close()
+
+	client := authedClient(t, ts)
+	if code := postStatus(t, client, ts.URL+"/api/v1/environments/1/volumes", `{"name":"app_data"}`); code != http.StatusBadGateway {
+		t.Fatalf("create unreachable: want 502, got %d", code)
+	}
+}
+
 func TestListVolumesUnreachable(t *testing.T) {
 	srv := newTestServer(t)
 	srv.docker = fakeDocker{volumesErr: errors.New("cannot connect")}

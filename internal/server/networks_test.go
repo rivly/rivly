@@ -57,6 +57,52 @@ func TestNetworkActions(t *testing.T) {
 	}
 }
 
+func TestCreateNetwork(t *testing.T) {
+	srv := newTestServer(t)
+	srv.docker = fakeDocker{networkCreated: docker.CreatedNetwork{ID: "net456"}}
+	seedEnvironment(t, srv)
+
+	ts := httptest.NewServer(srv.Router())
+	defer ts.Close()
+
+	if code := postStatus(t, &http.Client{}, ts.URL+"/api/v1/environments/1/networks", `{"name":"app_net"}`); code != http.StatusUnauthorized {
+		t.Fatalf("create without auth: want 401, got %d", code)
+	}
+
+	client := authedClient(t, ts)
+
+	var out struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	}
+	postJSONStatus(t, client, ts.URL+"/api/v1/environments/1/networks", `{"name":"app_net","driver":"bridge","subnet":"172.20.0.0/16"}`, http.StatusCreated, &out)
+	if out.ID != "net456" || out.Name != "app_net" {
+		t.Fatalf("create network: got %+v", out)
+	}
+
+	if code := postStatus(t, client, ts.URL+"/api/v1/environments/1/networks", `{"name":"app_net","subnet":"not-a-cidr"}`); code != http.StatusBadRequest {
+		t.Fatalf("invalid subnet: want 400, got %d", code)
+	}
+
+	if code := postStatus(t, client, ts.URL+"/api/v1/environments/1/networks", `{"name":""}`); code != http.StatusBadRequest {
+		t.Fatalf("empty name: want 400, got %d", code)
+	}
+}
+
+func TestCreateNetworkUnreachable(t *testing.T) {
+	srv := newTestServer(t)
+	srv.docker = fakeDocker{networkCreateErr: errors.New("cannot connect")}
+	seedEnvironment(t, srv)
+
+	ts := httptest.NewServer(srv.Router())
+	defer ts.Close()
+
+	client := authedClient(t, ts)
+	if code := postStatus(t, client, ts.URL+"/api/v1/environments/1/networks", `{"name":"app_net"}`); code != http.StatusBadGateway {
+		t.Fatalf("create unreachable: want 502, got %d", code)
+	}
+}
+
 func TestListNetworksUnreachable(t *testing.T) {
 	srv := newTestServer(t)
 	srv.docker = fakeDocker{networksErr: errors.New("cannot connect")}

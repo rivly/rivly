@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/netip"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/rivly/rivly/internal/docker"
 )
 
 type networkResponse struct {
@@ -59,6 +62,64 @@ func (s *Server) handleListNetworks(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	s.writeJSON(w, http.StatusOK, out)
+}
+
+type createNetworkRequest struct {
+	Name   string `json:"name"`
+	Driver string `json:"driver"`
+	Subnet string `json:"subnet"`
+}
+
+func (s *Server) handleCreateNetwork(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, "invalid environment id")
+		return
+	}
+
+	var req createNetworkRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		s.writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	req.Name = strings.TrimSpace(req.Name)
+	if !resourceNamePattern.MatchString(req.Name) {
+		s.writeError(w, http.StatusBadRequest, "invalid network name")
+		return
+	}
+	req.Subnet = strings.TrimSpace(req.Subnet)
+	if req.Subnet != "" {
+		if _, perr := netip.ParsePrefix(req.Subnet); perr != nil {
+			s.writeError(w, http.StatusBadRequest, "invalid subnet (expected CIDR, e.g. 172.20.0.0/16)")
+			return
+		}
+	}
+
+	env, err := s.queries.GetEnvironment(r.Context(), id)
+	if errors.Is(err, sql.ErrNoRows) {
+		s.writeError(w, http.StatusNotFound, "environment not found")
+		return
+	}
+	if err != nil {
+		s.serverError(w, r, "could not load environment", err)
+		return
+	}
+
+	created, err := s.docker.NetworkCreate(r.Context(), env.ID, env.Url, docker.NetworkCreateInput{
+		Name:   req.Name,
+		Driver: strings.TrimSpace(req.Driver),
+		Subnet: req.Subnet,
+	})
+	if err != nil {
+		s.writeError(w, http.StatusBadGateway, "could not create network")
+		return
+	}
+	s.publishEnvironment(r.Context(), env)
+	s.writeJSON(w, http.StatusCreated, map[string]any{
+		"id":      created.ID,
+		"name":    req.Name,
+		"warning": created.Warning,
+	})
 }
 
 func (s *Server) handleNetworkActions(w http.ResponseWriter, r *http.Request) {
