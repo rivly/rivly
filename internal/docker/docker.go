@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/moby/moby/api/pkg/stdcopy"
+	"github.com/moby/moby/api/types/events"
 	"github.com/moby/moby/client"
 )
 
@@ -252,6 +253,73 @@ func (m *Manager) ImageAction(ctx context.Context, id int64, host, imageID, acti
 	return err
 }
 
+type Volume struct {
+	Name       string
+	Driver     string
+	Mountpoint string
+	Stack      string
+	Created    int64
+	InUse      bool
+}
+
+func (m *Manager) Volumes(ctx context.Context, id int64, host string) ([]Volume, error) {
+	cli, err := m.clientFor(id, host)
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithTimeout(ctx, callTimeout)
+	defer cancel()
+	res, err := cli.VolumeList(ctx, client.VolumeListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	used := make(map[string]bool)
+	if containers, cerr := cli.ContainerList(ctx, client.ContainerListOptions{All: true}); cerr == nil {
+		for _, c := range containers.Items {
+			for _, mnt := range c.Mounts {
+				if mnt.Name != "" {
+					used[mnt.Name] = true
+				}
+			}
+		}
+	}
+
+	out := make([]Volume, 0, len(res.Items))
+	for _, v := range res.Items {
+		created := int64(0)
+		if t, perr := time.Parse(time.RFC3339, v.CreatedAt); perr == nil {
+			created = t.Unix()
+		}
+		out = append(out, Volume{
+			Name:       v.Name,
+			Driver:     v.Driver,
+			Mountpoint: v.Mountpoint,
+			Stack:      v.Labels[composeProjectLabel],
+			Created:    created,
+			InUse:      used[v.Name],
+		})
+	}
+	return out, nil
+}
+
+func (m *Manager) VolumeAction(ctx context.Context, id int64, host, volumeName, action string) error {
+	cli, err := m.clientFor(id, host)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(ctx, actionTimeout)
+	defer cancel()
+
+	switch action {
+	case "remove":
+		_, err = cli.VolumeRemove(ctx, volumeName, client.VolumeRemoveOptions{Force: true})
+	default:
+		return fmt.Errorf("unknown volume action %q", action)
+	}
+	return err
+}
+
 type LogLine struct {
 	Stream  string
 	Message string
@@ -420,6 +488,64 @@ func (m *Manager) ContainerAction(ctx context.Context, id int64, host, container
 		return fmt.Errorf("unknown action %q", action)
 	}
 	return err
+}
+
+func (m *Manager) WatchEvents(ctx context.Context, id int64, host string) (<-chan struct{}, <-chan error) {
+	out := make(chan struct{})
+	errc := make(chan error, 1)
+
+	cli, err := m.clientFor(id, host)
+	if err != nil {
+		errc <- err
+		close(out)
+		return out, errc
+	}
+
+	go func() {
+		defer close(out)
+		res := cli.Events(ctx, client.EventsListOptions{})
+		for {
+			select {
+			case <-ctx.Done():
+				errc <- ctx.Err()
+				return
+			case eerr := <-res.Err:
+				errc <- eerr
+				return
+			case msg := <-res.Messages:
+				if !eventIsMeaningful(msg) {
+					continue
+				}
+				select {
+				case out <- struct{}{}:
+				case <-ctx.Done():
+					errc <- ctx.Err()
+					return
+				}
+			}
+		}
+	}()
+
+	return out, errc
+}
+
+func eventIsMeaningful(msg events.Message) bool {
+	switch msg.Type {
+	case events.ContainerEventType:
+		action := string(msg.Action)
+		if strings.HasPrefix(action, "exec_") || strings.HasPrefix(action, "health_status") {
+			return false
+		}
+		switch action {
+		case "top", "resize", "attach", "detach":
+			return false
+		}
+		return true
+	case events.ImageEventType, events.VolumeEventType, events.NetworkEventType:
+		return true
+	default:
+		return false
+	}
 }
 
 func (m *Manager) Close() {

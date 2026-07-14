@@ -53,10 +53,26 @@ func (s *Server) pollEnvironments(ctx context.Context) {
 		if err != nil {
 			continue
 		}
-		if s.lastEnvState[detail.ID] == string(key) {
-			continue
+		s.envStateMu.Lock()
+		changed := s.lastEnvState[detail.ID] != string(key)
+		if changed {
+			s.lastEnvState[detail.ID] = string(key)
 		}
-		s.lastEnvState[detail.ID] = string(key)
-		s.events.Publish("environment.updated", detail)
+		s.envStateMu.Unlock()
+		if changed {
+			s.events.Publish("environment.updated", detail)
+		}
 	}
+}
+
+func (s *Server) publishEnvironment(ctx context.Context, e db.Environment) {
+	detail := s.buildEnvironment(ctx, e)
+	fingerprint := detail
+	fingerprint.LastSeen = nil
+	if key, err := json.Marshal(fingerprint); err == nil {
+		s.envStateMu.Lock()
+		s.lastEnvState[detail.ID] = string(key)
+		s.envStateMu.Unlock()
+	}
+	s.events.Publish("environment.updated", detail)
 }

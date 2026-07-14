@@ -23,9 +23,12 @@ type dockerService interface {
 	Containers(ctx context.Context, id int64, host string) ([]docker.Container, error)
 	Images(ctx context.Context, id int64, host string) ([]docker.Image, error)
 	ImageAction(ctx context.Context, id int64, host, imageID, action string) error
+	Volumes(ctx context.Context, id int64, host string) ([]docker.Volume, error)
+	VolumeAction(ctx context.Context, id int64, host, volumeName, action string) error
 	ContainerLogs(ctx context.Context, id int64, host, containerID string, tail int, follow bool) (<-chan docker.LogLine, error)
 	ContainerExec(ctx context.Context, id int64, host, containerID string) (*docker.ExecSession, error)
 	ContainerAction(ctx context.Context, id int64, host, containerID, action string) error
+	WatchEvents(ctx context.Context, id int64, host string) (<-chan struct{}, <-chan error)
 }
 
 type Server struct {
@@ -37,6 +40,7 @@ type Server struct {
 	events       *events.Hub
 	cfg          config.Config
 	setupMu      sync.Mutex
+	envStateMu   sync.Mutex
 	lastEnvState map[int64]string
 }
 
@@ -104,6 +108,8 @@ func (s *Server) Router() http.Handler {
 				r.Post("/{id}/containers/actions", s.handleContainerActions)
 				r.Get("/{id}/images", s.handleListImages)
 				r.Post("/{id}/images/actions", s.handleImageActions)
+				r.Get("/{id}/volumes", s.handleListVolumes)
+				r.Post("/{id}/volumes/actions", s.handleVolumeActions)
 			})
 		})
 	})

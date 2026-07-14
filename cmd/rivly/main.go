@@ -58,6 +58,7 @@ func run(logger *slog.Logger) error {
 	defer stop()
 
 	go srv.RunPoller(ctx)
+	go srv.RunWatchers(ctx)
 
 	httpServer := &http.Server{
 		Addr:              cfg.Addr,

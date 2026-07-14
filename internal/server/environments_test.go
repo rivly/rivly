@@ -15,17 +15,20 @@ import (
 )
 
 type fakeDocker struct {
-	info           docker.SystemInfo
-	infoErr        error
-	containers     []docker.Container
-	containersErr  error
-	images         []docker.Image
-	imagesErr      error
-	imageActionErr error
-	logLines       []docker.LogLine
-	logErr         error
-	execErr        error
-	actionErr      error
+	info            docker.SystemInfo
+	infoErr         error
+	containers      []docker.Container
+	containersErr   error
+	images          []docker.Image
+	imagesErr       error
+	imageActionErr  error
+	volumes         []docker.Volume
+	volumesErr      error
+	volumeActionErr error
+	logLines        []docker.LogLine
+	logErr          error
+	execErr         error
+	actionErr       error
 }
 
 func (f fakeDocker) Info(_ context.Context, _ int64, _ string) (docker.SystemInfo, error) {
@@ -42,6 +45,14 @@ func (f fakeDocker) Images(_ context.Context, _ int64, _ string) ([]docker.Image
 
 func (f fakeDocker) ImageAction(_ context.Context, _ int64, _, _, _ string) error {
 	return f.imageActionErr
+}
+
+func (f fakeDocker) Volumes(_ context.Context, _ int64, _ string) ([]docker.Volume, error) {
+	return f.volumes, f.volumesErr
+}
+
+func (f fakeDocker) VolumeAction(_ context.Context, _ int64, _, _, _ string) error {
+	return f.volumeActionErr
 }
 
 func (f fakeDocker) ContainerLogs(_ context.Context, _ int64, _, _ string, _ int, _ bool) (<-chan docker.LogLine, error) {
@@ -62,6 +73,10 @@ func (f fakeDocker) ContainerExec(_ context.Context, _ int64, _, _ string) (*doc
 
 func (f fakeDocker) ContainerAction(_ context.Context, _ int64, _, _, _ string) error {
 	return f.actionErr
+}
+
+func (f fakeDocker) WatchEvents(_ context.Context, _ int64, _ string) (<-chan struct{}, <-chan error) {
+	return nil, nil
 }
 
 const testCreds = `{"email":"admin@rivly.dev","password":"s3cret-password","displayName":"Admin"}`
