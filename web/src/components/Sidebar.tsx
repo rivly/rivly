@@ -3,6 +3,7 @@ import {
   LuBox,
   LuBoxes,
   LuDatabase,
+  LuGitBranch,
   LuHouse,
   LuKeyRound,
   LuLayers,
@@ -134,6 +135,15 @@ export function Sidebar({ open, collapsed, onNavigate, onToggleCollapse }: Props
           >
             <LuKeyRound className={styles.icon} />
             <span className={styles.label}>Registries</span>
+          </Link>
+          <Link
+            to="/git-credentials"
+            className={styles.link}
+            onClick={onNavigate}
+            title={collapsed ? 'Git Credentials' : undefined}
+          >
+            <LuGitBranch className={styles.icon} />
+            <span className={styles.label}>Git Credentials</span>
           </Link>
         </div>
       </nav>

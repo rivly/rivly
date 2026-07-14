@@ -129,17 +129,12 @@ export function RegistryDialog({ open, onClose, editing }: Props) {
         <TextField
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="GitHub Container Registry"
           autoComplete="off"
           autoFocus
         />
       </Field>
       <Field label="Registry URL" required hint="e.g. ghcr.io, registry.gitlab.com, docker.io">
-        <TextField
-          value={server}
-          onChange={(e) => setServer(e.target.value)}
-          placeholder="ghcr.io"
-        />
+        <TextField value={server} onChange={(e) => setServer(e.target.value)} />
       </Field>
       <Field label="Username" required>
         <TextField

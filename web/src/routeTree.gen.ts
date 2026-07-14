@@ -15,6 +15,7 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppRegistriesRouteImport } from './routes/_app/registries'
+import { Route as AppGitCredentialsRouteImport } from './routes/_app/git-credentials'
 import { Route as AppEnvironmentsIdRouteImport } from './routes/_app/environments/$id'
 import { Route as AppEnvironmentsIdIndexRouteImport } from './routes/_app/environments/$id/index'
 import { Route as AppEnvironmentsIdVolumesIndexRouteImport } from './routes/_app/environments/$id/volumes.index'
@@ -58,6 +59,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
 const AppRegistriesRoute = AppRegistriesRouteImport.update({
   id: '/registries',
   path: '/registries',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppGitCredentialsRoute = AppGitCredentialsRouteImport.update({
+  id: '/git-credentials',
+  path: '/git-credentials',
   getParentRoute: () => AppRoute,
 } as any)
 const AppEnvironmentsIdRoute = AppEnvironmentsIdRouteImport.update({
@@ -154,6 +160,7 @@ export interface FileRoutesByFullPath {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
+  '/git-credentials': typeof AppGitCredentialsRoute
   '/registries': typeof AppRegistriesRoute
   '/environments/$id': typeof AppEnvironmentsIdRouteWithChildren
   '/environments/$id/': typeof AppEnvironmentsIdIndexRoute
@@ -175,6 +182,7 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
+  '/git-credentials': typeof AppGitCredentialsRoute
   '/registries': typeof AppRegistriesRoute
   '/': typeof AppIndexRoute
   '/environments/$id': typeof AppEnvironmentsIdIndexRoute
@@ -198,6 +206,7 @@ export interface FileRoutesById {
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/setup': typeof SetupRoute
+  '/_app/git-credentials': typeof AppGitCredentialsRoute
   '/_app/registries': typeof AppRegistriesRoute
   '/_app/': typeof AppIndexRoute
   '/_app/environments/$id': typeof AppEnvironmentsIdRouteWithChildren
@@ -223,6 +232,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/setup'
+    | '/git-credentials'
     | '/registries'
     | '/environments/$id'
     | '/environments/$id/'
@@ -244,6 +254,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/setup'
+    | '/git-credentials'
     | '/registries'
     | '/'
     | '/environments/$id'
@@ -266,6 +277,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/login'
     | '/setup'
+    | '/_app/git-credentials'
     | '/_app/registries'
     | '/_app/'
     | '/_app/environments/$id'
@@ -334,6 +346,13 @@ declare module '@tanstack/react-router' {
       path: '/registries'
       fullPath: '/registries'
       preLoaderRoute: typeof AppRegistriesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/git-credentials': {
+      id: '/_app/git-credentials'
+      path: '/git-credentials'
+      fullPath: '/git-credentials'
+      preLoaderRoute: typeof AppGitCredentialsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/environments/$id': {
@@ -484,12 +503,14 @@ const AppEnvironmentsIdRouteWithChildren =
   AppEnvironmentsIdRoute._addFileChildren(AppEnvironmentsIdRouteChildren)
 
 interface AppRouteChildren {
+  AppGitCredentialsRoute: typeof AppGitCredentialsRoute
   AppRegistriesRoute: typeof AppRegistriesRoute
   AppIndexRoute: typeof AppIndexRoute
   AppEnvironmentsIdRoute: typeof AppEnvironmentsIdRouteWithChildren
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppGitCredentialsRoute: AppGitCredentialsRoute,
   AppRegistriesRoute: AppRegistriesRoute,
   AppIndexRoute: AppIndexRoute,
   AppEnvironmentsIdRoute: AppEnvironmentsIdRouteWithChildren,
