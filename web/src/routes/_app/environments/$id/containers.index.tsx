@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useCallback, useMemo, useState } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
-import { LuScrollText, LuTerminal } from 'react-icons/lu'
+import { LuPlus, LuScrollText, LuTerminal } from 'react-icons/lu'
 import { Button } from '../../../../components/Button'
 import { ContainerBulkBar } from '../../../../components/ContainerBulkBar'
 import { DataTable } from '../../../../components/DataTable'
@@ -117,6 +117,13 @@ function ContainersPage() {
     <div>
       <header className={styles.head}>
         <h1 className={styles.title}>Containers</h1>
+        <Button
+          size="sm"
+          icon={<LuPlus />}
+          render={<Link to="/environments/$id/containers/new" params={{ id }} />}
+        >
+          Run container
+        </Button>
       </header>
 
       {isPending && <Loader />}

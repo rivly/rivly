@@ -241,21 +241,21 @@ function StatsRow({
 
   return (
     <div className={styles.stats}>
-      <StatTile label="CPU" value={stats ? `${stats.cpuPercent.toFixed(1)}%` : '—'} percent={stats?.cpuPercent} />
+      <StatTile label="CPU" value={stats ? `${stats.cpuPercent.toFixed(1)}%` : '-'} percent={stats?.cpuPercent} />
       <StatTile
         label="Memory"
-        value={stats ? `${formatBytes(stats.memUsage)} / ${formatBytes(stats.memLimit)}` : '—'}
+        value={stats ? `${formatBytes(stats.memUsage)} / ${formatBytes(stats.memLimit)}` : '-'}
         percent={stats?.memPercent}
       />
       <StatTile
         label="Network I/O"
-        value={stats ? `↓ ${formatBytes(stats.netRx)}   ↑ ${formatBytes(stats.netTx)}` : '—'}
+        value={stats ? `↓ ${formatBytes(stats.netRx)}   ↑ ${formatBytes(stats.netTx)}` : '-'}
       />
       <StatTile
         label="Block I/O"
-        value={stats ? `R ${formatBytes(stats.blockRead)}   W ${formatBytes(stats.blockWrite)}` : '—'}
+        value={stats ? `R ${formatBytes(stats.blockRead)}   W ${formatBytes(stats.blockWrite)}` : '-'}
       />
-      <StatTile label="PIDs" value={stats ? String(stats.pids) : '—'} />
+      <StatTile label="PIDs" value={stats ? String(stats.pids) : '-'} />
     </div>
   )
 }

@@ -75,6 +75,33 @@ export function useContainerDetail(envId: number, containerId: string) {
   return useQuery(containerDetailQueryOptions(envId, containerId))
 }
 
+export type PortMapping = { hostPort: string; containerPort: string; proto: string }
+export type MountMapping = { source: string; target: string; readOnly: boolean }
+export type EnvVar = { key: string; value: string }
+
+export type RunContainerInput = {
+  name?: string
+  image: string
+  command?: string
+  env?: EnvVar[]
+  ports?: PortMapping[]
+  mounts?: MountMapping[]
+  network?: string
+  restartPolicy: string
+  start: boolean
+}
+
+export function useCreateContainer(envId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: RunContainerInput) =>
+      api.post<{ id: string }>(`/environments/${envId}/containers`, input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['containers', envId] })
+    },
+  })
+}
+
 export type ContainerAction =
   | 'start'
   | 'stop'
