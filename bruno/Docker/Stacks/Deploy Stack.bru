@@ -1,0 +1,26 @@
+meta {
+  name: Deploy Stack
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/api/v1/environments/1/stacks
+  body: json
+  auth: none
+}
+
+headers {
+  content-type: application/json
+}
+
+body:json {
+  {
+    "name": "bruno-demo",
+    "content": "services:\n  demo:\n    image: busybox\n    command: sleep 3600\n"
+  }
+}
+
+assert {
+  res.status: eq 200
+}

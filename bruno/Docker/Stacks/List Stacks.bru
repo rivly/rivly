@@ -1,0 +1,15 @@
+meta {
+  name: List Stacks
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/api/v1/environments/1/stacks
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}

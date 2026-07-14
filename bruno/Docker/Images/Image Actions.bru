@@ -1,0 +1,26 @@
+meta {
+  name: Image Actions
+  type: http
+  seq: 16
+}
+
+post {
+  url: {{baseUrl}}/api/v1/environments/1/images/actions
+  body: json
+  auth: none
+}
+
+headers {
+  content-type: application/json
+}
+
+body:json {
+  {
+    "action": "remove",
+    "ids": ["REPLACE_WITH_IMAGE_ID"]
+  }
+}
+
+assert {
+  res.status: eq 200
+}

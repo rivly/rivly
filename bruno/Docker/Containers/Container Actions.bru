@@ -1,0 +1,26 @@
+meta {
+  name: Container Actions
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{baseUrl}}/api/v1/environments/1/containers/actions
+  body: json
+  auth: none
+}
+
+headers {
+  content-type: application/json
+}
+
+body:json {
+  {
+    "action": "restart",
+    "ids": ["REPLACE_WITH_CONTAINER_ID"]
+  }
+}
+
+assert {
+  res.status: eq 200
+}

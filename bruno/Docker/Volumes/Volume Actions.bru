@@ -1,0 +1,26 @@
+meta {
+  name: Volume Actions
+  type: http
+  seq: 18
+}
+
+post {
+  url: {{baseUrl}}/api/v1/environments/1/volumes/actions
+  body: json
+  auth: none
+}
+
+headers {
+  content-type: application/json
+}
+
+body:json {
+  {
+    "action": "remove",
+    "ids": ["REPLACE_WITH_VOLUME_NAME"]
+  }
+}
+
+assert {
+  res.status: eq 200
+}

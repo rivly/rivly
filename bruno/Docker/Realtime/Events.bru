@@ -1,0 +1,17 @@
+meta {
+  name: Events
+  type: http
+  seq: 21
+}
+
+get {
+  url: {{baseUrl}}/api/v1/events
+  body: none
+  auth: none
+}
+
+docs {
+  Server-Sent Events stream (text/event-stream) of environment.updated events.
+  The response streams until the connection is closed, so this request will not
+  "complete" on its own.
+}

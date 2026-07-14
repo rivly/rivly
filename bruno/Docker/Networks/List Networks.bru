@@ -1,0 +1,15 @@
+meta {
+  name: List Networks
+  type: http
+  seq: 19
+}
+
+get {
+  url: {{baseUrl}}/api/v1/environments/1/networks
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
