@@ -1,0 +1,15 @@
+meta {
+  name: Image Detail
+  type: http
+  seq: 31
+}
+
+get {
+  url: {{baseUrl}}/api/v1/environments/1/images/REPLACE_WITH_IMAGE_ID
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
