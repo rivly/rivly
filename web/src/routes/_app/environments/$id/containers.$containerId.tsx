@@ -9,6 +9,7 @@ import {
   useContainerActions,
   useContainerDetail,
   type ContainerDetail,
+  type ContainerPort,
 } from '../../../../lib/containers'
 import { useContainerStats } from '../../../../lib/stats'
 import { toast } from '../../../../lib/toast'
@@ -116,9 +117,9 @@ function ContainerDetailPage() {
             <Empty>No published ports</Empty>
           ) : (
             <div className={styles.tags}>
-              {data.ports.map((p, i) => (
-                <span key={i} className={styles.portTag}>
-                  {p.publicPort ? `${p.publicPort}:${p.privatePort}` : p.privatePort}/{p.type}
+              {uniquePortLabels(data.ports).map((label) => (
+                <span key={label} className={styles.portTag}>
+                  {label}
                 </span>
               ))}
             </div>
@@ -297,4 +298,23 @@ function KeyValues({ rows, mono }: { rows: [string, string][]; mono?: boolean })
 
 function Empty({ children }: { children: ReactNode }) {
   return <p className={styles.empty}>{children}</p>
+}
+
+function uniquePortLabels(ports: ContainerPort[]): string[] {
+  const seen = new Set<string>()
+  const labels: string[] = []
+  for (const p of ports) {
+    let label: string
+    if (!p.publicPort) {
+      label = `${p.privatePort}/${p.type}`
+    } else {
+      const ip = p.ip && p.ip !== '0.0.0.0' && p.ip !== '::' ? `${p.ip}:` : ''
+      label = `${ip}${p.publicPort}:${p.privatePort}/${p.type}`
+    }
+    if (!seen.has(label)) {
+      seen.add(label)
+      labels.push(label)
+    }
+  }
+  return labels
 }
