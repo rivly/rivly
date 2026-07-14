@@ -27,6 +27,27 @@ export function useVolumes(envId: number) {
   return useQuery(volumesQueryOptions(envId))
 }
 
+export type VolumeContainer = { id: string; name: string }
+
+export type VolumeDetail = {
+  name: string
+  driver: string
+  mountpoint: string
+  scope: string
+  created: number
+  labels: Record<string, string> | null
+  options: Record<string, string> | null
+  containers: VolumeContainer[]
+}
+
+export function useVolumeDetail(envId: number, name: string) {
+  return useQuery({
+    queryKey: ['volume', envId, name],
+    queryFn: () =>
+      api.get<VolumeDetail>(`/environments/${envId}/volumes/${encodeURIComponent(name)}`),
+  })
+}
+
 export type CreateVolumeInput = { name: string; driver?: string }
 
 export function useCreateVolume(envId: number) {

@@ -5,16 +5,17 @@ import { LuPlus } from 'react-icons/lu'
 import { Button } from '../../../../components/Button'
 import { CreateVolumeDialog } from '../../../../components/CreateVolumeDialog'
 import { DataTable } from '../../../../components/DataTable'
-import { NameCell } from '../../../../components/NameCell'
+import { NameLink } from '../../../../components/NameLink'
 import { PageHeader } from '../../../../components/PageHeader'
 import { QueryState } from '../../../../components/QueryState'
 import { Tooltip } from '../../../../components/Tooltip'
+import { UnusedBadge } from '../../../../components/UnusedBadge'
 import { VolumeBulkBar } from '../../../../components/VolumeBulkBar'
 import { useVolumes, type Volume } from '../../../../lib/volumes'
 import { timeAgo } from '../../../../lib/format'
 import styles from './volumes.module.css'
 
-export const Route = createFileRoute('/_app/environments/$id/volumes')({
+export const Route = createFileRoute('/_app/environments/$id/volumes/')({
   head: () => ({ meta: [{ title: 'Volumes · Rivly' }] }),
   component: VolumesPage,
 })
@@ -30,7 +31,15 @@ function VolumesPage() {
         accessorKey: 'name',
         header: 'Name',
         cell: (cell) => (
-          <NameCell inUse={cell.row.original.inUse}>{cell.row.original.name}</NameCell>
+          <span className={styles.nameCell}>
+            <NameLink
+              to="/environments/$id/volumes/$name"
+              params={{ id, name: cell.row.original.name }}
+            >
+              {cell.row.original.name}
+            </NameLink>
+            {!cell.row.original.inUse && <UnusedBadge />}
+          </span>
         ),
       },
       {
@@ -64,7 +73,7 @@ function VolumesPage() {
           ),
       },
     ],
-    [],
+    [id],
   )
 
   return (

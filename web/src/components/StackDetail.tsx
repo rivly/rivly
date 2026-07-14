@@ -1,24 +1,17 @@
-import { useMemo } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
-import type { ColumnDef } from '@tanstack/react-table'
 import { LuPencil } from 'react-icons/lu'
-import { useContainers, type Container } from '../lib/containers'
+import { useContainers } from '../lib/containers'
 import { useStacks } from '../lib/stacks'
-import { formatDateTime, timeAgo } from '../lib/format'
+import { formatDateTime } from '../lib/format'
 import { BackLink } from './BackLink'
 import { Button } from './Button'
-import { ContainerBulkBar } from './ContainerBulkBar'
-import { ContainerStateBadge } from './ContainerStateBadge'
-import { DataTable } from './DataTable'
+import { ContainerMiniTable } from './ContainerMiniTable'
 import { DetailHeader } from './DetailHeader'
-import { ImageTag } from './ImageTag'
 import { LimitedBadge } from './LimitedBadge'
 import { Loader } from './Loader'
-import { NameLink } from './NameLink'
-import { PublishedPorts } from './PublishedPorts'
 import { StackActionButtons } from './StackActionButtons'
 import { StackStateBadge } from './StackStateBadge'
-import styles from './StackDetail.module.css'
+import styles from './resourceDetail.module.css'
 
 export function StackDetail({ envId, name }: { envId: number; name: string }) {
   const navigate = useNavigate()
@@ -29,50 +22,6 @@ export function StackDetail({ envId, name }: { envId: number; name: string }) {
     to: '/environments/$id/stacks' as const,
     params: { id: String(envId) },
   }
-
-  const columns = useMemo<ColumnDef<Container>[]>(
-    () => [
-      {
-        accessorKey: 'name',
-        header: 'Name',
-        cell: (cell) => (
-          <NameLink
-            to="/environments/$id/containers/$containerId"
-            params={{ id: String(envId), containerId: cell.row.original.id }}
-          >
-            {cell.row.original.name}
-          </NameLink>
-        ),
-      },
-      {
-        accessorKey: 'state',
-        header: 'State',
-        cell: (cell) => <ContainerStateBadge state={cell.row.original.state} />,
-      },
-      {
-        accessorKey: 'image',
-        header: 'Image',
-        cell: (cell) => <ImageTag image={cell.row.original.image} />,
-      },
-      {
-        id: 'ports',
-        header: 'Published ports',
-        enableSorting: false,
-        cell: (cell) => <PublishedPorts ports={cell.row.original.ports} />,
-      },
-      {
-        accessorKey: 'ip',
-        header: 'IP address',
-        cell: (cell) => <span className={styles.muted}>{cell.row.original.ip || '-'}</span>,
-      },
-      {
-        accessorKey: 'created',
-        header: 'Created',
-        cell: (cell) => <span className={styles.muted}>{timeAgo(cell.row.original.created)}</span>,
-      },
-    ],
-    [envId],
-  )
 
   if (isPending) {
     return <Loader />
@@ -153,19 +102,11 @@ export function StackDetail({ envId, name }: { envId: number; name: string }) {
         </div>
       )}
 
-      <DataTable
-        data={stackContainers}
-        columns={columns}
-        searchPlaceholder="Search containers…"
+      <ContainerMiniTable
+        envId={envId}
+        containers={stackContainers}
         emptyMessage="No containers in this stack."
-        initialPageSize={25}
-        enableSelection
-        getRowId={(container) => container.id}
-        renderBulkActions={(selected, clear) => (
-          <ContainerBulkBar envId={envId} selected={selected} clear={clear} />
-        )}
       />
     </div>
   )
 }
-

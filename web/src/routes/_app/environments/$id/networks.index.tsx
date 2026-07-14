@@ -5,15 +5,16 @@ import { LuPlus } from 'react-icons/lu'
 import { Button } from '../../../../components/Button'
 import { CreateNetworkDialog } from '../../../../components/CreateNetworkDialog'
 import { DataTable } from '../../../../components/DataTable'
-import { NameCell } from '../../../../components/NameCell'
+import { NameLink } from '../../../../components/NameLink'
 import { NetworkBulkBar } from '../../../../components/NetworkBulkBar'
 import { PageHeader } from '../../../../components/PageHeader'
 import { QueryState } from '../../../../components/QueryState'
+import { UnusedBadge } from '../../../../components/UnusedBadge'
 import { useNetworks, type Network } from '../../../../lib/networks'
 import { timeAgo } from '../../../../lib/format'
 import styles from './networks.module.css'
 
-export const Route = createFileRoute('/_app/environments/$id/networks')({
+export const Route = createFileRoute('/_app/environments/$id/networks/')({
   head: () => ({ meta: [{ title: 'Networks · Rivly' }] }),
   component: NetworksPage,
 })
@@ -29,7 +30,15 @@ function NetworksPage() {
         accessorKey: 'name',
         header: 'Name',
         cell: (cell) => (
-          <NameCell inUse={cell.row.original.inUse}>{cell.row.original.name}</NameCell>
+          <span className={styles.nameCell}>
+            <NameLink
+              to="/environments/$id/networks/$networkId"
+              params={{ id, networkId: cell.row.original.id }}
+            >
+              {cell.row.original.name}
+            </NameLink>
+            {!cell.row.original.inUse && <UnusedBadge />}
+          </span>
         ),
       },
       {
@@ -59,7 +68,7 @@ function NetworksPage() {
           ),
       },
     ],
-    [],
+    [id],
   )
 
   return (

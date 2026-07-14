@@ -2,6 +2,13 @@
   color: var(--fg-muted);
 }
 
+.nameCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .mount {
   display: block;
   max-width: 320px;

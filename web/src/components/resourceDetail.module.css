@@ -1,0 +1,62 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.message {
+  color: var(--fg-muted);
+  padding: 16px 0;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+}
+
+.dot {
+  color: var(--border-strong);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sectionTitle {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.labels {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.labelRow {
+  display: flex;
+  gap: 12px;
+  font-size: 0.8125rem;
+}
+
+.labelKey {
+  min-width: 180px;
+  color: var(--fg-muted);
+  overflow-wrap: anywhere;
+}
+
+.labelValue {
+  overflow-wrap: anywhere;
+}

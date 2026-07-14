@@ -28,6 +28,30 @@ export function useNetworks(envId: number) {
   return useQuery(networksQueryOptions(envId))
 }
 
+export type NetworkSubnet = { subnet: string; gateway: string }
+export type NetworkContainer = { id: string; name: string; ipv4: string }
+
+export type NetworkDetail = {
+  id: string
+  name: string
+  driver: string
+  scope: string
+  internal: boolean
+  attachable: boolean
+  created: number
+  subnets: NetworkSubnet[]
+  labels: Record<string, string> | null
+  containers: NetworkContainer[]
+}
+
+export function useNetworkDetail(envId: number, networkId: string) {
+  return useQuery({
+    queryKey: ['network', envId, networkId],
+    queryFn: () =>
+      api.get<NetworkDetail>(`/environments/${envId}/networks/${networkId}`),
+  })
+}
+
 export type CreateNetworkInput = { name: string; driver?: string; subnet?: string }
 
 export function useCreateNetwork(envId: number) {
