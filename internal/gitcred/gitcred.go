@@ -2,13 +2,6 @@ package gitcred
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"io"
-	"net/http"
-	"net/url"
-	"strings"
-	"time"
 
 	"github.com/rivly/rivly/internal/database/db"
 	"github.com/rivly/rivly/internal/secret"
@@ -114,56 +107,4 @@ func (s *Store) Credentials(ctx context.Context, id int64) (username, token stri
 		return "", "", err
 	}
 	return c.Username, string(tok), nil
-}
-
-var ErrUnauthorized = errors.New("git authentication failed")
-
-func TestAccess(ctx context.Context, repositoryURL, username, token string) error {
-	endpoint, err := infoRefsURL(repositoryURL)
-	if err != nil {
-		return err
-	}
-
-	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
-	defer cancel()
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
-	if err != nil {
-		return err
-	}
-	req.SetBasicAuth(username, token)
-	req.Header.Set("User-Agent", "git/2.0 (rivly)")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("reach repository: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<16))
-
-	switch resp.StatusCode {
-	case http.StatusOK:
-		return nil
-	case http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound:
-		return ErrUnauthorized
-	default:
-		return fmt.Errorf("unexpected status %d", resp.StatusCode)
-	}
-}
-
-func infoRefsURL(repositoryURL string) (string, error) {
-	repositoryURL = strings.TrimSpace(repositoryURL)
-	if repositoryURL == "" {
-		return "", errors.New("repository url is required")
-	}
-	u, err := url.Parse(repositoryURL)
-	if err != nil {
-		return "", fmt.Errorf("invalid repository url: %w", err)
-	}
-	if u.Scheme != "http" && u.Scheme != "https" {
-		return "", errors.New("repository url must start with http or https")
-	}
-	u.Path = strings.TrimSuffix(u.Path, "/") + "/info/refs"
-	u.RawQuery = "service=git-upload-pack"
-	return u.String(), nil
 }

@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -69,34 +68,5 @@ func TestGitCredentialsCRUD(t *testing.T) {
 	_ = delResp.Body.Close()
 	if delResp.StatusCode != http.StatusNoContent {
 		t.Fatalf("delete: want 204, got %d", delResp.StatusCode)
-	}
-}
-
-func TestGitCredentialTest(t *testing.T) {
-	srv := newTestServer(t)
-
-	git := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user, pass, _ := r.BasicAuth()
-		if user == "bob" && pass == "good" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-		w.WriteHeader(http.StatusUnauthorized)
-	}))
-	defer git.Close()
-
-	ts := httptest.NewServer(srv.Router())
-	defer ts.Close()
-
-	client := authedClient(t, ts)
-
-	ok := fmt.Sprintf(`{"repositoryUrl":%q,"username":"bob","token":"good"}`, git.URL+"/acme/app")
-	if code := postStatus(t, client, ts.URL+"/api/v1/git-credentials/test", ok); code != http.StatusOK {
-		t.Fatalf("test ok: want 200, got %d", code)
-	}
-
-	bad := fmt.Sprintf(`{"repositoryUrl":%q,"username":"bob","token":"bad"}`, git.URL+"/acme/app")
-	if code := postStatus(t, client, ts.URL+"/api/v1/git-credentials/test", bad); code != http.StatusBadGateway {
-		t.Fatalf("test bad: want 502, got %d", code)
 	}
 }

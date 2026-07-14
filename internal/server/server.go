@@ -173,7 +173,6 @@ func (s *Server) Router() http.Handler {
 				r.Use(s.requireAuth)
 				r.Get("/", s.handleListGitCredentials)
 				r.Post("/", s.handleCreateGitCredential)
-				r.Post("/test", s.handleTestGitCredential)
 				r.Put("/{id}", s.handleUpdateGitCredential)
 				r.Delete("/{id}", s.handleDeleteGitCredential)
 			})
