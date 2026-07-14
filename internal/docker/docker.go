@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/netip"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -553,6 +554,84 @@ func (m *Manager) ImagesPrune(ctx context.Context, id int64, host string, all bo
 		ImagesDeleted:  removed,
 		SpaceReclaimed: res.Report.SpaceReclaimed,
 	}, nil
+}
+
+type ImageContainer struct {
+	ID   string
+	Name string
+}
+
+type ImageDetail struct {
+	ID           string
+	Tags         []string
+	Digests      []string
+	Size         int64
+	Created      int64
+	Architecture string
+	Os           string
+	Author       string
+	WorkingDir   string
+	Command      []string
+	Entrypoint   []string
+	Env          []string
+	ExposedPorts []string
+	Labels       map[string]string
+	Containers   []ImageContainer
+}
+
+func (m *Manager) ImageDetail(ctx context.Context, id int64, host, imageID string) (ImageDetail, error) {
+	cli, err := m.clientFor(id, host)
+	if err != nil {
+		return ImageDetail{}, err
+	}
+	ctx, cancel := context.WithTimeout(ctx, callTimeout)
+	defer cancel()
+
+	res, err := cli.ImageInspect(ctx, imageID)
+	if err != nil {
+		return ImageDetail{}, err
+	}
+	r := res.InspectResponse
+
+	created := int64(0)
+	if t, perr := time.Parse(time.RFC3339, r.Created); perr == nil {
+		created = t.Unix()
+	}
+	detail := ImageDetail{
+		ID:           strings.TrimPrefix(r.ID, "sha256:"),
+		Tags:         r.RepoTags,
+		Digests:      r.RepoDigests,
+		Size:         r.Size,
+		Created:      created,
+		Architecture: r.Architecture,
+		Os:           r.Os,
+		Author:       r.Author,
+	}
+	if r.Config != nil {
+		detail.WorkingDir = r.Config.WorkingDir
+		detail.Command = r.Config.Cmd
+		detail.Entrypoint = r.Config.Entrypoint
+		detail.Env = r.Config.Env
+		detail.Labels = r.Config.Labels
+		for port := range r.Config.ExposedPorts {
+			detail.ExposedPorts = append(detail.ExposedPorts, port)
+		}
+		sort.Strings(detail.ExposedPorts)
+	}
+
+	if containers, cerr := cli.ContainerList(ctx, client.ContainerListOptions{All: true}); cerr == nil {
+		for _, c := range containers.Items {
+			if c.ImageID != r.ID {
+				continue
+			}
+			cname := ""
+			if len(c.Names) > 0 {
+				cname = strings.TrimPrefix(c.Names[0], "/")
+			}
+			detail.Containers = append(detail.Containers, ImageContainer{ID: c.ID, Name: cname})
+		}
+	}
+	return detail, nil
 }
 
 type Volume struct {

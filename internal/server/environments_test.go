@@ -28,6 +28,8 @@ type fakeDocker struct {
 	images             []docker.Image
 	imagesErr          error
 	imageActionErr     error
+	imageDetail        docker.ImageDetail
+	imageDetailErr     error
 	pullData           []docker.PullProgress
 	pullErr            error
 	pruneResult        docker.PruneResult
@@ -89,6 +91,10 @@ func (f fakeDocker) Images(_ context.Context, _ int64, _ string) ([]docker.Image
 
 func (f fakeDocker) ImageAction(_ context.Context, _ int64, _, _, _ string) error {
 	return f.imageActionErr
+}
+
+func (f fakeDocker) ImageDetail(_ context.Context, _ int64, _, _ string) (docker.ImageDetail, error) {
+	return f.imageDetail, f.imageDetailErr
 }
 
 func (f fakeDocker) ImagePull(_ context.Context, _ int64, _, _ string) (<-chan docker.PullProgress, error) {

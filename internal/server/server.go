@@ -26,6 +26,7 @@ type dockerService interface {
 	ContainerStats(ctx context.Context, id int64, host, containerID string) (<-chan docker.Stats, error)
 	Images(ctx context.Context, id int64, host string) ([]docker.Image, error)
 	ImageAction(ctx context.Context, id int64, host, imageID, action string) error
+	ImageDetail(ctx context.Context, id int64, host, imageID string) (docker.ImageDetail, error)
 	ImagePull(ctx context.Context, id int64, host, ref string) (<-chan docker.PullProgress, error)
 	ImagesPrune(ctx context.Context, id int64, host string, all bool) (docker.PruneResult, error)
 	Volumes(ctx context.Context, id int64, host string) ([]docker.Volume, error)
@@ -139,6 +140,7 @@ func (s *Server) Router() http.Handler {
 				r.Get("/{id}/images", s.handleListImages)
 				r.Post("/{id}/images/actions", s.handleImageActions)
 				r.Post("/{id}/images/prune", s.handleImagePrune)
+				r.Get("/{id}/images/{imageID}", s.handleImageDetail)
 				r.Get("/{id}/volumes", s.handleListVolumes)
 				r.Post("/{id}/volumes", s.handleCreateVolume)
 				r.Post("/{id}/volumes/actions", s.handleVolumeActions)

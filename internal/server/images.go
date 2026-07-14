@@ -60,6 +60,76 @@ func (s *Server) handleListImages(w http.ResponseWriter, r *http.Request) {
 	s.writeJSON(w, http.StatusOK, out)
 }
 
+type imageContainerResponse struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+type imageDetailResponse struct {
+	ID           string                   `json:"id"`
+	Tags         []string                 `json:"tags"`
+	Digests      []string                 `json:"digests"`
+	Size         int64                    `json:"size"`
+	Created      int64                    `json:"created"`
+	Architecture string                   `json:"architecture"`
+	Os           string                   `json:"os"`
+	Author       string                   `json:"author"`
+	WorkingDir   string                   `json:"workingDir"`
+	Command      []string                 `json:"command"`
+	Entrypoint   []string                 `json:"entrypoint"`
+	Env          []string                 `json:"env"`
+	ExposedPorts []string                 `json:"exposedPorts"`
+	Labels       map[string]string        `json:"labels"`
+	Containers   []imageContainerResponse `json:"containers"`
+}
+
+func (s *Server) handleImageDetail(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, "invalid environment id")
+		return
+	}
+	imageID := chi.URLParam(r, "imageID")
+
+	env, err := s.queries.GetEnvironment(r.Context(), id)
+	if errors.Is(err, sql.ErrNoRows) {
+		s.writeError(w, http.StatusNotFound, "environment not found")
+		return
+	}
+	if err != nil {
+		s.serverError(w, r, "could not load environment", err)
+		return
+	}
+
+	detail, err := s.docker.ImageDetail(r.Context(), env.ID, env.Url, imageID)
+	if err != nil {
+		s.writeError(w, http.StatusBadGateway, "could not inspect image")
+		return
+	}
+
+	containers := make([]imageContainerResponse, 0, len(detail.Containers))
+	for _, c := range detail.Containers {
+		containers = append(containers, imageContainerResponse{ID: c.ID, Name: c.Name})
+	}
+	s.writeJSON(w, http.StatusOK, imageDetailResponse{
+		ID:           detail.ID,
+		Tags:         detail.Tags,
+		Digests:      detail.Digests,
+		Size:         detail.Size,
+		Created:      detail.Created,
+		Architecture: detail.Architecture,
+		Os:           detail.Os,
+		Author:       detail.Author,
+		WorkingDir:   detail.WorkingDir,
+		Command:      detail.Command,
+		Entrypoint:   detail.Entrypoint,
+		Env:          detail.Env,
+		ExposedPorts: detail.ExposedPorts,
+		Labels:       detail.Labels,
+		Containers:   containers,
+	})
+}
+
 func (s *Server) handleImageActions(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {

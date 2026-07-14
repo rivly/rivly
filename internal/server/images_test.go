@@ -95,6 +95,44 @@ func TestImagePull(t *testing.T) {
 	}
 }
 
+func TestImageDetail(t *testing.T) {
+	srv := newTestServer(t)
+	srv.docker = fakeDocker{imageDetail: docker.ImageDetail{
+		ID: "abc123", Tags: []string{"nginx:latest"}, Size: 1000, Architecture: "arm64", Os: "linux",
+		Command:    []string{"nginx", "-g", "daemon off;"},
+		Containers: []docker.ImageContainer{{ID: "c1", Name: "web"}},
+	}}
+	seedEnvironment(t, srv)
+
+	ts := httptest.NewServer(srv.Router())
+	defer ts.Close()
+
+	if code := getStatus(t, &http.Client{}, ts.URL+"/api/v1/environments/1/images/abc123"); code != http.StatusUnauthorized {
+		t.Fatalf("detail without auth: want 401, got %d", code)
+	}
+
+	client := authedClient(t, ts)
+	var got imageDetailResponse
+	getJSON(t, client, ts.URL+"/api/v1/environments/1/images/abc123", &got)
+	if got.ID != "abc123" || len(got.Tags) != 1 || got.Architecture != "arm64" || len(got.Containers) != 1 || got.Containers[0].Name != "web" {
+		t.Fatalf("image detail: got %+v", got)
+	}
+}
+
+func TestImageDetailUnreachable(t *testing.T) {
+	srv := newTestServer(t)
+	srv.docker = fakeDocker{imageDetailErr: errors.New("no such image")}
+	seedEnvironment(t, srv)
+
+	ts := httptest.NewServer(srv.Router())
+	defer ts.Close()
+
+	client := authedClient(t, ts)
+	if code := getStatus(t, client, ts.URL+"/api/v1/environments/1/images/nope"); code != http.StatusBadGateway {
+		t.Fatalf("detail unreachable: want 502, got %d", code)
+	}
+}
+
 func TestImagePrune(t *testing.T) {
 	srv := newTestServer(t)
 	srv.docker = fakeDocker{pruneResult: docker.PruneResult{ImagesDeleted: 3, SpaceReclaimed: 4096}}
