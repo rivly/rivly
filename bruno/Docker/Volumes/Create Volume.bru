@@ -1,0 +1,26 @@
+meta {
+  name: Create Volume
+  type: http
+  seq: 26
+}
+
+post {
+  url: {{baseUrl}}/api/v1/environments/1/volumes
+  body: json
+  auth: none
+}
+
+headers {
+  content-type: application/json
+}
+
+body:json {
+  {
+    "name": "app_data",
+    "driver": "local"
+  }
+}
+
+assert {
+  res.status: eq 201
+}
