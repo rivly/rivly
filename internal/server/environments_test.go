@@ -37,11 +37,15 @@ type fakeDocker struct {
 	volumeActionErr    error
 	volumeCreated      docker.Volume
 	volumeCreateErr    error
+	volumeDetail       docker.VolumeDetail
+	volumeDetailErr    error
 	networks           []docker.Network
 	networksErr        error
 	networkActionErr   error
 	networkCreated     docker.CreatedNetwork
 	networkCreateErr   error
+	networkDetail      docker.NetworkDetail
+	networkDetailErr   error
 	stacks             []docker.Stack
 	stacksErr          error
 	stackActionErr     error
@@ -115,6 +119,10 @@ func (f fakeDocker) VolumeCreate(_ context.Context, _ int64, _ string, _ docker.
 	return f.volumeCreated, f.volumeCreateErr
 }
 
+func (f fakeDocker) VolumeDetail(_ context.Context, _ int64, _, _ string) (docker.VolumeDetail, error) {
+	return f.volumeDetail, f.volumeDetailErr
+}
+
 func (f fakeDocker) Networks(_ context.Context, _ int64, _ string) ([]docker.Network, error) {
 	return f.networks, f.networksErr
 }
@@ -125,6 +133,10 @@ func (f fakeDocker) NetworkAction(_ context.Context, _ int64, _, _, _ string) er
 
 func (f fakeDocker) NetworkCreate(_ context.Context, _ int64, _ string, _ docker.NetworkCreateInput) (docker.CreatedNetwork, error) {
 	return f.networkCreated, f.networkCreateErr
+}
+
+func (f fakeDocker) NetworkDetail(_ context.Context, _ int64, _, _ string) (docker.NetworkDetail, error) {
+	return f.networkDetail, f.networkDetailErr
 }
 
 func (f fakeDocker) Stacks(_ context.Context, _ int64, _ string) ([]docker.Stack, error) {

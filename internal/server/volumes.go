@@ -116,6 +116,62 @@ func (s *Server) handleCreateVolume(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+type volumeContainerResponse struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+type volumeDetailResponse struct {
+	Name       string                    `json:"name"`
+	Driver     string                    `json:"driver"`
+	Mountpoint string                    `json:"mountpoint"`
+	Scope      string                    `json:"scope"`
+	Created    int64                     `json:"created"`
+	Labels     map[string]string         `json:"labels"`
+	Options    map[string]string         `json:"options"`
+	Containers []volumeContainerResponse `json:"containers"`
+}
+
+func (s *Server) handleVolumeDetail(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, "invalid environment id")
+		return
+	}
+	name := chi.URLParam(r, "name")
+
+	env, err := s.queries.GetEnvironment(r.Context(), id)
+	if errors.Is(err, sql.ErrNoRows) {
+		s.writeError(w, http.StatusNotFound, "environment not found")
+		return
+	}
+	if err != nil {
+		s.serverError(w, r, "could not load environment", err)
+		return
+	}
+
+	detail, err := s.docker.VolumeDetail(r.Context(), env.ID, env.Url, name)
+	if err != nil {
+		s.writeError(w, http.StatusBadGateway, "could not inspect volume")
+		return
+	}
+
+	containers := make([]volumeContainerResponse, 0, len(detail.Containers))
+	for _, c := range detail.Containers {
+		containers = append(containers, volumeContainerResponse{ID: c.ID, Name: c.Name})
+	}
+	s.writeJSON(w, http.StatusOK, volumeDetailResponse{
+		Name:       detail.Name,
+		Driver:     detail.Driver,
+		Mountpoint: detail.Mountpoint,
+		Scope:      detail.Scope,
+		Created:    detail.Created,
+		Labels:     detail.Labels,
+		Options:    detail.Options,
+		Containers: containers,
+	})
+}
+
 func (s *Server) handleVolumeActions(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {

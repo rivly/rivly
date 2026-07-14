@@ -31,9 +31,11 @@ type dockerService interface {
 	Volumes(ctx context.Context, id int64, host string) ([]docker.Volume, error)
 	VolumeAction(ctx context.Context, id int64, host, volumeName, action string) error
 	VolumeCreate(ctx context.Context, id int64, host string, in docker.VolumeCreateInput) (docker.Volume, error)
+	VolumeDetail(ctx context.Context, id int64, host, name string) (docker.VolumeDetail, error)
 	Networks(ctx context.Context, id int64, host string) ([]docker.Network, error)
 	NetworkAction(ctx context.Context, id int64, host, networkID, action string) error
 	NetworkCreate(ctx context.Context, id int64, host string, in docker.NetworkCreateInput) (docker.CreatedNetwork, error)
+	NetworkDetail(ctx context.Context, id int64, host, networkID string) (docker.NetworkDetail, error)
 	Stacks(ctx context.Context, id int64, host string) ([]docker.Stack, error)
 	StackAction(ctx context.Context, id int64, host, project, action string) error
 	ContainerLogs(ctx context.Context, id int64, host, containerID string, tail int, follow bool) (<-chan docker.LogLine, error)
@@ -140,9 +142,11 @@ func (s *Server) Router() http.Handler {
 				r.Get("/{id}/volumes", s.handleListVolumes)
 				r.Post("/{id}/volumes", s.handleCreateVolume)
 				r.Post("/{id}/volumes/actions", s.handleVolumeActions)
+				r.Get("/{id}/volumes/{name}", s.handleVolumeDetail)
 				r.Get("/{id}/networks", s.handleListNetworks)
 				r.Post("/{id}/networks", s.handleCreateNetwork)
 				r.Post("/{id}/networks/actions", s.handleNetworkActions)
+				r.Get("/{id}/networks/{networkID}", s.handleNetworkDetail)
 			})
 		})
 	})

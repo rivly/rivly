@@ -103,6 +103,44 @@ func TestCreateNetworkUnreachable(t *testing.T) {
 	}
 }
 
+func TestNetworkDetail(t *testing.T) {
+	srv := newTestServer(t)
+	srv.docker = fakeDocker{networkDetail: docker.NetworkDetail{
+		ID: "net123", Name: "app_net", Driver: "bridge", Scope: "local",
+		Subnets:    []docker.NetworkSubnet{{Subnet: "172.20.0.0/16", Gateway: "172.20.0.1"}},
+		Containers: []docker.NetworkContainer{{ID: "c1", Name: "web", IPv4: "172.20.0.2/16"}},
+	}}
+	seedEnvironment(t, srv)
+
+	ts := httptest.NewServer(srv.Router())
+	defer ts.Close()
+
+	if code := getStatus(t, &http.Client{}, ts.URL+"/api/v1/environments/1/networks/net123"); code != http.StatusUnauthorized {
+		t.Fatalf("detail without auth: want 401, got %d", code)
+	}
+
+	client := authedClient(t, ts)
+	var got networkDetailResponse
+	getJSON(t, client, ts.URL+"/api/v1/environments/1/networks/net123", &got)
+	if got.Name != "app_net" || len(got.Subnets) != 1 || got.Subnets[0].Subnet != "172.20.0.0/16" || len(got.Containers) != 1 || got.Containers[0].Name != "web" {
+		t.Fatalf("network detail: got %+v", got)
+	}
+}
+
+func TestNetworkDetailUnreachable(t *testing.T) {
+	srv := newTestServer(t)
+	srv.docker = fakeDocker{networkDetailErr: errors.New("no such network")}
+	seedEnvironment(t, srv)
+
+	ts := httptest.NewServer(srv.Router())
+	defer ts.Close()
+
+	client := authedClient(t, ts)
+	if code := getStatus(t, client, ts.URL+"/api/v1/environments/1/networks/nope"); code != http.StatusBadGateway {
+		t.Fatalf("detail unreachable: want 502, got %d", code)
+	}
+}
+
 func TestListNetworksUnreachable(t *testing.T) {
 	srv := newTestServer(t)
 	srv.docker = fakeDocker{networksErr: errors.New("cannot connect")}

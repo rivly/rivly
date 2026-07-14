@@ -98,6 +98,43 @@ func TestCreateVolumeUnreachable(t *testing.T) {
 	}
 }
 
+func TestVolumeDetail(t *testing.T) {
+	srv := newTestServer(t)
+	srv.docker = fakeDocker{volumeDetail: docker.VolumeDetail{
+		Name: "app_data", Driver: "local", Mountpoint: "/data", Scope: "local",
+		Containers: []docker.VolumeContainer{{ID: "c1", Name: "web"}},
+	}}
+	seedEnvironment(t, srv)
+
+	ts := httptest.NewServer(srv.Router())
+	defer ts.Close()
+
+	if code := getStatus(t, &http.Client{}, ts.URL+"/api/v1/environments/1/volumes/app_data"); code != http.StatusUnauthorized {
+		t.Fatalf("detail without auth: want 401, got %d", code)
+	}
+
+	client := authedClient(t, ts)
+	var got volumeDetailResponse
+	getJSON(t, client, ts.URL+"/api/v1/environments/1/volumes/app_data", &got)
+	if got.Name != "app_data" || got.Driver != "local" || len(got.Containers) != 1 || got.Containers[0].Name != "web" {
+		t.Fatalf("volume detail: got %+v", got)
+	}
+}
+
+func TestVolumeDetailUnreachable(t *testing.T) {
+	srv := newTestServer(t)
+	srv.docker = fakeDocker{volumeDetailErr: errors.New("no such volume")}
+	seedEnvironment(t, srv)
+
+	ts := httptest.NewServer(srv.Router())
+	defer ts.Close()
+
+	client := authedClient(t, ts)
+	if code := getStatus(t, client, ts.URL+"/api/v1/environments/1/volumes/nope"); code != http.StatusBadGateway {
+		t.Fatalf("detail unreachable: want 502, got %d", code)
+	}
+}
+
 func TestListVolumesUnreachable(t *testing.T) {
 	srv := newTestServer(t)
 	srv.docker = fakeDocker{volumesErr: errors.New("cannot connect")}

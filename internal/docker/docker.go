@@ -662,6 +662,67 @@ func (m *Manager) VolumeCreate(ctx context.Context, id int64, host string, in Vo
 	}, nil
 }
 
+type VolumeContainer struct {
+	ID   string
+	Name string
+}
+
+type VolumeDetail struct {
+	Name       string
+	Driver     string
+	Mountpoint string
+	Scope      string
+	Created    int64
+	Labels     map[string]string
+	Options    map[string]string
+	Containers []VolumeContainer
+}
+
+func (m *Manager) VolumeDetail(ctx context.Context, id int64, host, name string) (VolumeDetail, error) {
+	cli, err := m.clientFor(id, host)
+	if err != nil {
+		return VolumeDetail{}, err
+	}
+	ctx, cancel := context.WithTimeout(ctx, callTimeout)
+	defer cancel()
+
+	res, err := cli.VolumeInspect(ctx, name, client.VolumeInspectOptions{})
+	if err != nil {
+		return VolumeDetail{}, err
+	}
+	v := res.Volume
+	created := int64(0)
+	if t, perr := time.Parse(time.RFC3339, v.CreatedAt); perr == nil {
+		created = t.Unix()
+	}
+	detail := VolumeDetail{
+		Name:       v.Name,
+		Driver:     v.Driver,
+		Mountpoint: v.Mountpoint,
+		Scope:      v.Scope,
+		Created:    created,
+		Labels:     v.Labels,
+		Options:    v.Options,
+	}
+
+	if containers, cerr := cli.ContainerList(ctx, client.ContainerListOptions{All: true}); cerr == nil {
+		for _, c := range containers.Items {
+			for _, mnt := range c.Mounts {
+				if mnt.Name != name {
+					continue
+				}
+				cname := ""
+				if len(c.Names) > 0 {
+					cname = strings.TrimPrefix(c.Names[0], "/")
+				}
+				detail.Containers = append(detail.Containers, VolumeContainer{ID: c.ID, Name: cname})
+				break
+			}
+		}
+	}
+	return detail, nil
+}
+
 var predefinedNetworks = map[string]bool{"bridge": true, "host": true, "none": true}
 
 type Network struct {
@@ -767,6 +828,76 @@ func (m *Manager) NetworkCreate(ctx context.Context, id int64, host string, in N
 		return CreatedNetwork{}, err
 	}
 	return CreatedNetwork{ID: res.ID, Warning: strings.Join(res.Warning, "; ")}, nil
+}
+
+type NetworkSubnet struct {
+	Subnet  string
+	Gateway string
+}
+
+type NetworkContainer struct {
+	ID   string
+	Name string
+	IPv4 string
+}
+
+type NetworkDetail struct {
+	ID         string
+	Name       string
+	Driver     string
+	Scope      string
+	Internal   bool
+	Attachable bool
+	Created    int64
+	Subnets    []NetworkSubnet
+	Labels     map[string]string
+	Containers []NetworkContainer
+}
+
+func (m *Manager) NetworkDetail(ctx context.Context, id int64, host, networkID string) (NetworkDetail, error) {
+	cli, err := m.clientFor(id, host)
+	if err != nil {
+		return NetworkDetail{}, err
+	}
+	ctx, cancel := context.WithTimeout(ctx, callTimeout)
+	defer cancel()
+
+	res, err := cli.NetworkInspect(ctx, networkID, client.NetworkInspectOptions{})
+	if err != nil {
+		return NetworkDetail{}, err
+	}
+	n := res.Network
+	detail := NetworkDetail{
+		ID:         n.ID,
+		Name:       n.Name,
+		Driver:     n.Driver,
+		Scope:      n.Scope,
+		Internal:   n.Internal,
+		Attachable: n.Attachable,
+		Created:    n.Created.Unix(),
+		Labels:     n.Labels,
+	}
+	for _, cfg := range n.IPAM.Config {
+		subnet := ""
+		if cfg.Subnet.IsValid() {
+			subnet = cfg.Subnet.String()
+		}
+		gateway := ""
+		if cfg.Gateway.IsValid() {
+			gateway = cfg.Gateway.String()
+		}
+		if subnet != "" || gateway != "" {
+			detail.Subnets = append(detail.Subnets, NetworkSubnet{Subnet: subnet, Gateway: gateway})
+		}
+	}
+	for cid, ep := range n.Containers {
+		ipv4 := ""
+		if ep.IPv4Address.IsValid() {
+			ipv4 = ep.IPv4Address.String()
+		}
+		detail.Containers = append(detail.Containers, NetworkContainer{ID: cid, Name: ep.Name, IPv4: ipv4})
+	}
+	return detail, nil
 }
 
 type Stack struct {
