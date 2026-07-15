@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/rivly/rivly/internal/database/db"
 )
@@ -20,11 +21,12 @@ func mustHashDecoy() string {
 }
 
 type Local struct {
-	store Store
+	store    Store
+	beginner Beginner
 }
 
-func NewLocal(store Store) *Local {
-	return &Local{store: store}
+func NewLocal(store Store, beginner Beginner) *Local {
+	return &Local{store: store, beginner: beginner}
 }
 
 func (l *Local) Register(ctx context.Context, email, password, displayName, role string) (db.User, error) {
@@ -32,20 +34,30 @@ func (l *Local) Register(ctx context.Context, email, password, displayName, role
 	if err != nil {
 		return db.User{}, err
 	}
-	user, err := l.store.CreateUser(ctx, db.CreateUserParams{
+
+	tx, err := l.beginner.BeginTx(ctx, nil)
+	if err != nil {
+		return db.User{}, fmt.Errorf("begin registration: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	queries := l.store.WithTx(tx)
+	user, err := queries.CreateUser(ctx, db.CreateUserParams{
 		Email:       normalizeEmail(email),
 		DisplayName: displayName,
 		Role:        role,
 	})
 	if err != nil {
-		return db.User{}, err
+		return db.User{}, fmt.Errorf("create user: %w", err)
 	}
-	_, err = l.store.CreatePasswordCredential(ctx, db.CreatePasswordCredentialParams{
+	if _, err := queries.CreatePasswordCredential(ctx, db.CreatePasswordCredentialParams{
 		UserID: user.ID,
 		Secret: sql.NullString{String: hash, Valid: true},
-	})
-	if err != nil {
-		return db.User{}, err
+	}); err != nil {
+		return db.User{}, fmt.Errorf("create password credential: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return db.User{}, fmt.Errorf("commit registration: %w", err)
 	}
 	return user, nil
 }

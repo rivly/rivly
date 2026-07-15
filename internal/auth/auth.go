@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"strings"
 
@@ -15,6 +16,11 @@ type Store interface {
 	GetUserByEmail(ctx context.Context, email string) (db.User, error)
 	CreatePasswordCredential(ctx context.Context, arg db.CreatePasswordCredentialParams) (db.Credential, error)
 	GetPasswordCredential(ctx context.Context, userID int64) (db.Credential, error)
+	WithTx(tx *sql.Tx) *db.Queries
+}
+
+type Beginner interface {
+	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
 }
 
 type Authenticator interface {

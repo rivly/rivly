@@ -64,7 +64,7 @@ func run(logger *slog.Logger) error {
 	composeRunner := compose.NewRunner(cfg.ComposeBin, cfg.DataDir)
 	eventsHub := events.NewHub()
 	sessions := auth.NewSessionManager(sqlDB)
-	local := auth.NewLocal(queries)
+	local := auth.NewLocal(queries, sqlDB)
 	srv := server.New(logger, queries, sessions, local, dockerManager, composeRunner, eventsHub, registries, gitCredentials, cfg)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

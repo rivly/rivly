@@ -39,7 +39,7 @@ func newTestServer(t *testing.T) *Server {
 	}
 	registries := registry.NewStore(queries, cipher)
 	gitCredentials := gitcred.NewStore(queries, cipher)
-	return New(logger, queries, auth.NewSessionManager(sqlDB), auth.NewLocal(queries), fakeDocker{}, fakeCompose{}, events.NewHub(), registries, gitCredentials, config.Config{})
+	return New(logger, queries, auth.NewSessionManager(sqlDB), auth.NewLocal(queries, sqlDB), fakeDocker{}, fakeCompose{}, events.NewHub(), registries, gitCredentials, config.Config{})
 }
 
 func TestAuthFlow(t *testing.T) {
