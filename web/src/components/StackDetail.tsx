@@ -3,6 +3,7 @@ import { LuCloudDownload, LuPencil } from 'react-icons/lu'
 import { ApiError } from '../lib/api'
 import { useContainers } from '../lib/containers'
 import {
+  pollLabel,
   useDeployStack,
   useStackDetail,
   useStacks,
@@ -186,9 +187,7 @@ export function StackDetail({ envId, name }: { envId: number; name: string }) {
             <div className={styles.labelRow}>
               <span className={styles.labelKey}>Automatic updates</span>
               <span className={styles.labelValue}>
-                {git.autoUpdate
-                  ? `every ${Math.max(1, Math.round(git.pollInterval / 60))} min`
-                  : 'off'}
+                {git.autoUpdate ? `every ${pollLabel(git.pollInterval)}` : 'off'}
               </span>
             </div>
             {git.autoUpdate && git.lastCheckedAt > 0 && (

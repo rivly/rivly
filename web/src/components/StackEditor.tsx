@@ -6,7 +6,10 @@ import { LuArrowLeft, LuGitBranch, LuPencil, LuPlus, LuUpload, LuX } from 'react
 import { ApiError } from '../lib/api'
 import { useGitCredentials } from '../lib/gitCredentials'
 import {
+  DEFAULT_POLL,
+  POLL_ITEMS,
   fetchStackContent,
+  pollValue,
   useDeployStack,
   type DeployStackInput,
   type EnvVar,
@@ -36,23 +39,6 @@ type GitFields = {
 }
 
 const NO_CREDENTIAL = '0'
-const DEFAULT_POLL = '30'
-
-const POLL_ITEMS = [
-  { label: '15 seconds', value: '15' },
-  { label: '30 seconds', value: '30' },
-  { label: '45 seconds', value: '45' },
-  { label: '1 minute', value: '60' },
-  { label: '2 minutes', value: '120' },
-  { label: '5 minutes', value: '300' },
-  { label: '10 minutes', value: '600' },
-  { label: '30 minutes', value: '1800' },
-]
-
-function pollValue(seconds: number): string {
-  const match = POLL_ITEMS.find((item) => item.value === String(seconds))
-  return match ? match.value : DEFAULT_POLL
-}
 
 function snapshot(content: string, env: EnvVar[], git: GitFields | null): string {
   return JSON.stringify({ content, env, git })
@@ -326,7 +312,7 @@ export function StackEditor({ envId, name: editName }: Props) {
               autoComplete="off"
               spellCheck={false}
             />
-            <span className={styles.gitHint}>An http or https URL. SSH is not supported yet.</span>
+            <span className={styles.gitHint}>An http or https URL.</span>
           </label>
 
           <div className={styles.gitRow}>

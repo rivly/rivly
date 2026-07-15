@@ -65,6 +65,27 @@ export type GitSource = {
   pollInterval: number
 }
 
+export const DEFAULT_POLL = '30'
+
+export const POLL_ITEMS = [
+  { label: '15 seconds', value: '15' },
+  { label: '30 seconds', value: '30' },
+  { label: '45 seconds', value: '45' },
+  { label: '1 minute', value: '60' },
+  { label: '2 minutes', value: '120' },
+  { label: '5 minutes', value: '300' },
+  { label: '10 minutes', value: '600' },
+  { label: '30 minutes', value: '1800' },
+]
+
+export function pollValue(seconds: number): string {
+  return POLL_ITEMS.find((item) => item.value === String(seconds))?.value ?? DEFAULT_POLL
+}
+
+export function pollLabel(seconds: number): string {
+  return POLL_ITEMS.find((item) => item.value === String(seconds))?.label ?? `${seconds} seconds`
+}
+
 export type GitDetail = GitSource & {
   commit: string
   lastCheckedAt: number
