@@ -1,7 +1,9 @@
 package server
 
 import (
+	"bufio"
 	"log/slog"
+	"net"
 	"net/http"
 	"runtime/debug"
 	"strings"
@@ -110,4 +112,13 @@ func (w *secureCookieWriter) WriteHeader(status int) {
 func (w *secureCookieWriter) Write(b []byte) (int, error) {
 	w.patch()
 	return w.ResponseWriter.Write(b)
+}
+
+func (w *secureCookieWriter) Flush() {
+	w.patch()
+	_ = http.NewResponseController(w.ResponseWriter).Flush()
+}
+
+func (w *secureCookieWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	return http.NewResponseController(w.ResponseWriter).Hijack()
 }

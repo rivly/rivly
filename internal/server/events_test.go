@@ -25,13 +25,29 @@ func TestEventsStreamRequiresAuth(t *testing.T) {
 }
 
 func TestEventsStreamDelivers(t *testing.T) {
+	assertEventsStreamDelivers(t, "")
+}
+
+func TestEventsStreamDeliversBehindTLSProxy(t *testing.T) {
+	assertEventsStreamDelivers(t, "https")
+}
+
+func assertEventsStreamDelivers(t *testing.T, forwardedProto string) {
+	t.Helper()
 	srv := newTestServer(t)
 	ts := httptest.NewServer(srv.Router())
 	defer ts.Close()
 
 	client := authedClient(t, ts)
 
-	resp, err := client.Get(ts.URL + "/api/v1/events")
+	req, err := http.NewRequest(http.MethodGet, ts.URL+"/api/v1/events", nil)
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	if forwardedProto != "" {
+		req.Header.Set("X-Forwarded-Proto", forwardedProto)
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("GET events: %v", err)
 	}
