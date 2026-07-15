@@ -150,10 +150,20 @@ func validateSetup(in credentialsInput) (email string, message string, ok bool) 
 	if err != nil {
 		return "", "a valid email address is required", false
 	}
+	if msg, ok := validateDisplayName(strings.TrimSpace(in.DisplayName)); !ok {
+		return "", msg, false
+	}
 	if msg, ok := validatePassword(in.Password); !ok {
 		return "", msg, false
 	}
 	return strings.ToLower(addr.Address), "", true
+}
+
+func validateDisplayName(name string) (message string, ok bool) {
+	if len(name) > maxDisplayName {
+		return "display name is too long", false
+	}
+	return "", true
 }
 
 func validatePassword(password string) (message string, ok bool) {

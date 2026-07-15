@@ -3,12 +3,14 @@ package server
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/rivly/rivly/internal/auth"
@@ -125,6 +127,30 @@ func TestSetupRequiresTheSetupToken(t *testing.T) {
 
 	if code := postStatus(t, client, ts.URL+"/api/v1/setup", testCreds); code != http.StatusCreated {
 		t.Fatalf("setup with the right token: want 201, got %d", code)
+	}
+}
+
+func TestSetupRejectsAnOversizedDisplayName(t *testing.T) {
+	ts := httptest.NewServer(newTestServer(t).Router())
+	defer ts.Close()
+
+	jar, _ := cookiejar.New(nil)
+	client := &http.Client{Jar: jar}
+
+	body := fmt.Sprintf(
+		`{"email":"admin@rivly.dev","password":"s3cret-password","displayName":%q,"token":%q}`,
+		strings.Repeat("a", maxDisplayName+1), testSetupToken,
+	)
+	if code := postStatus(t, client, ts.URL+"/api/v1/setup", body); code != http.StatusBadRequest {
+		t.Fatalf("setup with an oversized display name: want 400, got %d", code)
+	}
+
+	var status struct {
+		NeedsSetup bool `json:"needsSetup"`
+	}
+	getJSON(t, client, ts.URL+"/api/v1/setup", &status)
+	if !status.NeedsSetup {
+		t.Fatal("a rejected setup must not create the account")
 	}
 }
 

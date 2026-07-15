@@ -29,8 +29,8 @@ func (s *Server) handleUpdateProfile(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, http.StatusBadRequest, "display name is required")
 		return
 	}
-	if len(name) > maxDisplayName {
-		s.writeError(w, http.StatusBadRequest, "display name is too long")
+	if msg, ok := validateDisplayName(name); !ok {
+		s.writeError(w, http.StatusBadRequest, msg)
 		return
 	}
 
