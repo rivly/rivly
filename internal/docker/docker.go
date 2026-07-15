@@ -37,14 +37,19 @@ const (
 
 type AuthResolver func(ctx context.Context, ref string) string
 
+type cachedClient struct {
+	host string
+	cli  *client.Client
+}
+
 type Manager struct {
 	mu      sync.Mutex
-	clients map[int64]*client.Client
+	clients map[int64]cachedClient
 	authFor AuthResolver
 }
 
 func NewManager() *Manager {
-	return &Manager{clients: make(map[int64]*client.Client)}
+	return &Manager{clients: make(map[int64]cachedClient)}
 }
 
 func (m *Manager) SetAuthResolver(fn AuthResolver) {
@@ -86,14 +91,18 @@ func (m *Manager) clientFor(id int64, host string) (*client.Client, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if c, ok := m.clients[id]; ok {
-		return c, nil
+		if c.host == host {
+			return c.cli, nil
+		}
+		_ = c.cli.Close()
+		delete(m.clients, id)
 	}
-	c, err := client.New(client.WithHost(host))
+	cli, err := client.New(client.WithHost(host))
 	if err != nil {
 		return nil, err
 	}
-	m.clients[id] = c
-	return c, nil
+	m.clients[id] = cachedClient{host: host, cli: cli}
+	return cli, nil
 }
 
 func (m *Manager) Ping(ctx context.Context, id int64, host string) Status {
@@ -1470,7 +1479,7 @@ func (m *Manager) Close() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for id, c := range m.clients {
-		_ = c.Close()
+		_ = c.cli.Close()
 		delete(m.clients, id)
 	}
 }

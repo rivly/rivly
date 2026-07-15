@@ -45,3 +45,23 @@ func TestClientCached(t *testing.T) {
 		t.Fatal("expected the cached client to be reused for the same id")
 	}
 }
+
+func TestClientRebuiltWhenHostChanges(t *testing.T) {
+	m := NewManager()
+	defer m.Close()
+
+	before, err := m.clientFor(1, missingSocket)
+	if err != nil {
+		t.Fatalf("clientFor: %v", err)
+	}
+	after, err := m.clientFor(1, "unix:///tmp/rivly-moved.sock")
+	if err != nil {
+		t.Fatalf("clientFor: %v", err)
+	}
+	if before == after {
+		t.Fatal("a changed environment url must not keep talking to the old host")
+	}
+	if got := len(m.clients); got != 1 {
+		t.Fatalf("the stale client must be replaced, not accumulated: %d cached", got)
+	}
+}
