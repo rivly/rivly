@@ -32,7 +32,10 @@ func main() {
 }
 
 func run(logger *slog.Logger) error {
-	cfg := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
 
 	sqlDB, err := database.Open(cfg.DatabasePath)
 	if err != nil {
