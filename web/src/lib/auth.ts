@@ -76,6 +76,23 @@ export function useLogin() {
   })
 }
 
+export function useUpdateProfile() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { displayName: string }) => api.put<User>('/me', input),
+    onSuccess: (user) => {
+      queryClient.setQueryData(['me'], user)
+    },
+  })
+}
+
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: (input: { currentPassword: string; newPassword: string }) =>
+      api.post<void>('/me/password', input),
+  })
+}
+
 export function useLogout() {
   const queryClient = useQueryClient()
   return useMutation({

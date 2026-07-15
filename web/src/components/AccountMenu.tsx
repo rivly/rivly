@@ -1,6 +1,6 @@
 import { Menu } from '@base-ui/react/menu'
-import { useNavigate } from '@tanstack/react-router'
-import { LuChevronDown, LuLogOut } from 'react-icons/lu'
+import { Link, useNavigate } from '@tanstack/react-router'
+import { LuChevronDown, LuLogOut, LuUser } from 'react-icons/lu'
 import { useLogout, useMe } from '../lib/auth'
 import styles from './AccountMenu.module.css'
 
@@ -29,6 +29,13 @@ export function AccountMenu() {
               <span className={styles.infoEmail}>{me?.email}</span>
             </div>
             <Menu.Separator className={styles.separator} />
+            <Menu.Item
+              className={styles.item}
+              render={<Link to="/account" />}
+            >
+              <LuUser className={styles.itemIcon} />
+              Account
+            </Menu.Item>
             <Menu.Item
               className={styles.item}
               onClick={() =>
