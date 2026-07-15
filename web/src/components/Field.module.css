@@ -48,6 +48,19 @@
   color: var(--fg-muted);
 }
 
+.hint {
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+}
+
+.hint code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--bg-subtle);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
 .error {
   font-size: 0.8125rem;
   color: var(--danger-strong);

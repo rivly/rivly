@@ -21,6 +21,10 @@ export type Credentials = {
   displayName?: string
 }
 
+export type SetupCredentials = Credentials & {
+  token: string
+}
+
 export const setupQueryOptions = queryOptions({
   queryKey: ['setup'],
   queryFn: () => api.get<{ needsSetup: boolean }>('/setup'),
@@ -56,7 +60,7 @@ export function useMe() {
 export function useSetup() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (credentials: Credentials) =>
+    mutationFn: (credentials: SetupCredentials) =>
       api.post<User>('/setup', credentials),
     onSuccess: (user) => {
       queryClient.setQueryData(['me'], user)

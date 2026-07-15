@@ -40,6 +40,7 @@ function SetupPage() {
         email: String(form.get('email')),
         password: String(form.get('password')),
         displayName: String(form.get('displayName')),
+        token: String(form.get('token')).trim(),
       },
       {
         onSuccess: () => navigate({ to: '/' }),
@@ -73,6 +74,20 @@ function SetupPage() {
           name="password"
           autoComplete="new-password"
           minLength={8}
+          required
+        />
+        <Field
+          label="Setup token"
+          name="token"
+          autoComplete="off"
+          spellCheck={false}
+          placeholder="Paste the token from the server logs"
+          hint={
+            <>
+              Rivly printed this token when it started. Run{' '}
+              <code>docker logs rivly</code> to find it.
+            </>
+          }
           required
         />
         <FormError message={error} />
