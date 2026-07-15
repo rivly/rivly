@@ -1,0 +1,15 @@
+-- +goose Up
+ALTER TABLE stacks ADD COLUMN source TEXT NOT NULL DEFAULT 'content';
+ALTER TABLE stacks ADD COLUMN git_url TEXT NOT NULL DEFAULT '';
+ALTER TABLE stacks ADD COLUMN git_ref TEXT NOT NULL DEFAULT '';
+ALTER TABLE stacks ADD COLUMN git_path TEXT NOT NULL DEFAULT '';
+ALTER TABLE stacks ADD COLUMN git_credential_id INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE stacks ADD COLUMN git_commit TEXT NOT NULL DEFAULT '';
+
+-- +goose Down
+ALTER TABLE stacks DROP COLUMN git_commit;
+ALTER TABLE stacks DROP COLUMN git_credential_id;
+ALTER TABLE stacks DROP COLUMN git_path;
+ALTER TABLE stacks DROP COLUMN git_ref;
+ALTER TABLE stacks DROP COLUMN git_url;
+ALTER TABLE stacks DROP COLUMN source;

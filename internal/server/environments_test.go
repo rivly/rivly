@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 
 	"github.com/rivly/rivly/internal/database/db"
@@ -186,6 +187,7 @@ type fakeCompose struct {
 	deployOut string
 	deployErr error
 	removeErr error
+	repoDir   string
 }
 
 func (f fakeCompose) Deploy(_ context.Context, _ string, _ int64, _, _, _ string) (string, error) {
@@ -197,6 +199,20 @@ func (f fakeCompose) Remove(_ context.Context, _ string, _ int64, _, _, _ string
 }
 
 func (f fakeCompose) Discard(_ context.Context, _ string, _ int64, _ string) {}
+
+func (f fakeCompose) RepoDir(_ int64, project string) string {
+	return filepath.Join(f.repoDir, project)
+}
+
+func (f fakeCompose) DeployRepo(_ context.Context, _ string, _ int64, _, _, _ string) (string, error) {
+	return f.deployOut, f.deployErr
+}
+
+func (f fakeCompose) RemoveRepo(_ context.Context, _ string, _ int64, _, _, _ string) (string, error) {
+	return "", f.removeErr
+}
+
+func (f fakeCompose) DiscardRepo(_ context.Context, _ string, _ int64, _, _ string) {}
 
 const testCreds = `{"email":"admin@rivly.dev","password":"s3cret-password","displayName":"Admin"}`
 

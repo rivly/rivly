@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -15,11 +17,18 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rivly/rivly/internal/database/db"
+	"github.com/rivly/rivly/internal/gitrepo"
+)
+
+const (
+	sourceContent = "content"
+	sourceGit     = "git"
 )
 
 type stackResponse struct {
 	Name       string `json:"name"`
 	Type       string `json:"type"`
+	Source     string `json:"source"`
 	Services   int    `json:"services"`
 	Running    int    `json:"running"`
 	Total      int    `json:"total"`
@@ -83,6 +92,7 @@ func (s *Server) handleListStacks(w http.ResponseWriter, r *http.Request) {
 		}
 		if m, ok := managed[d.Name]; ok {
 			sr.Type = "rivly"
+			sr.Source = m.Source
 			sr.CreatedAt = m.CreatedAt
 			sr.UpdatedAt = m.UpdatedAt
 			sr.CreatedBy = m.CreatedBy
@@ -95,6 +105,7 @@ func (s *Server) handleListStacks(w http.ResponseWriter, r *http.Request) {
 			merged[name] = stackResponse{
 				Name:      name,
 				Type:      "rivly",
+				Source:    m.Source,
 				State:     "stopped",
 				CreatedAt: m.CreatedAt,
 				UpdatedAt: m.UpdatedAt,
@@ -142,10 +153,19 @@ func parseEnvVars(stored string) []envVar {
 	return vars
 }
 
+type gitSource struct {
+	URL          string `json:"url"`
+	Ref          string `json:"ref"`
+	Path         string `json:"path"`
+	CredentialID int64  `json:"credentialId"`
+}
+
 type deployStackRequest struct {
-	Name    string   `json:"name"`
-	Content string   `json:"content"`
-	Env     []envVar `json:"env"`
+	Name    string     `json:"name"`
+	Source  string     `json:"source"`
+	Content string     `json:"content"`
+	Env     []envVar   `json:"env"`
+	Git     *gitSource `json:"git"`
 }
 
 func (s *Server) handleDeployStack(w http.ResponseWriter, r *http.Request) {
@@ -165,8 +185,13 @@ func (s *Server) handleDeployStack(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, http.StatusBadRequest, "name must be lowercase letters, digits, - or _")
 		return
 	}
-	if strings.TrimSpace(req.Content) == "" {
-		s.writeError(w, http.StatusBadRequest, "compose file is empty")
+
+	source := strings.TrimSpace(req.Source)
+	if source == "" {
+		source = sourceContent
+	}
+	if source != sourceContent && source != sourceGit {
+		s.writeError(w, http.StatusBadRequest, "invalid stack source")
 		return
 	}
 
@@ -188,36 +213,128 @@ func (s *Server) handleDeployStack(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, http.StatusBadRequest, "invalid environment variables")
 		return
 	}
+	envContent := envFileContent(req.Env)
+	author := s.currentUserName(r)
 
-	out, derr := s.compose.Deploy(r.Context(), env.Url, env.ID, name, req.Content, envFileContent(req.Env))
-	if derr != nil {
-		s.logger.Warn("stack deploy failed", "stack", name, "err", derr)
-		if isNew {
-			s.compose.Discard(r.Context(), env.Url, env.ID, name)
-		}
-		s.writeError(w, http.StatusUnprocessableEntity, composeError(out))
-		return
-	}
-
-	author := ""
-	if user, uerr := s.queries.GetUserByID(r.Context(), s.sessions.GetInt64(r.Context(), sessionUserID)); uerr == nil {
-		author = user.DisplayName
-	}
-
-	if _, err := s.queries.UpsertStack(r.Context(), db.UpsertStackParams{
+	params := db.UpsertStackParams{
 		EnvID:     env.ID,
 		Name:      name,
-		Content:   req.Content,
 		Env:       string(envJSON),
 		CreatedBy: author,
 		UpdatedBy: author,
-	}); err != nil {
+		Source:    source,
+	}
+
+	if source == sourceGit {
+		if !s.deployGitStack(w, r, env, name, &params, req.Git, envContent, isNew) {
+			return
+		}
+	} else {
+		if strings.TrimSpace(req.Content) == "" {
+			s.writeError(w, http.StatusBadRequest, "compose file is empty")
+			return
+		}
+		out, derr := s.compose.Deploy(r.Context(), env.Url, env.ID, name, req.Content, envContent)
+		if derr != nil {
+			s.logger.Warn("stack deploy failed", "stack", name, "err", derr)
+			if isNew {
+				s.compose.Discard(r.Context(), env.Url, env.ID, name)
+			}
+			s.writeError(w, http.StatusUnprocessableEntity, composeError(out))
+			return
+		}
+		params.Content = req.Content
+	}
+
+	if _, err := s.queries.UpsertStack(r.Context(), params); err != nil {
 		s.serverError(w, r, "could not save stack", err)
 		return
 	}
 
 	s.publishEnvironment(r.Context(), env)
 	s.writeJSON(w, http.StatusOK, map[string]string{"name": name})
+}
+
+func (s *Server) deployGitStack(
+	w http.ResponseWriter,
+	r *http.Request,
+	env db.Environment,
+	name string,
+	params *db.UpsertStackParams,
+	src *gitSource,
+	envContent string,
+	isNew bool,
+) bool {
+	if src == nil {
+		s.writeError(w, http.StatusBadRequest, "git settings are required")
+		return false
+	}
+
+	repoURL, err := gitrepo.NormalizeURL(src.URL)
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, err.Error())
+		return false
+	}
+	path, err := gitrepo.ComposePath(src.Path)
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, err.Error())
+		return false
+	}
+
+	opts := gitrepo.Options{URL: repoURL, Ref: strings.TrimSpace(src.Ref)}
+	if src.CredentialID != 0 {
+		username, token, cerr := s.gitcreds.Credentials(r.Context(), src.CredentialID)
+		if cerr != nil {
+			s.writeError(w, http.StatusBadRequest, "git credential not found")
+			return false
+		}
+		opts.Username, opts.Token = username, token
+	}
+
+	repoDir := s.compose.RepoDir(env.ID, name)
+	commit, err := gitrepo.Clone(r.Context(), repoDir, opts)
+	if err != nil {
+		s.logger.Warn("stack clone failed", "stack", name, "url", repoURL, "err", err)
+		s.writeError(w, http.StatusUnprocessableEntity, gitError(err))
+		return false
+	}
+
+	content, err := os.ReadFile(filepath.Join(repoDir, filepath.FromSlash(path)))
+	if err != nil {
+		s.logger.Warn("compose file missing in repository", "stack", name, "path", path, "err", err)
+		s.writeError(w, http.StatusUnprocessableEntity, "compose file not found in the repository")
+		return false
+	}
+
+	out, derr := s.compose.DeployRepo(r.Context(), env.Url, env.ID, name, path, envContent)
+	if derr != nil {
+		s.logger.Warn("git stack deploy failed", "stack", name, "err", derr)
+		if isNew {
+			s.compose.DiscardRepo(r.Context(), env.Url, env.ID, name, path)
+		}
+		s.writeError(w, http.StatusUnprocessableEntity, composeError(out))
+		return false
+	}
+
+	params.Content = string(content)
+	params.GitUrl = repoURL
+	params.GitRef = strings.TrimSpace(src.Ref)
+	params.GitPath = path
+	params.GitCredentialID = src.CredentialID
+	params.GitCommit = commit
+	return true
+}
+
+func gitError(err error) string {
+	switch {
+	case errors.Is(err, gitrepo.ErrAuth):
+		return "could not authenticate with the repository, check the credential"
+	case errors.Is(err, gitrepo.ErrNotFound):
+		return "repository not found"
+	case errors.Is(err, gitrepo.ErrRef):
+		return "branch or tag not found"
+	}
+	return "could not clone the repository"
 }
 
 func (s *Server) handleGetStack(w http.ResponseWriter, r *http.Request) {
@@ -247,11 +364,38 @@ func (s *Server) handleGetStack(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, "could not load stack", err)
 		return
 	}
-	s.writeJSON(w, http.StatusOK, map[string]any{
-		"name":    stack.Name,
-		"content": stack.Content,
-		"env":     parseEnvVars(stack.Env),
-	})
+	detail := stackDetailResponse{
+		Name:    stack.Name,
+		Source:  stack.Source,
+		Content: stack.Content,
+		Env:     parseEnvVars(stack.Env),
+	}
+	if stack.Source == sourceGit {
+		detail.Git = &gitDetail{
+			URL:          stack.GitUrl,
+			Ref:          stack.GitRef,
+			Path:         stack.GitPath,
+			CredentialID: stack.GitCredentialID,
+			Commit:       stack.GitCommit,
+		}
+	}
+	s.writeJSON(w, http.StatusOK, detail)
+}
+
+type gitDetail struct {
+	URL          string `json:"url"`
+	Ref          string `json:"ref"`
+	Path         string `json:"path"`
+	CredentialID int64  `json:"credentialId"`
+	Commit       string `json:"commit"`
+}
+
+type stackDetailResponse struct {
+	Name    string     `json:"name"`
+	Source  string     `json:"source"`
+	Content string     `json:"content"`
+	Env     []envVar   `json:"env"`
+	Git     *gitDetail `json:"git"`
 }
 
 func (s *Server) handleStackActions(w http.ResponseWriter, r *http.Request) {
@@ -309,7 +453,14 @@ func (s *Server) handleStackActions(w http.ResponseWriter, r *http.Request) {
 func (s *Server) runStackAction(ctx context.Context, env db.Environment, project, action string, managed map[string]db.Stack) actionResult {
 	if action == "remove" {
 		if stack, ok := managed[project]; ok {
-			out, derr := s.compose.Remove(ctx, env.Url, env.ID, project, stack.Content, envFileContent(parseEnvVars(stack.Env)))
+			stackEnv := envFileContent(parseEnvVars(stack.Env))
+			var out string
+			var derr error
+			if stack.Source == sourceGit {
+				out, derr = s.compose.RemoveRepo(ctx, env.Url, env.ID, project, stack.GitPath, stackEnv)
+			} else {
+				out, derr = s.compose.Remove(ctx, env.Url, env.ID, project, stack.Content, stackEnv)
+			}
 			if derr != nil {
 				s.logger.Warn("managed stack remove failed", "stack", project, "err", derr, "out", out)
 				return actionResult{ID: project, OK: false, Error: "action failed"}

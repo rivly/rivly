@@ -52,6 +52,10 @@ type composeRunner interface {
 	Deploy(ctx context.Context, dockerHost string, envID int64, project, content, env string) (string, error)
 	Remove(ctx context.Context, dockerHost string, envID int64, project, content, env string) (string, error)
 	Discard(ctx context.Context, dockerHost string, envID int64, project string)
+	RepoDir(envID int64, project string) string
+	DeployRepo(ctx context.Context, dockerHost string, envID int64, project, file, env string) (string, error)
+	RemoveRepo(ctx context.Context, dockerHost string, envID int64, project, file, env string) (string, error)
+	DiscardRepo(ctx context.Context, dockerHost string, envID int64, project, file string)
 }
 
 type Server struct {
