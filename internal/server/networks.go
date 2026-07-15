@@ -2,7 +2,6 @@ package server
 
 import (
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/netip"
@@ -78,8 +77,8 @@ func (s *Server) handleCreateNetwork(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req createNetworkRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSON(w, r, &req); err != nil {
+		s.badRequest(w, err)
 		return
 	}
 	req.Name = strings.TrimSpace(req.Name)
@@ -200,8 +199,8 @@ func (s *Server) handleNetworkActions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req bulkActionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSON(w, r, &req); err != nil {
+		s.badRequest(w, err)
 		return
 	}
 	if !validNetworkActions[req.Action] {

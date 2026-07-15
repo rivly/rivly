@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
@@ -88,8 +87,8 @@ type registryRequest struct {
 
 func (s *Server) handleCreateRegistry(w http.ResponseWriter, r *http.Request) {
 	var req registryRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSON(w, r, &req); err != nil {
+		s.badRequest(w, err)
 		return
 	}
 	req.Name = strings.TrimSpace(req.Name)
@@ -119,8 +118,8 @@ func (s *Server) handleUpdateRegistry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req registryRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSON(w, r, &req); err != nil {
+		s.badRequest(w, err)
 		return
 	}
 	req.Name = strings.TrimSpace(req.Name)
@@ -169,8 +168,8 @@ type testRegistryRequest struct {
 
 func (s *Server) handleTestRegistry(w http.ResponseWriter, r *http.Request) {
 	var req testRegistryRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSON(w, r, &req); err != nil {
+		s.badRequest(w, err)
 		return
 	}
 	server := normalizeServer(req.Server)

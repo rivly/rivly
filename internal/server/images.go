@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -138,8 +139,8 @@ func (s *Server) handleImageActions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req bulkActionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSON(w, r, &req); err != nil {
+		s.badRequest(w, err)
 		return
 	}
 	if !validImageActions[req.Action] {
@@ -285,7 +286,10 @@ func (s *Server) handleImagePrune(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req imagePruneRequest
-	_ = json.NewDecoder(r.Body).Decode(&req)
+	if err := decodeJSON(w, r, &req); err != nil && !errors.Is(err, io.EOF) {
+		s.badRequest(w, err)
+		return
+	}
 
 	env, err := s.queries.GetEnvironment(r.Context(), id)
 	if errors.Is(err, sql.ErrNoRows) {

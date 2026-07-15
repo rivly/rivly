@@ -178,8 +178,8 @@ func (s *Server) handleDeployStack(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req deployStackRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSON(w, r, &req); err != nil {
+		s.badRequest(w, err)
 		return
 	}
 	name := strings.TrimSpace(req.Name)
@@ -442,8 +442,8 @@ func (s *Server) handleStackActions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req bulkActionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSON(w, r, &req); err != nil {
+		s.badRequest(w, err)
 		return
 	}
 	if !validStackActions[req.Action] {

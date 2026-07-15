@@ -2,7 +2,6 @@ package server
 
 import (
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"regexp"
@@ -77,8 +76,8 @@ func (s *Server) handleCreateVolume(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req createVolumeRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSON(w, r, &req); err != nil {
+		s.badRequest(w, err)
 		return
 	}
 	req.Name = strings.TrimSpace(req.Name)
@@ -180,8 +179,8 @@ func (s *Server) handleVolumeActions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req bulkActionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSON(w, r, &req); err != nil {
+		s.badRequest(w, err)
 		return
 	}
 	if !validVolumeActions[req.Action] {
