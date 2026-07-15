@@ -31,6 +31,9 @@ func (r *Runner) Deploy(ctx context.Context, dockerHost string, envID int64, pro
 	if err != nil {
 		return "", err
 	}
+	if out, perr := r.pull(ctx, dockerHost, dir, project, composeFile, ""); perr != nil {
+		return out, perr
+	}
 	return r.run(ctx, dockerHost, dir, project, composeFile, "", "up", "-d", "--remove-orphans")
 }
 
@@ -61,7 +64,11 @@ func (r *Runner) DeployRepo(ctx context.Context, dockerHost string, envID int64,
 	if err != nil {
 		return "", err
 	}
-	return r.run(ctx, dockerHost, r.RepoDir(envID, project), project, file, envPath, "up", "-d", "--remove-orphans")
+	dir := r.RepoDir(envID, project)
+	if out, perr := r.pull(ctx, dockerHost, dir, project, file, envPath); perr != nil {
+		return out, perr
+	}
+	return r.run(ctx, dockerHost, dir, project, file, envPath, "up", "-d", "--remove-orphans")
 }
 
 func (r *Runner) RemoveRepo(ctx context.Context, dockerHost string, envID int64, project, file, env string) (string, error) {
@@ -115,6 +122,10 @@ func (r *Runner) writeRepoEnv(envID int64, project, env string) (string, error) 
 		return "", err
 	}
 	return path, nil
+}
+
+func (r *Runner) pull(ctx context.Context, dockerHost, dir, project, file, envPath string) (string, error) {
+	return r.run(ctx, dockerHost, dir, project, file, envPath, "pull", "--ignore-buildable")
 }
 
 func (r *Runner) run(ctx context.Context, dockerHost, dir, project, file, envPath string, args ...string) (string, error) {

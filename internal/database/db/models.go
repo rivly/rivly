@@ -57,21 +57,26 @@ type Session struct {
 }
 
 type Stack struct {
-	ID              int64
-	EnvID           int64
-	Name            string
-	Content         string
-	CreatedAt       int64
-	UpdatedAt       int64
-	Env             string
-	CreatedBy       string
-	UpdatedBy       string
-	Source          string
-	GitUrl          string
-	GitRef          string
-	GitPath         string
-	GitCredentialID int64
-	GitCommit       string
+	ID               int64
+	EnvID            int64
+	Name             string
+	Content          string
+	CreatedAt        int64
+	UpdatedAt        int64
+	Env              string
+	CreatedBy        string
+	UpdatedBy        string
+	Source           string
+	GitUrl           string
+	GitRef           string
+	GitPath          string
+	GitCredentialID  int64
+	GitCommit        string
+	GitAutoUpdate    int64
+	GitPollInterval  int64
+	GitRemoteHash    string
+	GitLastCheckedAt int64
+	GitLastError     string
 }
 
 type Token struct {

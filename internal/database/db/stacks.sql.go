@@ -9,6 +9,32 @@ import (
 	"context"
 )
 
+const applyStackGitUpdate = `-- name: ApplyStackGitUpdate :exec
+UPDATE stacks
+SET content = ?, git_commit = ?, git_remote_hash = ?, updated_by = ?,
+    updated_at = unixepoch(), git_last_checked_at = unixepoch(), git_last_error = ''
+WHERE id = ?
+`
+
+type ApplyStackGitUpdateParams struct {
+	Content       string
+	GitCommit     string
+	GitRemoteHash string
+	UpdatedBy     string
+	ID            int64
+}
+
+func (q *Queries) ApplyStackGitUpdate(ctx context.Context, arg ApplyStackGitUpdateParams) error {
+	_, err := q.db.ExecContext(ctx, applyStackGitUpdate,
+		arg.Content,
+		arg.GitCommit,
+		arg.GitRemoteHash,
+		arg.UpdatedBy,
+		arg.ID,
+	)
+	return err
+}
+
 const deleteStack = `-- name: DeleteStack :exec
 DELETE FROM stacks WHERE env_id = ? AND name = ?
 `
@@ -24,7 +50,7 @@ func (q *Queries) DeleteStack(ctx context.Context, arg DeleteStackParams) error 
 }
 
 const getStack = `-- name: GetStack :one
-SELECT id, env_id, name, content, created_at, updated_at, env, created_by, updated_by, source, git_url, git_ref, git_path, git_credential_id, git_commit FROM stacks WHERE env_id = ? AND name = ? LIMIT 1
+SELECT id, env_id, name, content, created_at, updated_at, env, created_by, updated_by, source, git_url, git_ref, git_path, git_credential_id, git_commit, git_auto_update, git_poll_interval, git_remote_hash, git_last_checked_at, git_last_error FROM stacks WHERE env_id = ? AND name = ? LIMIT 1
 `
 
 type GetStackParams struct {
@@ -51,12 +77,65 @@ func (q *Queries) GetStack(ctx context.Context, arg GetStackParams) (Stack, erro
 		&i.GitPath,
 		&i.GitCredentialID,
 		&i.GitCommit,
+		&i.GitAutoUpdate,
+		&i.GitPollInterval,
+		&i.GitRemoteHash,
+		&i.GitLastCheckedAt,
+		&i.GitLastError,
 	)
 	return i, err
 }
 
+const listAutoUpdateStacks = `-- name: ListAutoUpdateStacks :many
+SELECT id, env_id, name, content, created_at, updated_at, env, created_by, updated_by, source, git_url, git_ref, git_path, git_credential_id, git_commit, git_auto_update, git_poll_interval, git_remote_hash, git_last_checked_at, git_last_error FROM stacks WHERE source = 'git' AND git_auto_update = 1
+`
+
+func (q *Queries) ListAutoUpdateStacks(ctx context.Context) ([]Stack, error) {
+	rows, err := q.db.QueryContext(ctx, listAutoUpdateStacks)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Stack{}
+	for rows.Next() {
+		var i Stack
+		if err := rows.Scan(
+			&i.ID,
+			&i.EnvID,
+			&i.Name,
+			&i.Content,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Env,
+			&i.CreatedBy,
+			&i.UpdatedBy,
+			&i.Source,
+			&i.GitUrl,
+			&i.GitRef,
+			&i.GitPath,
+			&i.GitCredentialID,
+			&i.GitCommit,
+			&i.GitAutoUpdate,
+			&i.GitPollInterval,
+			&i.GitRemoteHash,
+			&i.GitLastCheckedAt,
+			&i.GitLastError,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listStacks = `-- name: ListStacks :many
-SELECT id, env_id, name, content, created_at, updated_at, env, created_by, updated_by, source, git_url, git_ref, git_path, git_credential_id, git_commit FROM stacks WHERE env_id = ? ORDER BY name
+SELECT id, env_id, name, content, created_at, updated_at, env, created_by, updated_by, source, git_url, git_ref, git_path, git_credential_id, git_commit, git_auto_update, git_poll_interval, git_remote_hash, git_last_checked_at, git_last_error FROM stacks WHERE env_id = ? ORDER BY name
 `
 
 func (q *Queries) ListStacks(ctx context.Context, envID int64) ([]Stack, error) {
@@ -84,6 +163,11 @@ func (q *Queries) ListStacks(ctx context.Context, envID int64) ([]Stack, error) 
 			&i.GitPath,
 			&i.GitCredentialID,
 			&i.GitCommit,
+			&i.GitAutoUpdate,
+			&i.GitPollInterval,
+			&i.GitRemoteHash,
+			&i.GitLastCheckedAt,
+			&i.GitLastError,
 		); err != nil {
 			return nil, err
 		}
@@ -98,12 +182,30 @@ func (q *Queries) ListStacks(ctx context.Context, envID int64) ([]Stack, error) 
 	return items, nil
 }
 
+const markStackChecked = `-- name: MarkStackChecked :exec
+UPDATE stacks
+SET git_last_checked_at = unixepoch(), git_last_error = ?, git_remote_hash = ?
+WHERE id = ?
+`
+
+type MarkStackCheckedParams struct {
+	GitLastError  string
+	GitRemoteHash string
+	ID            int64
+}
+
+func (q *Queries) MarkStackChecked(ctx context.Context, arg MarkStackCheckedParams) error {
+	_, err := q.db.ExecContext(ctx, markStackChecked, arg.GitLastError, arg.GitRemoteHash, arg.ID)
+	return err
+}
+
 const upsertStack = `-- name: UpsertStack :one
 INSERT INTO stacks (
     env_id, name, content, env, created_by, updated_by,
-    source, git_url, git_ref, git_path, git_credential_id, git_commit
+    source, git_url, git_ref, git_path, git_credential_id, git_commit,
+    git_auto_update, git_poll_interval, git_remote_hash
 )
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (env_id, name) DO UPDATE SET
     content = excluded.content,
     env = excluded.env,
@@ -114,8 +216,12 @@ ON CONFLICT (env_id, name) DO UPDATE SET
     git_path = excluded.git_path,
     git_credential_id = excluded.git_credential_id,
     git_commit = excluded.git_commit,
+    git_auto_update = excluded.git_auto_update,
+    git_poll_interval = excluded.git_poll_interval,
+    git_remote_hash = excluded.git_remote_hash,
+    git_last_error = '',
     updated_at = unixepoch()
-RETURNING id, env_id, name, content, created_at, updated_at, env, created_by, updated_by, source, git_url, git_ref, git_path, git_credential_id, git_commit
+RETURNING id, env_id, name, content, created_at, updated_at, env, created_by, updated_by, source, git_url, git_ref, git_path, git_credential_id, git_commit, git_auto_update, git_poll_interval, git_remote_hash, git_last_checked_at, git_last_error
 `
 
 type UpsertStackParams struct {
@@ -131,6 +237,9 @@ type UpsertStackParams struct {
 	GitPath         string
 	GitCredentialID int64
 	GitCommit       string
+	GitAutoUpdate   int64
+	GitPollInterval int64
+	GitRemoteHash   string
 }
 
 func (q *Queries) UpsertStack(ctx context.Context, arg UpsertStackParams) (Stack, error) {
@@ -147,6 +256,9 @@ func (q *Queries) UpsertStack(ctx context.Context, arg UpsertStackParams) (Stack
 		arg.GitPath,
 		arg.GitCredentialID,
 		arg.GitCommit,
+		arg.GitAutoUpdate,
+		arg.GitPollInterval,
+		arg.GitRemoteHash,
 	)
 	var i Stack
 	err := row.Scan(
@@ -165,6 +277,11 @@ func (q *Queries) UpsertStack(ctx context.Context, arg UpsertStackParams) (Stack
 		&i.GitPath,
 		&i.GitCredentialID,
 		&i.GitCommit,
+		&i.GitAutoUpdate,
+		&i.GitPollInterval,
+		&i.GitRemoteHash,
+		&i.GitLastCheckedAt,
+		&i.GitLastError,
 	)
 	return i, err
 }

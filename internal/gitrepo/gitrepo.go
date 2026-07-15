@@ -11,12 +11,17 @@ import (
 	"time"
 
 	git "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
+	"github.com/go-git/go-git/v5/storage/memory"
 )
 
-const cloneTimeout = 3 * time.Minute
+const (
+	cloneTimeout = 3 * time.Minute
+	listTimeout  = 30 * time.Second
+)
 
 var (
 	ErrAuth     = errors.New("git authentication failed")
@@ -107,6 +112,73 @@ func mapError(err error) error {
 		return ErrRef
 	}
 	return err
+}
+
+func RemoteHash(ctx context.Context, opts Options) (string, error) {
+	target, err := NormalizeURL(opts.URL)
+	if err != nil {
+		return "", err
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, listTimeout)
+	defer cancel()
+
+	remote := git.NewRemote(memory.NewStorage(), &config.RemoteConfig{
+		Name: "origin",
+		URLs: []string{target},
+	})
+
+	listOpts := &git.ListOptions{}
+	if opts.Token != "" {
+		username := opts.Username
+		if username == "" {
+			username = "git"
+		}
+		listOpts.Auth = &githttp.BasicAuth{Username: username, Password: opts.Token}
+	}
+
+	refs, err := remote.ListContext(ctx, listOpts)
+	if err != nil {
+		return "", mapError(err)
+	}
+	return resolveRef(refs, strings.TrimSpace(opts.Ref))
+}
+
+func resolveRef(refs []*plumbing.Reference, ref string) (string, error) {
+	hashes := make(map[plumbing.ReferenceName]plumbing.Hash, len(refs))
+	var head *plumbing.Reference
+	for _, r := range refs {
+		hashes[r.Name()] = r.Hash()
+		if r.Name() == plumbing.HEAD {
+			head = r
+		}
+	}
+
+	if ref == "" {
+		if head == nil {
+			return "", ErrRef
+		}
+		if head.Type() == plumbing.SymbolicReference {
+			if hash, ok := hashes[head.Target()]; ok && !hash.IsZero() {
+				return hash.String(), nil
+			}
+			return "", ErrRef
+		}
+		if !head.Hash().IsZero() {
+			return head.Hash().String(), nil
+		}
+		return "", ErrRef
+	}
+
+	for _, name := range []plumbing.ReferenceName{
+		plumbing.NewBranchReferenceName(ref),
+		plumbing.NewTagReferenceName(ref),
+	} {
+		if hash, ok := hashes[name]; ok && !hash.IsZero() {
+			return hash.String(), nil
+		}
+	}
+	return "", ErrRef
 }
 
 func NormalizeURL(raw string) (string, error) {

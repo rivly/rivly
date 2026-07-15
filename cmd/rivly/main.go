@@ -72,6 +72,7 @@ func run(logger *slog.Logger) error {
 
 	go srv.RunPoller(ctx)
 	go srv.RunWatchers(ctx)
+	go srv.RunGitPoller(ctx)
 
 	httpServer := &http.Server{
 		Addr:              cfg.Addr,

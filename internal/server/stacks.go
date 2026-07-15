@@ -158,6 +158,8 @@ type gitSource struct {
 	Ref          string `json:"ref"`
 	Path         string `json:"path"`
 	CredentialID int64  `json:"credentialId"`
+	AutoUpdate   bool   `json:"autoUpdate"`
+	PollInterval int64  `json:"pollInterval"`
 }
 
 type deployStackRequest struct {
@@ -205,7 +207,7 @@ func (s *Server) handleDeployStack(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, getErr := s.queries.GetStack(r.Context(), db.GetStackParams{EnvID: env.ID, Name: name})
+	existing, getErr := s.queries.GetStack(r.Context(), db.GetStackParams{EnvID: env.ID, Name: name})
 	isNew := errors.Is(getErr, sql.ErrNoRows)
 
 	envJSON, err := json.Marshal(req.Env)
@@ -226,7 +228,7 @@ func (s *Server) handleDeployStack(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if source == sourceGit {
-		if !s.deployGitStack(w, r, env, name, &params, req.Git, envContent, isNew) {
+		if !s.deployGitStack(w, r, env, name, existing.ID, &params, req.Git, envContent, isNew) {
 			return
 		}
 	} else {
@@ -260,6 +262,7 @@ func (s *Server) deployGitStack(
 	r *http.Request,
 	env db.Environment,
 	name string,
+	stackID int64,
 	params *db.UpsertStackParams,
 	src *gitSource,
 	envContent string,
@@ -268,6 +271,14 @@ func (s *Server) deployGitStack(
 	if src == nil {
 		s.writeError(w, http.StatusBadRequest, "git settings are required")
 		return false
+	}
+
+	if stackID != 0 {
+		if !s.acquireGitStack(stackID) {
+			s.writeError(w, http.StatusConflict, "an update is already running for this stack")
+			return false
+		}
+		defer s.releaseGitStack(stackID)
 	}
 
 	repoURL, err := gitrepo.NormalizeURL(src.URL)
@@ -289,6 +300,13 @@ func (s *Server) deployGitStack(
 			return false
 		}
 		opts.Username, opts.Token = username, token
+	}
+
+	remoteHash, err := gitrepo.RemoteHash(r.Context(), opts)
+	if err != nil {
+		s.logger.Warn("stack remote check failed", "stack", name, "url", repoURL, "err", err)
+		s.writeError(w, http.StatusUnprocessableEntity, gitError(err))
+		return false
 	}
 
 	repoDir := s.compose.RepoDir(env.ID, name)
@@ -316,12 +334,22 @@ func (s *Server) deployGitStack(
 		return false
 	}
 
+	interval := src.PollInterval
+	if interval < gitMinPollInterval {
+		interval = gitMinPollInterval
+	}
+
 	params.Content = string(content)
 	params.GitUrl = repoURL
 	params.GitRef = strings.TrimSpace(src.Ref)
 	params.GitPath = path
 	params.GitCredentialID = src.CredentialID
 	params.GitCommit = commit
+	params.GitRemoteHash = remoteHash
+	params.GitPollInterval = interval
+	if src.AutoUpdate {
+		params.GitAutoUpdate = 1
+	}
 	return true
 }
 
@@ -372,22 +400,30 @@ func (s *Server) handleGetStack(w http.ResponseWriter, r *http.Request) {
 	}
 	if stack.Source == sourceGit {
 		detail.Git = &gitDetail{
-			URL:          stack.GitUrl,
-			Ref:          stack.GitRef,
-			Path:         stack.GitPath,
-			CredentialID: stack.GitCredentialID,
-			Commit:       stack.GitCommit,
+			URL:           stack.GitUrl,
+			Ref:           stack.GitRef,
+			Path:          stack.GitPath,
+			CredentialID:  stack.GitCredentialID,
+			Commit:        stack.GitCommit,
+			AutoUpdate:    stack.GitAutoUpdate == 1,
+			PollInterval:  stack.GitPollInterval,
+			LastCheckedAt: stack.GitLastCheckedAt,
+			LastError:     stack.GitLastError,
 		}
 	}
 	s.writeJSON(w, http.StatusOK, detail)
 }
 
 type gitDetail struct {
-	URL          string `json:"url"`
-	Ref          string `json:"ref"`
-	Path         string `json:"path"`
-	CredentialID int64  `json:"credentialId"`
-	Commit       string `json:"commit"`
+	URL           string `json:"url"`
+	Ref           string `json:"ref"`
+	Path          string `json:"path"`
+	CredentialID  int64  `json:"credentialId"`
+	Commit        string `json:"commit"`
+	AutoUpdate    bool   `json:"autoUpdate"`
+	PollInterval  int64  `json:"pollInterval"`
+	LastCheckedAt int64  `json:"lastCheckedAt"`
+	LastError     string `json:"lastError"`
 }
 
 type stackDetailResponse struct {
@@ -457,6 +493,10 @@ func (s *Server) runStackAction(ctx context.Context, env db.Environment, project
 			var out string
 			var derr error
 			if stack.Source == sourceGit {
+				if !s.acquireGitStack(stack.ID) {
+					return actionResult{ID: project, OK: false, Error: "an update is running"}
+				}
+				defer s.releaseGitStack(stack.ID)
 				out, derr = s.compose.RemoveRepo(ctx, env.Url, env.ID, project, stack.GitPath, stackEnv)
 			} else {
 				out, derr = s.compose.Remove(ctx, env.Url, env.ID, project, stack.Content, stackEnv)

@@ -72,6 +72,8 @@ type Server struct {
 	setupMu      sync.Mutex
 	envStateMu   sync.Mutex
 	lastEnvState map[int64]string
+	gitMu        sync.Mutex
+	gitInflight  map[int64]bool
 }
 
 func New(
@@ -98,6 +100,7 @@ func New(
 		gitcreds:     gitcreds,
 		cfg:          cfg,
 		lastEnvState: make(map[int64]string),
+		gitInflight:  make(map[int64]bool),
 	}
 }
 
