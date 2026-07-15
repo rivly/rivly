@@ -9,9 +9,12 @@ import type { ActionResult } from './containers'
 
 export type StackState = 'running' | 'partial' | 'stopped'
 
+export type StackSource = 'content' | 'git'
+
 export type Stack = {
   name: string
   type: string
+  source: StackSource
   services: number
   running: number
   total: number
@@ -53,16 +56,39 @@ export function useStackActions(envId: number) {
 
 export type EnvVar = { key: string; value: string }
 
+export type GitSource = {
+  url: string
+  ref: string
+  path: string
+  credentialId: number
+}
+
+export type GitDetail = GitSource & { commit: string }
+
+export type StackDetail = {
+  name: string
+  source: StackSource
+  content: string
+  env: EnvVar[]
+  git: GitDetail | null
+}
+
 export function fetchStackContent(envId: number, name: string) {
-  return api.get<{ name: string; content: string; env: EnvVar[] }>(
-    `/environments/${envId}/stacks/${name}`,
-  )
+  return api.get<StackDetail>(`/environments/${envId}/stacks/${name}`)
+}
+
+export type DeployStackInput = {
+  name: string
+  source: StackSource
+  content: string
+  env: EnvVar[]
+  git?: GitSource
 }
 
 export function useDeployStack(envId: number) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (input: { name: string; content: string; env: EnvVar[] }) =>
+    mutationFn: (input: DeployStackInput) =>
       api.post<{ name: string }>(`/environments/${envId}/stacks`, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stacks', envId] })

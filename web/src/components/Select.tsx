@@ -14,6 +14,7 @@ type Props = {
   value?: string
   onValueChange?: (value: string | null) => void
   icon?: ReactNode
+  size?: 'sm' | 'md'
   'aria-label'?: string
 }
 
@@ -23,6 +24,7 @@ export function Select({
   value,
   onValueChange,
   icon,
+  size = 'sm',
   'aria-label': ariaLabel,
 }: Props) {
   return (
@@ -32,7 +34,10 @@ export function Select({
       value={value}
       onValueChange={onValueChange}
     >
-      <BaseSelect.Trigger className={styles.trigger} aria-label={ariaLabel}>
+      <BaseSelect.Trigger
+        className={`${styles.trigger} ${size === 'md' ? styles.triggerMd : ''}`}
+        aria-label={ariaLabel}
+      >
         {icon && <span className={styles.leading}>{icon}</span>}
         <BaseSelect.Value className={styles.value} />
         <BaseSelect.Icon className={styles.caret}>

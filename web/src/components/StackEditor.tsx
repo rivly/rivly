@@ -4,16 +4,28 @@ import CodeMirror from '@uiw/react-codemirror'
 import { yaml } from '@codemirror/lang-yaml'
 import { LuArrowLeft, LuGitBranch, LuPencil, LuPlus, LuUpload, LuX } from 'react-icons/lu'
 import { ApiError } from '../lib/api'
-import { fetchStackContent, useDeployStack, type EnvVar } from '../lib/stacks'
+import { useGitCredentials } from '../lib/gitCredentials'
+import {
+  fetchStackContent,
+  useDeployStack,
+  type DeployStackInput,
+  type EnvVar,
+  type StackSource,
+} from '../lib/stacks'
 import { toast } from '../lib/toast'
 import { Button } from './Button'
 import { RequiredMark } from './RequiredMark'
+import { Select } from './Select'
 import styles from './StackEditor.module.css'
 
 type Props = {
   envId: number
   name?: string
 }
+
+type Tab = 'editor' | 'upload' | 'git'
+
+const NO_CREDENTIAL = '0'
 
 function toRawEnv(vars: EnvVar[]): string {
   return vars
@@ -47,11 +59,26 @@ export function StackEditor({ envId, name: editName }: Props) {
   const [env, setEnv] = useState<EnvVar[]>([])
   const [rawEnv, setRawEnv] = useState('')
   const [advanced, setAdvanced] = useState(false)
-  const [source, setSource] = useState<'editor' | 'upload'>('editor')
+  const [tab, setTab] = useState<Tab>('editor')
+  const [stackSource, setStackSource] = useState<StackSource>('content')
+  const [gitUrl, setGitUrl] = useState('')
+  const [gitRef, setGitRef] = useState('')
+  const [gitPath, setGitPath] = useState('docker-compose.yml')
+  const [gitCredentialId, setGitCredentialId] = useState(NO_CREDENTIAL)
+  const [commit, setCommit] = useState('')
   const [dragOver, setDragOver] = useState(false)
   const [loading, setLoading] = useState(editing)
   const [error, setError] = useState<string | null>(null)
   const deploy = useDeployStack(envId)
+  const { data: credentials } = useGitCredentials()
+
+  const fromGit = editing ? stackSource === 'git' : tab === 'git'
+  const readOnly = editing && fromGit
+
+  const credentialItems = [
+    { label: 'None, public repository', value: NO_CREDENTIAL },
+    ...(credentials ?? []).map((c) => ({ label: c.name, value: String(c.id) })),
+  ]
 
   const loadFile = async (file: File | undefined) => {
     if (!file) {
@@ -64,7 +91,7 @@ export function StackEditor({ envId, name: editName }: Props) {
     }
     try {
       setContent(await file.text())
-      setSource('editor')
+      setTab('editor')
       toast.success(`Loaded ${file.name}`)
     } catch {
       toast.error('Could not read the file', 'Please try again')
@@ -98,9 +125,18 @@ export function StackEditor({ envId, name: editName }: Props) {
     let active = true
     fetchStackContent(envId, editName)
       .then((stack) => {
-        if (active) {
-          setContent(stack.content)
-          setEnv(stack.env ?? [])
+        if (!active) {
+          return
+        }
+        setContent(stack.content)
+        setEnv(stack.env ?? [])
+        setStackSource(stack.source)
+        if (stack.git) {
+          setGitUrl(stack.git.url)
+          setGitRef(stack.git.ref)
+          setGitPath(stack.git.path)
+          setGitCredentialId(String(stack.git.credentialId))
+          setCommit(stack.git.commit)
         }
       })
       .catch(() => {
@@ -118,23 +154,40 @@ export function StackEditor({ envId, name: editName }: Props) {
     }
   }, [editing, envId, editName])
 
+  const canDeploy = fromGit
+    ? name.trim() !== '' && gitUrl.trim() !== '' && gitPath.trim() !== ''
+    : name.trim() !== '' && content.trim() !== ''
+
   const submit = () => {
     setError(null)
     const finalEnv = advanced
       ? parseRawEnv(rawEnv)
       : env.filter((v) => v.key.trim() !== '')
-    deploy.mutate(
-      { name: name.trim(), content, env: finalEnv },
-      {
-        onSuccess: () => {
-          toast.success(editing ? `Redeployed ${name}` : `Deployed ${name}`)
-          navigate(backTo)
-        },
-        onError: (err) => {
-          setError(err instanceof ApiError ? err.message : 'Deployment failed')
-        },
+
+    const input: DeployStackInput = fromGit
+      ? {
+          name: name.trim(),
+          source: 'git',
+          content: '',
+          env: finalEnv,
+          git: {
+            url: gitUrl.trim(),
+            ref: gitRef.trim(),
+            path: gitPath.trim(),
+            credentialId: Number(gitCredentialId),
+          },
+        }
+      : { name: name.trim(), source: 'content', content, env: finalEnv }
+
+    deploy.mutate(input, {
+      onSuccess: () => {
+        toast.success(editing ? `Redeployed ${name}` : `Deployed ${name}`)
+        navigate(backTo)
       },
-    )
+      onError: (err) => {
+        setError(err instanceof ApiError ? err.message : 'Deployment failed')
+      },
+    })
   }
 
   return (
@@ -169,9 +222,9 @@ export function StackEditor({ envId, name: editName }: Props) {
           <button
             type="button"
             role="tab"
-            aria-selected={source === 'editor'}
-            className={`${styles.source} ${source === 'editor' ? styles.sourceActive : ''}`}
-            onClick={() => setSource('editor')}
+            aria-selected={tab === 'editor'}
+            className={`${styles.source} ${tab === 'editor' ? styles.sourceActive : ''}`}
+            onClick={() => setTab('editor')}
           >
             <LuPencil />
             Editor
@@ -179,22 +232,118 @@ export function StackEditor({ envId, name: editName }: Props) {
           <button
             type="button"
             role="tab"
-            aria-selected={source === 'upload'}
-            className={`${styles.source} ${source === 'upload' ? styles.sourceActive : ''}`}
-            onClick={() => setSource('upload')}
+            aria-selected={tab === 'upload'}
+            className={`${styles.source} ${tab === 'upload' ? styles.sourceActive : ''}`}
+            onClick={() => setTab('upload')}
           >
             <LuUpload />
             Upload
           </button>
-          <button type="button" className={styles.source} disabled>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'git'}
+            className={`${styles.source} ${tab === 'git' ? styles.sourceActive : ''}`}
+            onClick={() => setTab('git')}
+          >
             <LuGitBranch />
             Git Repository
-            <span className={styles.soon}>Soon</span>
           </button>
         </div>
       )}
 
-      {source === 'upload' ? (
+      {fromGit && !editing && (
+        <div className={styles.gitForm}>
+          <label className={styles.gitField}>
+            <span className={styles.gitLabel}>
+              Repository URL
+              <RequiredMark />
+            </span>
+            <input
+              className={styles.gitInput}
+              value={gitUrl}
+              onChange={(e) => setGitUrl(e.target.value)}
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <span className={styles.gitHint}>An http or https URL. SSH is not supported yet.</span>
+          </label>
+
+          <div className={styles.gitRow}>
+            <label className={styles.gitField}>
+              <span className={styles.gitLabel}>Branch or tag</span>
+              <input
+                className={styles.gitInput}
+                value={gitRef}
+                onChange={(e) => setGitRef(e.target.value)}
+                autoComplete="off"
+                spellCheck={false}
+              />
+              <span className={styles.gitHint}>Leave blank for the default branch.</span>
+            </label>
+
+            <label className={styles.gitField}>
+              <span className={styles.gitLabel}>
+                Compose path
+                <RequiredMark />
+              </span>
+              <input
+                className={styles.gitInput}
+                value={gitPath}
+                onChange={(e) => setGitPath(e.target.value)}
+                autoComplete="off"
+                spellCheck={false}
+              />
+              <span className={styles.gitHint}>Path from the repository root.</span>
+            </label>
+          </div>
+
+          <div className={`${styles.gitField} ${styles.gitFieldHalf}`}>
+            <span className={styles.gitLabel}>Credential</span>
+            <Select
+              items={credentialItems}
+              size="md"
+              value={gitCredentialId}
+              onValueChange={(value) => setGitCredentialId(value ?? NO_CREDENTIAL)}
+              aria-label="Git credential"
+            />
+            <span className={styles.gitHint}>
+              Only needed for a private repository. Manage them in{' '}
+              <Link to="/git-credentials" className={styles.gitHintLink}>
+                Git Credentials
+              </Link>
+              .
+            </span>
+          </div>
+        </div>
+      )}
+
+      {readOnly && (
+        <div className={styles.gitInfo}>
+          <div className={styles.gitInfoRow}>
+            <span className={styles.gitInfoKey}>Repository</span>
+            <a className={styles.gitInfoLink} href={gitUrl} target="_blank" rel="noreferrer">
+              {gitUrl}
+            </a>
+          </div>
+          <div className={styles.gitInfoRow}>
+            <span className={styles.gitInfoKey}>Reference</span>
+            <span className={styles.gitInfoValue}>{gitRef || 'default branch'}</span>
+          </div>
+          <div className={styles.gitInfoRow}>
+            <span className={styles.gitInfoKey}>Compose path</span>
+            <span className={styles.gitInfoValue}>{gitPath}</span>
+          </div>
+          {commit && (
+            <div className={styles.gitInfoRow}>
+              <span className={styles.gitInfoKey}>Commit</span>
+              <span className={styles.gitInfoValue}>{commit.slice(0, 12)}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === 'upload' && !editing ? (
         <label
           className={`${styles.dropzone} ${dragOver ? styles.dropzoneActive : ''}`}
           onDragOver={(event) => {
@@ -223,16 +372,25 @@ export function StackEditor({ envId, name: editName }: Props) {
           <span className={styles.dropHint}>.yml or .yaml</span>
         </label>
       ) : (
-        <div className={styles.editor}>
-          <CodeMirror
-            value={content}
-            height="360px"
-            theme="light"
-            extensions={[yaml()]}
-            editable={!loading}
-            onChange={setContent}
-          />
-        </div>
+        !(fromGit && !editing) && (
+          <>
+            {readOnly && (
+              <p className={styles.readOnlyNote}>
+                This compose file comes from the repository. Edit it in Git, then redeploy.
+              </p>
+            )}
+            <div className={styles.editor}>
+              <CodeMirror
+                value={content}
+                height="360px"
+                theme="light"
+                extensions={[yaml()]}
+                editable={!loading && !readOnly}
+                onChange={setContent}
+              />
+            </div>
+          </>
+        )
       )}
 
       <section className={styles.envSection}>
@@ -297,11 +455,7 @@ export function StackEditor({ envId, name: editName }: Props) {
         <Button variant="secondary" render={<Link {...backTo} />}>
           Cancel
         </Button>
-        <Button
-          onClick={submit}
-          loading={deploy.isPending}
-          disabled={loading || name.trim() === '' || content.trim() === ''}
-        >
+        <Button onClick={submit} loading={deploy.isPending} disabled={loading || !canDeploy}>
           {editing ? 'Redeploy' : 'Deploy'}
         </Button>
       </footer>

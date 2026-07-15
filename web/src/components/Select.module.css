@@ -18,6 +18,12 @@
   border-color: var(--border-strong);
 }
 
+.triggerMd {
+  height: 38px;
+  padding: 0 12px;
+  border-color: var(--border-strong);
+}
+
 .leading {
   display: inline-flex;
   color: var(--fg-muted);
@@ -30,6 +36,7 @@
 
 .value {
   flex: 1;
+  text-align: left;
 }
 
 .caret {

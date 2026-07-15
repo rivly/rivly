@@ -126,6 +126,114 @@
   letter-spacing: 0.03em;
 }
 
+.gitForm {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.gitRow {
+  display: flex;
+  gap: 12px;
+}
+
+.gitRow .gitField {
+  flex: 1;
+  min-width: 0;
+}
+
+.gitField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gitFieldHalf {
+  max-width: calc(50% - 6px);
+}
+
+.gitLabel {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg-muted);
+}
+
+.gitInput {
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--fg);
+  font-size: 0.875rem;
+}
+
+.gitInput:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.gitHint {
+  font-size: 0.75rem;
+  color: var(--fg-muted);
+}
+
+.gitHintLink {
+  color: var(--accent-strong);
+}
+
+.gitHintLink:hover {
+  text-decoration: underline;
+}
+
+.gitInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-subtle);
+}
+
+.gitInfoRow {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 0.8125rem;
+}
+
+.gitInfoKey {
+  flex: 0 0 110px;
+  color: var(--fg-muted);
+}
+
+.gitInfoValue {
+  font-family: var(--font-mono);
+  color: var(--fg);
+  word-break: break-all;
+}
+
+.gitInfoLink {
+  color: var(--accent-strong);
+  word-break: break-all;
+}
+
+.gitInfoLink:hover {
+  text-decoration: underline;
+}
+
+.readOnlyNote {
+  margin-bottom: -8px;
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+}
+
 .dropzone {
   display: flex;
   flex-direction: column;
