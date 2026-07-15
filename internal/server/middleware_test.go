@@ -10,8 +10,7 @@ import (
 
 func setupOverProxy(t *testing.T, ts *httptest.Server, proto string) *http.Response {
 	t.Helper()
-	body := `{"email":"admin@rivly.dev","password":"s3cret-password","displayName":"Admin"}`
-	req, err := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/setup", bytes.NewBufferString(body))
+	req, err := http.NewRequest(http.MethodPost, ts.URL+"/api/v1/setup", bytes.NewBufferString(testCreds))
 	if err != nil {
 		t.Fatalf("new request: %v", err)
 	}

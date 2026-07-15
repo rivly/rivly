@@ -7,6 +7,8 @@ import (
 	"net/mail"
 	"strings"
 
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/rivly/rivly/internal/auth"
 	"github.com/rivly/rivly/internal/database/db"
 )
 
@@ -30,6 +32,11 @@ type credentialsInput struct {
 	Email       string `json:"email"`
 	Password    string `json:"password"`
 	DisplayName string `json:"displayName"`
+}
+
+type setupInput struct {
+	credentialsInput
+	Token string `json:"token"`
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
@@ -59,12 +66,17 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var in credentialsInput
+	var in setupInput
 	if err := decodeJSON(w, r, &in); err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid request body")
+		s.badRequest(w, err)
 		return
 	}
-	email, msg, ok := validateSetup(in)
+	if !auth.SetupTokenMatches(s.cfg.SetupToken, in.Token) {
+		s.logger.Warn("setup rejected: invalid token", "ip", middleware.GetClientIP(r.Context()))
+		s.writeError(w, http.StatusForbidden, "invalid setup token")
+		return
+	}
+	email, msg, ok := validateSetup(in.credentialsInput)
 	if !ok {
 		s.writeError(w, http.StatusBadRequest, msg)
 		return

@@ -214,7 +214,9 @@ func (f fakeCompose) RemoveRepo(_ context.Context, _ string, _ int64, _, _, _ st
 
 func (f fakeCompose) DiscardRepo(_ context.Context, _ string, _ int64, _, _ string) {}
 
-const testCreds = `{"email":"admin@rivly.dev","password":"s3cret-password","displayName":"Admin"}`
+const testSetupToken = "test-setup-token"
+
+const testCreds = `{"email":"admin@rivly.dev","password":"s3cret-password","displayName":"Admin","token":"` + testSetupToken + `"}`
 
 func authedClient(t *testing.T, ts *httptest.Server) *http.Client {
 	t.Helper()

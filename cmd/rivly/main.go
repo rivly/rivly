@@ -50,6 +50,11 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 
+	cfg.SetupToken, err = resolveSetupToken(context.Background(), queries, cfg.SetupToken, logger)
+	if err != nil {
+		return err
+	}
+
 	cipher, err := secret.LoadOrCreate(cfg.DataDir)
 	if err != nil {
 		return err
@@ -96,6 +101,26 @@ func run(logger *slog.Logger) error {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	return httpServer.Shutdown(shutdownCtx)
+}
+
+func resolveSetupToken(ctx context.Context, queries *db.Queries, pinned string, logger *slog.Logger) (string, error) {
+	count, err := queries.CountUsers(ctx)
+	if err != nil {
+		return "", err
+	}
+	if count > 0 {
+		return "", nil
+	}
+	if pinned != "" {
+		logger.Info("setup is open, using the token from RIVLY_SETUP_TOKEN")
+		return pinned, nil
+	}
+	token, err := auth.NewSetupToken()
+	if err != nil {
+		return "", err
+	}
+	logger.Info("setup is open, use this token to create the first account", "setup_token", token)
+	return token, nil
 }
 
 func seedLocalEnvironment(ctx context.Context, queries *db.Queries, host string) error {

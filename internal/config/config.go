@@ -14,6 +14,7 @@ type Config struct {
 	PollInterval   time.Duration
 	DataDir        string
 	ComposeBin     string
+	SetupToken     string
 }
 
 func Load() Config {
@@ -25,6 +26,7 @@ func Load() Config {
 		PollInterval:   envDuration("RIVLY_POLL_INTERVAL", 5*time.Second),
 		DataDir:        env("RIVLY_DATA", "data"),
 		ComposeBin:     env("RIVLY_COMPOSE_BIN", "docker-compose"),
+		SetupToken:     os.Getenv("RIVLY_SETUP_TOKEN"),
 	}
 }
 

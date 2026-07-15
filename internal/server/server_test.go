@@ -39,7 +39,7 @@ func newTestServer(t *testing.T) *Server {
 	}
 	registries := registry.NewStore(queries, cipher)
 	gitCredentials := gitcred.NewStore(queries, cipher)
-	return New(logger, queries, auth.NewSessionManager(sqlDB), auth.NewLocal(queries, sqlDB), fakeDocker{}, fakeCompose{}, events.NewHub(), registries, gitCredentials, config.Config{})
+	return New(logger, queries, auth.NewSessionManager(sqlDB), auth.NewLocal(queries, sqlDB), fakeDocker{}, fakeCompose{}, events.NewHub(), registries, gitCredentials, config.Config{SetupToken: testSetupToken})
 }
 
 func TestAuthFlow(t *testing.T) {
@@ -49,7 +49,7 @@ func TestAuthFlow(t *testing.T) {
 	jar, _ := cookiejar.New(nil)
 	client := &http.Client{Jar: jar}
 
-	const creds = `{"email":"admin@rivly.dev","password":"s3cret-password","displayName":"Admin"}`
+	const creds = testCreds
 
 	var status struct {
 		NeedsSetup bool `json:"needsSetup"`
@@ -95,6 +95,51 @@ func TestAuthFlow(t *testing.T) {
 
 	if code := getStatus(t, client, ts.URL+"/api/v1/me"); code != http.StatusOK {
 		t.Fatalf("me after login: want 200, got %d", code)
+	}
+}
+
+func TestSetupRequiresTheSetupToken(t *testing.T) {
+	ts := httptest.NewServer(newTestServer(t).Router())
+	defer ts.Close()
+
+	jar, _ := cookiejar.New(nil)
+	client := &http.Client{Jar: jar}
+
+	noToken := `{"email":"admin@rivly.dev","password":"s3cret-password","displayName":"Admin"}`
+	if code := postStatus(t, client, ts.URL+"/api/v1/setup", noToken); code != http.StatusForbidden {
+		t.Fatalf("setup without a token: want 403, got %d", code)
+	}
+
+	wrongToken := `{"email":"admin@rivly.dev","password":"s3cret-password","token":"nope"}`
+	if code := postStatus(t, client, ts.URL+"/api/v1/setup", wrongToken); code != http.StatusForbidden {
+		t.Fatalf("setup with a wrong token: want 403, got %d", code)
+	}
+
+	var status struct {
+		NeedsSetup bool `json:"needsSetup"`
+	}
+	getJSON(t, client, ts.URL+"/api/v1/setup", &status)
+	if !status.NeedsSetup {
+		t.Fatal("a rejected setup must leave the instance unclaimed")
+	}
+
+	if code := postStatus(t, client, ts.URL+"/api/v1/setup", testCreds); code != http.StatusCreated {
+		t.Fatalf("setup with the right token: want 201, got %d", code)
+	}
+}
+
+func TestSetupStaysClosedWhenNoTokenIsConfigured(t *testing.T) {
+	srv := newTestServer(t)
+	srv.cfg.SetupToken = ""
+	ts := httptest.NewServer(srv.Router())
+	defer ts.Close()
+
+	jar, _ := cookiejar.New(nil)
+	client := &http.Client{Jar: jar}
+
+	empty := `{"email":"admin@rivly.dev","password":"s3cret-password","token":""}`
+	if code := postStatus(t, client, ts.URL+"/api/v1/setup", empty); code != http.StatusForbidden {
+		t.Fatalf("empty token must never match: want 403, got %d", code)
 	}
 }
 
