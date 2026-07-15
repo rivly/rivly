@@ -128,6 +128,7 @@ func (s *Server) Router() http.Handler {
 	r.Use(middleware.ClientIPFromRemoteAddr)
 	r.Use(s.requestLogger)
 	r.Use(s.recoverer)
+	r.Use(securityHeaders)
 
 	crossOrigin := http.NewCrossOriginProtection()
 	for _, origin := range s.cfg.TrustedOrigins {

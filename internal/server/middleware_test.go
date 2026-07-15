@@ -40,6 +40,31 @@ func sessionCookie(t *testing.T, resp *http.Response) string {
 	return ""
 }
 
+func TestSecurityHeadersOnEveryResponse(t *testing.T) {
+	ts := httptest.NewServer(newTestServer(t).Router())
+	defer ts.Close()
+
+	want := map[string]string{
+		"X-Content-Type-Options":  "nosniff",
+		"X-Frame-Options":         "DENY",
+		"Content-Security-Policy": "frame-ancestors 'none'",
+		"Referrer-Policy":         "no-referrer",
+	}
+
+	for _, path := range []string{"/api/health", "/api/v1/setup", "/api/v1/me", "/api/v1/nope"} {
+		resp, err := http.Get(ts.URL + path)
+		if err != nil {
+			t.Fatalf("GET %s: %v", path, err)
+		}
+		_ = resp.Body.Close()
+		for header, value := range want {
+			if got := resp.Header.Get(header); got != value {
+				t.Errorf("%s: %s = %q, want %q", path, header, got, value)
+			}
+		}
+	}
+}
+
 func TestSecureCookiesMarksSessionCookieBehindTLSProxy(t *testing.T) {
 	ts := httptest.NewServer(newTestServer(t).Router())
 	defer ts.Close()
