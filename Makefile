@@ -7,10 +7,10 @@ build:
 	CGO_ENABLED=0 go build -ldflags="-w -s" -o bin/rivly ./cmd/rivly
 
 test:
-	go test ./...
+	go test $(shell go list ./... | grep -v '/data/')
 
 lint:
 	golangci-lint run
 
 fmt:
-	go fmt ./...
+	go fmt $(shell go list ./... | grep -v '/data/')

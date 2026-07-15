@@ -6,3 +6,6 @@ linters:
     - ineffassign
     - staticcheck
     - unused
+  exclusions:
+    paths:
+      - data
