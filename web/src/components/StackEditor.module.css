@@ -191,47 +191,12 @@
   text-decoration: underline;
 }
 
-.gitInfo {
+.autoUpdate {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 14px 16px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg-subtle);
-}
-
-.gitInfoRow {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  font-size: 0.8125rem;
-}
-
-.gitInfoKey {
-  flex: 0 0 110px;
-  color: var(--fg-muted);
-}
-
-.gitInfoValue {
-  font-family: var(--font-mono);
-  color: var(--fg);
-  word-break: break-all;
-}
-
-.gitInfoLink {
-  color: var(--accent-strong);
-  word-break: break-all;
-}
-
-.gitInfoLink:hover {
-  text-decoration: underline;
-}
-
-.readOnlyNote {
-  margin-bottom: -8px;
-  font-size: 0.8125rem;
-  color: var(--fg-muted);
+  gap: 10px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
 }
 
 .dropzone {

@@ -80,7 +80,7 @@ export function GitCredentialDialog({ open, onClose, editing }: Props) {
       <Field label="Name" required hint="A friendly label to identify this credential">
         <TextField value={name} onChange={(e) => setName(e.target.value)} autoFocus />
       </Field>
-      <Field label="Username" required hint="Your Git provider username. For a GitHub token, any value works.">
+      <Field label="Username" required hint="Your Git provider username.">
         <TextField value={username} onChange={(e) => setUsername(e.target.value)} />
       </Field>
       <Field

@@ -14,6 +14,7 @@ import {
 } from '../lib/stacks'
 import { toast } from '../lib/toast'
 import { Button } from './Button'
+import { Checkbox } from './Checkbox'
 import { RequiredMark } from './RequiredMark'
 import { Select } from './Select'
 import styles from './StackEditor.module.css'
@@ -25,7 +26,37 @@ type Props = {
 
 type Tab = 'editor' | 'upload' | 'git'
 
+type GitFields = {
+  url: string
+  ref: string
+  path: string
+  credentialId: string
+  autoUpdate: boolean
+  pollInterval: string
+}
+
 const NO_CREDENTIAL = '0'
+const DEFAULT_POLL = '30'
+
+const POLL_ITEMS = [
+  { label: '15 seconds', value: '15' },
+  { label: '30 seconds', value: '30' },
+  { label: '45 seconds', value: '45' },
+  { label: '1 minute', value: '60' },
+  { label: '2 minutes', value: '120' },
+  { label: '5 minutes', value: '300' },
+  { label: '10 minutes', value: '600' },
+  { label: '30 minutes', value: '1800' },
+]
+
+function pollValue(seconds: number): string {
+  const match = POLL_ITEMS.find((item) => item.value === String(seconds))
+  return match ? match.value : DEFAULT_POLL
+}
+
+function snapshot(content: string, env: EnvVar[], git: GitFields | null): string {
+  return JSON.stringify({ content, env, git })
+}
 
 function toRawEnv(vars: EnvVar[]): string {
   return vars
@@ -65,7 +96,9 @@ export function StackEditor({ envId, name: editName }: Props) {
   const [gitRef, setGitRef] = useState('')
   const [gitPath, setGitPath] = useState('docker-compose.yml')
   const [gitCredentialId, setGitCredentialId] = useState(NO_CREDENTIAL)
-  const [commit, setCommit] = useState('')
+  const [autoUpdate, setAutoUpdate] = useState(false)
+  const [pollInterval, setPollInterval] = useState(DEFAULT_POLL)
+  const [initial, setInitial] = useState('')
   const [dragOver, setDragOver] = useState(false)
   const [loading, setLoading] = useState(editing)
   const [error, setError] = useState<string | null>(null)
@@ -73,7 +106,6 @@ export function StackEditor({ envId, name: editName }: Props) {
   const { data: credentials } = useGitCredentials()
 
   const fromGit = editing ? stackSource === 'git' : tab === 'git'
-  const readOnly = editing && fromGit
 
   const credentialItems = [
     { label: 'None, public repository', value: NO_CREDENTIAL },
@@ -128,16 +160,28 @@ export function StackEditor({ envId, name: editName }: Props) {
         if (!active) {
           return
         }
+        const loadedEnv = (stack.env ?? []).filter((v) => v.key.trim() !== '')
         setContent(stack.content)
-        setEnv(stack.env ?? [])
+        setEnv(loadedEnv)
         setStackSource(stack.source)
+        let loadedGit: GitFields | null = null
         if (stack.git) {
-          setGitUrl(stack.git.url)
-          setGitRef(stack.git.ref)
-          setGitPath(stack.git.path)
-          setGitCredentialId(String(stack.git.credentialId))
-          setCommit(stack.git.commit)
+          loadedGit = {
+            url: stack.git.url,
+            ref: stack.git.ref,
+            path: stack.git.path,
+            credentialId: String(stack.git.credentialId),
+            autoUpdate: stack.git.autoUpdate,
+            pollInterval: pollValue(stack.git.pollInterval),
+          }
+          setGitUrl(loadedGit.url)
+          setGitRef(loadedGit.ref)
+          setGitPath(loadedGit.path)
+          setGitCredentialId(loadedGit.credentialId)
+          setAutoUpdate(loadedGit.autoUpdate)
+          setPollInterval(loadedGit.pollInterval)
         }
+        setInitial(snapshot(stack.content, loadedEnv, loadedGit))
       })
       .catch(() => {
         if (active) {
@@ -158,11 +202,25 @@ export function StackEditor({ envId, name: editName }: Props) {
     ? name.trim() !== '' && gitUrl.trim() !== '' && gitPath.trim() !== ''
     : name.trim() !== '' && content.trim() !== ''
 
+  const finalEnv = advanced
+    ? parseRawEnv(rawEnv)
+    : env.filter((v) => v.key.trim() !== '')
+
+  const currentGit: GitFields | null = fromGit
+    ? {
+        url: gitUrl.trim(),
+        ref: gitRef.trim(),
+        path: gitPath.trim(),
+        credentialId: gitCredentialId,
+        autoUpdate,
+        pollInterval,
+      }
+    : null
+
+  const changed = !editing || snapshot(content, finalEnv, currentGit) !== initial
+
   const submit = () => {
     setError(null)
-    const finalEnv = advanced
-      ? parseRawEnv(rawEnv)
-      : env.filter((v) => v.key.trim() !== '')
 
     const input: DeployStackInput = fromGit
       ? {
@@ -175,6 +233,8 @@ export function StackEditor({ envId, name: editName }: Props) {
             ref: gitRef.trim(),
             path: gitPath.trim(),
             credentialId: Number(gitCredentialId),
+            autoUpdate,
+            pollInterval: Number(pollInterval),
           },
         }
       : { name: name.trim(), source: 'content', content, env: finalEnv }
@@ -252,7 +312,7 @@ export function StackEditor({ envId, name: editName }: Props) {
         </div>
       )}
 
-      {fromGit && !editing && (
+      {fromGit && (
         <div className={styles.gitForm}>
           <label className={styles.gitField}>
             <span className={styles.gitLabel}>
@@ -315,31 +375,26 @@ export function StackEditor({ envId, name: editName }: Props) {
               .
             </span>
           </div>
-        </div>
-      )}
 
-      {readOnly && (
-        <div className={styles.gitInfo}>
-          <div className={styles.gitInfoRow}>
-            <span className={styles.gitInfoKey}>Repository</span>
-            <a className={styles.gitInfoLink} href={gitUrl} target="_blank" rel="noreferrer">
-              {gitUrl}
-            </a>
+          <div className={styles.autoUpdate}>
+            <Checkbox
+              label="Redeploy automatically on a new commit"
+              checked={autoUpdate}
+              onCheckedChange={(checked) => setAutoUpdate(checked === true)}
+            />
+            {autoUpdate && (
+              <div className={`${styles.gitField} ${styles.gitFieldHalf}`}>
+                <span className={styles.gitLabel}>Check every</span>
+                <Select
+                  items={POLL_ITEMS}
+                  size="md"
+                  value={pollInterval}
+                  onValueChange={(value) => setPollInterval(value ?? DEFAULT_POLL)}
+                  aria-label="Check interval"
+                />
+              </div>
+            )}
           </div>
-          <div className={styles.gitInfoRow}>
-            <span className={styles.gitInfoKey}>Reference</span>
-            <span className={styles.gitInfoValue}>{gitRef || 'default branch'}</span>
-          </div>
-          <div className={styles.gitInfoRow}>
-            <span className={styles.gitInfoKey}>Compose path</span>
-            <span className={styles.gitInfoValue}>{gitPath}</span>
-          </div>
-          {commit && (
-            <div className={styles.gitInfoRow}>
-              <span className={styles.gitInfoKey}>Commit</span>
-              <span className={styles.gitInfoValue}>{commit.slice(0, 12)}</span>
-            </div>
-          )}
         </div>
       )}
 
@@ -372,24 +427,17 @@ export function StackEditor({ envId, name: editName }: Props) {
           <span className={styles.dropHint}>.yml or .yaml</span>
         </label>
       ) : (
-        !(fromGit && !editing) && (
-          <>
-            {readOnly && (
-              <p className={styles.readOnlyNote}>
-                This compose file comes from the repository. Edit it in Git, then redeploy.
-              </p>
-            )}
-            <div className={styles.editor}>
-              <CodeMirror
-                value={content}
-                height="360px"
-                theme="light"
-                extensions={[yaml()]}
-                editable={!loading && !readOnly}
-                onChange={setContent}
-              />
-            </div>
-          </>
+        !fromGit && (
+          <div className={styles.editor}>
+            <CodeMirror
+              value={content}
+              height="360px"
+              theme="light"
+              extensions={[yaml()]}
+              editable={!loading}
+              onChange={setContent}
+            />
+          </div>
         )
       )}
 
@@ -455,8 +503,12 @@ export function StackEditor({ envId, name: editName }: Props) {
         <Button variant="secondary" render={<Link {...backTo} />}>
           Cancel
         </Button>
-        <Button onClick={submit} loading={deploy.isPending} disabled={loading || !canDeploy}>
-          {editing ? 'Redeploy' : 'Deploy'}
+        <Button
+          onClick={submit}
+          loading={deploy.isPending}
+          disabled={loading || !canDeploy || !changed}
+        >
+          {editing ? 'Save and redeploy' : 'Deploy'}
         </Button>
       </footer>
     </div>

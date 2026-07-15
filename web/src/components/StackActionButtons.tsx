@@ -31,7 +31,7 @@ type Props = {
   onDone?: (action: StackAction) => void
 }
 
-export function StackActionButtons({ envId, items, onDone }: Props) {
+function useRunAction(envId: number, onDone?: (action: StackAction) => void) {
   const mutation = useStackActions(envId)
 
   const run = (action: StackAction, names: string[]) => {
@@ -53,8 +53,16 @@ export function StackActionButtons({ envId, items, onDone }: Props) {
     )
   }
 
-  const loading = (action: StackAction) =>
-    mutation.isPending && mutation.variables?.action === action
+  return {
+    run,
+    pending: mutation.isPending,
+    loading: (action: StackAction) =>
+      mutation.isPending && mutation.variables?.action === action,
+  }
+}
+
+export function StackActionButtons({ envId, items, onDone }: Props) {
+  const { run, pending, loading } = useRunAction(envId, onDone)
 
   return (
     <>
@@ -65,29 +73,36 @@ export function StackActionButtons({ envId, items, onDone }: Props) {
           size="sm"
           icon={action.icon}
           loading={loading(action.key)}
-          disabled={mutation.isPending}
+          disabled={pending}
           onClick={() => run(action.key, items.filter(action.eligible).map((stack) => stack.name))}
         >
           {action.label}
         </Button>
       ))}
-      <ConfirmDialog
-        trigger={
-          <Button
-            variant="danger"
-            size="sm"
-            icon={<LuTrash2 />}
-            loading={loading('remove')}
-            disabled={mutation.isPending}
-          >
-            Delete
-          </Button>
-        }
-        title={`Delete ${items.length} stack${items.length > 1 ? 's' : ''}?`}
-        description="This deletes the selected stacks and removes their containers. Volumes and networks are kept. This cannot be undone."
-        confirmLabel="Delete"
-        onConfirm={() => run('remove', items.map((stack) => stack.name))}
-      />
     </>
+  )
+}
+
+export function StackDeleteButton({ envId, items, onDone }: Props) {
+  const { run, pending, loading } = useRunAction(envId, onDone)
+
+  return (
+    <ConfirmDialog
+      trigger={
+        <Button
+          variant="danger"
+          size="sm"
+          icon={<LuTrash2 />}
+          loading={loading('remove')}
+          disabled={pending}
+        >
+          Delete
+        </Button>
+      }
+      title={`Delete ${items.length} stack${items.length > 1 ? 's' : ''}?`}
+      description="This deletes the selected stacks and removes their containers. Volumes and networks are kept. This cannot be undone."
+      confirmLabel="Delete"
+      onConfirm={() => run('remove', items.map((stack) => stack.name))}
+    />
   )
 }

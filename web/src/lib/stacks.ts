@@ -61,9 +61,15 @@ export type GitSource = {
   ref: string
   path: string
   credentialId: number
+  autoUpdate: boolean
+  pollInterval: number
 }
 
-export type GitDetail = GitSource & { commit: string }
+export type GitDetail = GitSource & {
+  commit: string
+  lastCheckedAt: number
+  lastError: string
+}
 
 export type StackDetail = {
   name: string
@@ -75,6 +81,14 @@ export type StackDetail = {
 
 export function fetchStackContent(envId: number, name: string) {
   return api.get<StackDetail>(`/environments/${envId}/stacks/${name}`)
+}
+
+export function useStackDetail(envId: number, name: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['stack', envId, name],
+    queryFn: () => fetchStackContent(envId, name),
+    enabled,
+  })
 }
 
 export type DeployStackInput = {
@@ -90,9 +104,10 @@ export function useDeployStack(envId: number) {
   return useMutation({
     mutationFn: (input: DeployStackInput) =>
       api.post<{ name: string }>(`/environments/${envId}/stacks`, input),
-    onSuccess: () => {
+    onSuccess: (_result, input) => {
       queryClient.invalidateQueries({ queryKey: ['stacks', envId] })
       queryClient.invalidateQueries({ queryKey: ['containers', envId] })
+      queryClient.invalidateQueries({ queryKey: ['stack', envId, input.name] })
     },
   })
 }
