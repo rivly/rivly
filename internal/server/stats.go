@@ -48,7 +48,10 @@ func (s *Server) handleContainerStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stream, err := s.docker.ContainerStats(r.Context(), env.ID, env.Url, containerID)
+	ctx, cancel := s.streamContext(r)
+	defer cancel()
+
+	stream, err := s.docker.ContainerStats(ctx, env.ID, env.Url, containerID)
 	if err != nil {
 		s.writeError(w, http.StatusBadGateway, "could not stream stats")
 		return
@@ -67,7 +70,6 @@ func (s *Server) handleContainerStats(w http.ResponseWriter, r *http.Request) {
 	heartbeat := time.NewTicker(eventHeartbeat)
 	defer heartbeat.Stop()
 
-	ctx := r.Context()
 	for {
 		select {
 		case <-ctx.Done():

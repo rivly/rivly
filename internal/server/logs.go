@@ -46,7 +46,10 @@ func (s *Server) handleContainerLogs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	lines, err := s.docker.ContainerLogs(r.Context(), env.ID, env.Url, containerID, parseLogTail(r), true)
+	ctx, cancel := s.streamContext(r)
+	defer cancel()
+
+	lines, err := s.docker.ContainerLogs(ctx, env.ID, env.Url, containerID, parseLogTail(r), true)
 	if err != nil {
 		s.writeError(w, http.StatusBadGateway, "could not stream container logs")
 		return
@@ -65,7 +68,6 @@ func (s *Server) handleContainerLogs(w http.ResponseWriter, r *http.Request) {
 	heartbeat := time.NewTicker(eventHeartbeat)
 	defer heartbeat.Stop()
 
-	ctx := r.Context()
 	for {
 		select {
 		case <-ctx.Done():

@@ -52,7 +52,8 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	heartbeat := time.NewTicker(eventHeartbeat)
 	defer heartbeat.Stop()
 
-	ctx := r.Context()
+	ctx, cancel := s.streamContext(r)
+	defer cancel()
 	for {
 		select {
 		case <-ctx.Done():

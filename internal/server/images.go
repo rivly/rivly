@@ -218,7 +218,10 @@ func (s *Server) handleImagePull(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stream, err := s.docker.ImagePull(r.Context(), env.ID, env.Url, ref)
+	ctx, cancel := s.streamContext(r)
+	defer cancel()
+
+	stream, err := s.docker.ImagePull(ctx, env.ID, env.Url, ref)
 	if err != nil {
 		s.writeError(w, http.StatusBadGateway, "could not pull image")
 		return
@@ -237,7 +240,6 @@ func (s *Server) handleImagePull(w http.ResponseWriter, r *http.Request) {
 	heartbeat := time.NewTicker(eventHeartbeat)
 	defer heartbeat.Stop()
 
-	ctx := r.Context()
 	for {
 		select {
 		case <-ctx.Done():

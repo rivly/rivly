@@ -2,6 +2,7 @@ package server
 
 import (
 	"bufio"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -21,6 +22,33 @@ func TestEventsStreamRequiresAuth(t *testing.T) {
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("events without auth: want 401, got %d", resp.StatusCode)
+	}
+}
+
+func TestEventsStreamEndsOnShutdown(t *testing.T) {
+	srv := newTestServer(t)
+	ts := httptest.NewServer(srv.Router())
+	defer ts.Close()
+
+	client := authedClient(t, ts)
+	resp, err := client.Get(ts.URL + "/api/v1/events")
+	if err != nil {
+		t.Fatalf("GET events: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	drained := make(chan error, 1)
+	go func() {
+		_, rerr := io.Copy(io.Discard, resp.Body)
+		drained <- rerr
+	}()
+
+	srv.CloseStreams()
+
+	select {
+	case <-drained:
+	case <-time.After(5 * time.Second):
+		t.Fatal("an open stream must end on shutdown, otherwise Shutdown waits forever")
 	}
 }
 

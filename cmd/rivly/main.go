@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -84,8 +83,8 @@ func run(logger *slog.Logger) error {
 		Handler:           srv.Router(),
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       120 * time.Second,
-		BaseContext:       func(net.Listener) context.Context { return ctx },
 	}
+	httpServer.RegisterOnShutdown(srv.CloseStreams)
 
 	go func() {
 		logger.Info("Rivly listening", "addr", cfg.Addr)

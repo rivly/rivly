@@ -59,21 +59,23 @@ type composeRunner interface {
 }
 
 type Server struct {
-	logger       *slog.Logger
-	queries      *db.Queries
-	sessions     *scs.SessionManager
-	local        *auth.Local
-	docker       dockerService
-	compose      composeRunner
-	events       *events.Hub
-	registries   *registry.Store
-	gitcreds     *gitcred.Store
-	cfg          config.Config
-	setupMu      sync.Mutex
-	envStateMu   sync.Mutex
-	lastEnvState map[int64]string
-	gitMu        sync.Mutex
-	gitInflight  map[int64]bool
+	logger         *slog.Logger
+	queries        *db.Queries
+	sessions       *scs.SessionManager
+	local          *auth.Local
+	docker         dockerService
+	compose        composeRunner
+	events         *events.Hub
+	registries     *registry.Store
+	gitcreds       *gitcred.Store
+	cfg            config.Config
+	setupMu        sync.Mutex
+	envStateMu     sync.Mutex
+	lastEnvState   map[int64]string
+	gitMu          sync.Mutex
+	gitInflight    map[int64]bool
+	streamsClosing context.Context
+	closeStreams   context.CancelFunc
 }
 
 func New(
@@ -88,19 +90,35 @@ func New(
 	gitcreds *gitcred.Store,
 	cfg config.Config,
 ) *Server {
+	streamsClosing, closeStreams := context.WithCancel(context.Background())
 	return &Server{
-		logger:       logger,
-		queries:      queries,
-		sessions:     sessions,
-		local:        local,
-		docker:       docker,
-		compose:      compose,
-		events:       eventsHub,
-		registries:   registries,
-		gitcreds:     gitcreds,
-		cfg:          cfg,
-		lastEnvState: make(map[int64]string),
-		gitInflight:  make(map[int64]bool),
+		logger:         logger,
+		queries:        queries,
+		sessions:       sessions,
+		local:          local,
+		docker:         docker,
+		compose:        compose,
+		events:         eventsHub,
+		registries:     registries,
+		gitcreds:       gitcreds,
+		cfg:            cfg,
+		lastEnvState:   make(map[int64]string),
+		gitInflight:    make(map[int64]bool),
+		streamsClosing: streamsClosing,
+		closeStreams:   closeStreams,
+	}
+}
+
+func (s *Server) CloseStreams() {
+	s.closeStreams()
+}
+
+func (s *Server) streamContext(r *http.Request) (context.Context, context.CancelFunc) {
+	ctx, cancel := context.WithCancel(r.Context())
+	stop := context.AfterFunc(s.streamsClosing, cancel)
+	return ctx, func() {
+		stop()
+		cancel()
 	}
 }
 

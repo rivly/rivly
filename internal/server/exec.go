@@ -46,7 +46,8 @@ func (s *Server) handleContainerExec(w http.ResponseWriter, r *http.Request) {
 	defer func() { _ = conn.CloseNow() }()
 	conn.SetReadLimit(execReadLimit)
 
-	ctx := r.Context()
+	ctx, cancel := s.streamContext(r)
+	defer cancel()
 	session, err := s.docker.ContainerExec(ctx, env.ID, env.Url, containerID)
 	if err != nil {
 		_ = conn.Write(ctx, websocket.MessageText, execError("could not start a shell in this container"))
