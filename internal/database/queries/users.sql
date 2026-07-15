@@ -21,3 +21,14 @@ RETURNING *;
 SELECT * FROM credentials
 WHERE user_id = ? AND type = 'password'
 LIMIT 1;
+
+-- name: UpdateUserProfile :one
+UPDATE users
+SET display_name = ?, updated_at = unixepoch()
+WHERE id = ?
+RETURNING *;
+
+-- name: UpdatePasswordCredential :exec
+UPDATE credentials
+SET secret = ?
+WHERE user_id = ? AND type = 'password';

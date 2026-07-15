@@ -138,11 +138,18 @@ func validateSetup(in credentialsInput) (email string, message string, ok bool) 
 	if err != nil {
 		return "", "a valid email address is required", false
 	}
-	if len(in.Password) < 8 {
-		return "", "password must be at least 8 characters", false
-	}
-	if len(in.Password) > 128 {
-		return "", "password must be at most 128 characters", false
+	if msg, ok := validatePassword(in.Password); !ok {
+		return "", msg, false
 	}
 	return strings.ToLower(addr.Address), "", true
+}
+
+func validatePassword(password string) (message string, ok bool) {
+	if len(password) < 8 {
+		return "password must be at least 8 characters", false
+	}
+	if len(password) > 128 {
+		return "password must be at most 128 characters", false
+	}
+	return "", true
 }

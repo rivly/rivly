@@ -140,6 +140,8 @@ func (s *Server) Router() http.Handler {
 			r.With(authLimit).Post("/login", s.handleLogin)
 			r.Post("/logout", s.handleLogout)
 			r.With(s.requireAuth).Get("/me", s.handleMe)
+			r.With(s.requireAuth).Put("/me", s.handleUpdateProfile)
+			r.With(s.requireAuth, authLimit).Post("/me/password", s.handleChangePassword)
 
 			r.Route("/environments", func(r chi.Router) {
 				r.Use(s.requireAuth)

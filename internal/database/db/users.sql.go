@@ -132,3 +132,46 @@ func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
 	)
 	return i, err
 }
+
+const updatePasswordCredential = `-- name: UpdatePasswordCredential :exec
+UPDATE credentials
+SET secret = ?
+WHERE user_id = ? AND type = 'password'
+`
+
+type UpdatePasswordCredentialParams struct {
+	Secret sql.NullString
+	UserID int64
+}
+
+func (q *Queries) UpdatePasswordCredential(ctx context.Context, arg UpdatePasswordCredentialParams) error {
+	_, err := q.db.ExecContext(ctx, updatePasswordCredential, arg.Secret, arg.UserID)
+	return err
+}
+
+const updateUserProfile = `-- name: UpdateUserProfile :one
+UPDATE users
+SET display_name = ?, updated_at = unixepoch()
+WHERE id = ?
+RETURNING id, email, email_verified_at, display_name, role, created_at, updated_at
+`
+
+type UpdateUserProfileParams struct {
+	DisplayName string
+	ID          int64
+}
+
+func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfileParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, updateUserProfile, arg.DisplayName, arg.ID)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.EmailVerifiedAt,
+		&i.DisplayName,
+		&i.Role,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
