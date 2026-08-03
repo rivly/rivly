@@ -1,80 +1,138 @@
 # AGENTS.md
 
-Rivly is an open-source dashboard for Docker, from a single host to a full Swarm. This is the product monorepo: a **Go backend** and a **React frontend** compiled into a **single binary** (the Go server embeds the built web UI). Self-hosted, MIT.
+## Scope
 
-## Layout
+These instructions apply to the entire repository. A closer `AGENTS.md`, if one
+exists, takes precedence over this one.
 
-```
-cmd/rivly/              Go entrypoint (wiring, http.Server, graceful shutdown)
-internal/
-  config/               env config (RIVLY_*), no hardcoded paths/secrets
-  database/             SQLite open + goose migrations
-  database/db/          sqlc-GENERATED code — never edit by hand
-  database/queries/     hand-written SQL (source for sqlc)
-  database/migrations/  goose migrations (immutable once applied)
-  auth/                 scs sessions, argon2id, Authenticator, local provider
-  server/               chi router, handlers, middleware
-web/                    React + Vite frontend (embedded at build time)
-bruno/                  Bruno API collection
-```
+---
+
+## Project
+
+Rivly is an open-source dashboard for Docker, from a single host to a full Swarm.
+
+It is self-hosted and MIT licensed. No accounts, no telemetry, no lock-in.
+
+The intended packaging is a single binary: a Go backend serving the React
+frontend embedded at build time.
+
+---
+
+## Repository structure
+
+- `cmd/` entrypoints, limited to wiring and lifecycle.
+- `internal/` the Go backend, packages grouped by responsibility.
+- `web/` the React dashboard.
+- `bruno/` a Bruno collection of API requests, kept in sync with the endpoints.
+- `brand/` logo and brand assets.
+
+---
 
 ## Commands
 
 ```bash
-# backend (repo root)
-make run          # API on :8080
-make build        # static binary (CGO_ENABLED=0) -> bin/rivly
-make test         # go test ./...
-make lint         # golangci-lint v2 — MUST pass
-sqlc generate     # regenerate internal/database/db after editing queries
+make run      # API on :8080
+make build    # static binary -> bin/rivly
+make test     # go test
+make lint     # golangci-lint, must pass
 
-# frontend (web/)
-bun run dev       # dashboard on :5173
-bun run build     # tsc -b + vite build
-bun run lint      # oxlint — MUST pass
+cd web
+bun run dev    # dashboard on :5173
+bun run build  # tsc -b + vite build
+bun run lint   # oxlint, must pass
 ```
 
-Before finishing a change, the relevant `lint` + `build` (+ `test` for Go) must pass.
+Run the lint, the build and the tests of every area a change touches.
 
-## Rules that keep you out of trouble
+Report what was executed, what passed, and what could not run and why. Never
+declare a task complete without that report.
 
-These are the mistakes that get made here. Don't.
+---
 
-- **Docker SDK** is `github.com/moby/moby/client` (+ `.../api/types`). NOT `github.com/docker/docker` — deprecated since Docker v29 and flagged by govulncheck.
-- **Stay pure-Go**: the binary builds with `CGO_ENABLED=0` for the distroless image. Never add a CGO dependency. SQLite is `modernc.org/sqlite` — never `mattn/go-sqlite3`.
-- **DB access is sqlc**: write SQL in `internal/database/queries/*.sql`, run `sqlc generate`. Never hand-write query code or edit `internal/database/db/*`.
-- **Migrations are immutable**: add a new goose migration, never edit an applied one. Timestamps are **INTEGER unix** (`unixepoch()`), not `DATETIME` — Go cannot scan SQLite's datetime text into `time.Time`.
-- **chi APIs**: use `middleware.ClientIPFrom*` (not deprecated `RealIP`) and `httprate.LimitBy` (not `LimitByIP`). golangci-lint flags the deprecated ones — fix them, don't silence.
-- **Auth already exists** in `internal/auth`. Never roll your own hashing or session cookies. Auth failures stay generic and constant-time (no user enumeration).
-- **UI is hand-built with CSS Modules** (`Component.module.css`), scoped per component. Only the reset and design tokens are global, in `src/styles/` (imported by `src/index.css`). No Tailwind, no CSS-in-JS, no *styled* component library, and never dump component styles into `index.css`. Complex widgets use **Base UI** (`@base-ui/react`, headless) and tables use **TanStack Table** — both give behavior + accessibility only, you write all the CSS. Prefer a native element when it is already accessible.
-- **Server state is TanStack Query**, never `useEffect` + `fetch`. Routing is TanStack Router file-based (`web/src/routes/`); the router plugin goes **before** `react()` in `vite.config.ts`; `routeTree.gen.ts` is generated, not hand-edited.
-- **No comments** anywhere. Clear names and small functions instead.
+## Working workflow
 
-## Backend (Go)
+For every non-trivial task:
 
-- Go 1.24+. Router `go-chi/chi/v5`. Logging `log/slog` (structured).
-- API is versioned: business endpoints under `/api/v1/`; ops (`/api/health`) unversioned.
-- Config from env via `internal/config`. Pass `context.Context` down to every query and session call.
-- Errors: check every one, wrap with `fmt.Errorf("...: %w", err)`, compare with `errors.Is`/`errors.As`. Log the cause once at the handler (`s.serverError`) and return a generic message; never leak internals in a response.
-- Accept interfaces, return structs (see `auth.Store`). Group packages by responsibility, never `utils`/`models`.
-- Tools: `golangci-lint` and `sqlc` via brew; goose is a library dependency.
+1. Explain the approach.
+2. List the files that will be created or modified.
+3. Explain the technical decisions and their trade-offs.
+4. Wait for approval before writing code.
 
-## Frontend (web/)
+Never refactor or change the architecture without explicit approval.
 
-- Vite 8 + React 19 + TypeScript (strict). Styling is plain CSS via **CSS Modules** (`Component.module.css`); global reset + design tokens in `src/styles/` (`tokens.css`, `reset.css`, `base.css`), imported by `src/index.css`. Linter oxlint.
-- Component stack: **Base UI** (`@base-ui/react`) for interactive widgets, **TanStack Table** for tables, **react-icons** (`react-icons/lu`, Lucide) for icons. All headless — you own the styling and the look.
-- Function components only; `ref` is a prop (no `forwardRef`); no `React.FC`; no top-level `import React`; type-only imports use `import type`.
-- Call the API at `/api/v1/...` with `credentials: 'include'` (auth is a session cookie). In dev, proxy `/api` through Vite so it stays same-origin — the backend rejects cross-origin browser POSTs (CSRF protection).
-- Server data via TanStack Query; local/UI state via React state or context.
+Keep changes scoped to what was asked. Report anything else you spot instead of
+fixing it.
 
-## Packaging
+---
 
-Single binary: `web/` is built, embedded with `go:embed`, and served with an SPA fallback. Production image is distroless, `CGO_ENABLED=0`.
+## Verification
+
+Do not answer from memory when something can be checked. Verification beats
+prior knowledge, always.
+
+Before a technical decision, read the code that is already there. If the answer
+is in the repository, read the repository instead of assuming.
+
+Verify anything that changes over time against its official source: library
+versions, image versions, compatibility, deprecations, security advisories.
+
+Generated code, templates and framework defaults are starting points, not
+decisions. Review them before keeping them.
+
+When you verify something, say what you checked, where, and what you concluded.
+
+Label facts, observations, assumptions and recommendations for what they are.
+Never present an assumption as a fact.
+
+---
+
+## Dependencies
+
+Wait for approval before adding a dependency.
+
+To propose one: name the latest stable release, confirm it works with the
+current stack, and justify the version. Pin it. No floating or unbounded
+constraints, no unmaintained packages.
+
+---
+
+## Self review
+
+Before presenting a result, look for your own mistakes: wrong assumptions,
+inherited template defaults, technical debt, risks you did not mention.
+
+If a previous assumption turns out to be wrong, say so, explain the impact, and
+give the corrected version.
+
+---
+
+## Security
+
+Rivly drives a Docker daemon, so a defect here is a host-level defect.
+
+Never weaken authentication, authorization, cryptography, secret handling or
+input validation without explicit approval. Prefer secure defaults.
+
+Never log a secret, and never return one in an API response.
+
+---
 
 ## Git
 
-**Never run git.** No commits, pushes, staging, or branches — the human owns all git. When work is ready, hand over one single-line Conventional Commit message (`feat:`, `fix:`, `refactor:`, `chore:`, `docs:`) and stop.
+Never run git. No commits, no branches, no tags, no history rewriting.
 
-## Ask first
+When the work is ready, hand over one single-line Conventional Commit message
+and stop.
 
-Adding any dependency; new tooling or a build step; changing auth/security behavior; changing the API contract or DB schema.
+---
+
+## Communication
+
+Ask instead of guessing when requirements are ambiguous.
+
+When several approaches are possible, give the alternatives, their trade-offs,
+and your recommendation.
+
+Never silently change architecture, documented behaviour or project conventions.
+
+Always explain why, not only what.
