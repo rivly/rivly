@@ -355,6 +355,8 @@ func (s *Server) deployGitStack(
 
 func gitError(err error) string {
 	switch {
+	case errors.Is(err, gitrepo.ErrCredentialsInURL):
+		return gitrepo.ErrCredentialsInURL.Error()
 	case errors.Is(err, gitrepo.ErrAuth):
 		return "could not authenticate with the repository, check the credential"
 	case errors.Is(err, gitrepo.ErrNotFound):

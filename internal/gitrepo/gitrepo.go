@@ -24,9 +24,10 @@ const (
 )
 
 var (
-	ErrAuth     = errors.New("git authentication failed")
-	ErrNotFound = errors.New("repository not found")
-	ErrRef      = errors.New("branch or tag not found")
+	ErrAuth             = errors.New("git authentication failed")
+	ErrNotFound         = errors.New("repository not found")
+	ErrRef              = errors.New("branch or tag not found")
+	ErrCredentialsInURL = errors.New("remove the credentials from the repository url and select a git credential instead")
 )
 
 type Options struct {
@@ -233,7 +234,11 @@ func NormalizeURL(raw string) (string, error) {
 	if parsed.Host == "" {
 		return "", errors.New("repository url is missing a host")
 	}
-	return raw, nil
+	if _, hasPassword := parsed.User.Password(); hasPassword {
+		return "", ErrCredentialsInURL
+	}
+	parsed.User = nil
+	return parsed.String(), nil
 }
 
 func ComposePath(raw string) (string, error) {

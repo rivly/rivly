@@ -151,6 +151,45 @@ func TestNormalizeURLAccepts(t *testing.T) {
 	}
 }
 
+func TestNormalizeURLRejectsCredentials(t *testing.T) {
+	t.Parallel()
+
+	for _, in := range []string{
+		"https://bob:ghp_secret@github.com/acme/app.git",
+		"https://oauth2:glpat-secret@gitlab.com/acme/app.git",
+		"http://user:pass@gitea.internal:3000/acme/app.git",
+		"https://:token@github.com/acme/app.git",
+	} {
+		got, err := NormalizeURL(in)
+		if !errors.Is(err, ErrCredentialsInURL) {
+			t.Errorf("NormalizeURL(%q) = %q, %v; want ErrCredentialsInURL", in, got, err)
+		}
+		if got != "" {
+			t.Errorf("NormalizeURL(%q) leaked %q on rejection", in, got)
+		}
+	}
+}
+
+func TestNormalizeURLStripsBareUsername(t *testing.T) {
+	t.Parallel()
+
+	cases := map[string]string{
+		"https://bob@github.com/acme/app.git": "https://github.com/acme/app.git",
+		"https://github.com/acme/app.git":     "https://github.com/acme/app.git",
+		"http://gitea.internal:3000/a/b.git":  "http://gitea.internal:3000/a/b.git",
+	}
+	for in, want := range cases {
+		got, err := NormalizeURL(in)
+		if err != nil {
+			t.Errorf("NormalizeURL(%q): unexpected error %v", in, err)
+			continue
+		}
+		if got != want {
+			t.Errorf("NormalizeURL(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
 func TestNormalizeURLRejectsNonHTTP(t *testing.T) {
 	cases := []string{
 		"",
