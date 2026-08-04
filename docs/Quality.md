@@ -74,10 +74,32 @@ stack lifecycle, the credential stores, and everything under
 
 ## Linting
 
-`golangci-lint` runs errcheck, govet, ineffassign, staticcheck and unused.
+`golangci-lint` runs the standard set plus roughly thirty more, grouped by what
+they protect:
 
-A deprecation flagged by the linter is fixed, never silenced. If a rule is wrong
-for this project, disable it in the configuration with a reason, not inline.
+| Concern | Linters |
+| --- | --- |
+| Correctness | `errorlint`, `nilerr`, `contextcheck`, `bodyclose`, `rowserrcheck`, `sqlclosecheck`, `makezero`, `durationcheck` |
+| Security | `gosec` |
+| Complexity and duplication | `gocognit`, `nestif`, `dupl`, `gocritic`, `unparam` |
+| Tests | `thelper`, `tparallel` |
+| Architecture | `depguard` |
+
+`depguard` is the one that matters most here: it refuses
+`github.com/docker/docker` and `github.com/mattn/go-sqlite3` at compile time, so
+[ADR-0005](<ADR/0005 - The official Docker SDK under moby.md>) and
+[ADR-0003](<ADR/0003 - A pure Go build with CGO disabled.md>) are enforced by a
+tool rather than by memory.
+
+Two `revive` rules are off on purpose. `exported` and `package-comments` demand
+doc comments on every exported symbol, which contradicts the no-comment rule this
+project follows.
+
+A finding is fixed, never silenced inline. When a linter is wrong for this
+codebase, it is excluded in the configuration, scoped to the file and the rule,
+so the exclusion is visible and reviewable.
+
+Formatting is `gofmt` plus `gofumpt`.
 
 ---
 

@@ -154,34 +154,8 @@ func (m *Manager) ContainerDetail(ctx context.Context, id int64, host, container
 	detail.Command = strings.TrimSpace(c.Path + " " + strings.Join(c.Args, " "))
 
 	if c.NetworkSettings != nil {
-		for p, bindings := range c.NetworkSettings.Ports {
-			priv, _ := strconv.ParseUint(p.Port(), 10, 16)
-			proto := string(p.Proto())
-			if len(bindings) == 0 {
-				detail.Ports = append(detail.Ports, Port{PrivatePort: uint16(priv), Type: proto})
-				continue
-			}
-			for _, b := range bindings {
-				pub, _ := strconv.ParseUint(b.HostPort, 10, 16)
-				ip := ""
-				if b.HostIP.IsValid() {
-					ip = b.HostIP.String()
-				}
-				detail.Ports = append(detail.Ports, Port{
-					PrivatePort: uint16(priv),
-					PublicPort:  uint16(pub),
-					Type:        proto,
-					IP:          ip,
-				})
-			}
-		}
-		for name, ep := range c.NetworkSettings.Networks {
-			attach := NetworkAttachment{Name: name}
-			if ep != nil && ep.IPAddress.IsValid() {
-				attach.IP = ep.IPAddress.String()
-			}
-			detail.Networks = append(detail.Networks, attach)
-		}
+		detail.Ports = boundPorts(c.NetworkSettings.Ports)
+		detail.Networks = attachments(c.NetworkSettings.Networks)
 	}
 	for _, mnt := range c.Mounts {
 		detail.Mounts = append(detail.Mounts, Mount{
@@ -234,39 +208,15 @@ func (m *Manager) ContainerCreate(ctx context.Context, id int64, host string, in
 	}
 	hostConfig := &container.HostConfig{}
 
-	if len(in.Ports) > 0 {
-		exposed := network.PortSet{}
-		bindings := network.PortMap{}
-		for _, p := range in.Ports {
-			proto := p.Proto
-			if proto == "" {
-				proto = "tcp"
-			}
-			port, perr := network.ParsePort(p.ContainerPort + "/" + proto)
-			if perr != nil {
-				return "", fmt.Errorf("invalid container port %q: %w", p.ContainerPort, perr)
-			}
-			exposed[port] = struct{}{}
-			if p.HostPort != "" {
-				bindings[port] = append(bindings[port], network.PortBinding{HostPort: p.HostPort})
-			}
-		}
+	exposed, bindings, err := translatePorts(in.Ports)
+	if err != nil {
+		return "", err
+	}
+	if len(exposed) > 0 {
 		config.ExposedPorts = exposed
 		hostConfig.PortBindings = bindings
 	}
-
-	for _, mnt := range in.Mounts {
-		mountType := mount.TypeVolume
-		if strings.HasPrefix(mnt.Source, "/") || strings.HasPrefix(mnt.Source, ".") {
-			mountType = mount.TypeBind
-		}
-		hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
-			Type:     mountType,
-			Source:   mnt.Source,
-			Target:   mnt.Target,
-			ReadOnly: mnt.ReadOnly,
-		})
-	}
+	hostConfig.Mounts = translateMounts(in.Mounts)
 
 	if in.RestartPolicy != "" && in.RestartPolicy != "no" {
 		hostConfig.RestartPolicy = container.RestartPolicy{Name: container.RestartPolicyMode(in.RestartPolicy)}
@@ -330,4 +280,83 @@ func applyContainerAction(ctx context.Context, cli *client.Client, containerID, 
 		return fmt.Errorf("unknown action %q", action)
 	}
 	return err
+}
+
+func translatePorts(ports []PortMapping) (network.PortSet, network.PortMap, error) {
+	if len(ports) == 0 {
+		return nil, nil, nil
+	}
+
+	exposed := network.PortSet{}
+	bindings := network.PortMap{}
+	for _, p := range ports {
+		proto := p.Proto
+		if proto == "" {
+			proto = "tcp"
+		}
+		port, err := network.ParsePort(p.ContainerPort + "/" + proto)
+		if err != nil {
+			return nil, nil, fmt.Errorf("invalid container port %q: %w", p.ContainerPort, err)
+		}
+		exposed[port] = struct{}{}
+		if p.HostPort != "" {
+			bindings[port] = append(bindings[port], network.PortBinding{HostPort: p.HostPort})
+		}
+	}
+	return exposed, bindings, nil
+}
+
+func translateMounts(mounts []MountInput) []mount.Mount {
+	out := make([]mount.Mount, 0, len(mounts))
+	for _, mnt := range mounts {
+		mountType := mount.TypeVolume
+		if strings.HasPrefix(mnt.Source, "/") || strings.HasPrefix(mnt.Source, ".") {
+			mountType = mount.TypeBind
+		}
+		out = append(out, mount.Mount{
+			Type:     mountType,
+			Source:   mnt.Source,
+			Target:   mnt.Target,
+			ReadOnly: mnt.ReadOnly,
+		})
+	}
+	return out
+}
+
+func boundPorts(ports network.PortMap) []Port {
+	out := make([]Port, 0, len(ports))
+	for p, bindings := range ports {
+		priv, _ := strconv.ParseUint(p.Port(), 10, 16)
+		proto := string(p.Proto())
+		if len(bindings) == 0 {
+			out = append(out, Port{PrivatePort: uint16(priv), Type: proto})
+			continue
+		}
+		for _, b := range bindings {
+			pub, _ := strconv.ParseUint(b.HostPort, 10, 16)
+			ip := ""
+			if b.HostIP.IsValid() {
+				ip = b.HostIP.String()
+			}
+			out = append(out, Port{
+				PrivatePort: uint16(priv),
+				PublicPort:  uint16(pub),
+				Type:        proto,
+				IP:          ip,
+			})
+		}
+	}
+	return out
+}
+
+func attachments(networks map[string]*network.EndpointSettings) []NetworkAttachment {
+	out := make([]NetworkAttachment, 0, len(networks))
+	for name, ep := range networks {
+		attach := NetworkAttachment{Name: name}
+		if ep != nil && ep.IPAddress.IsValid() {
+			attach.IP = ep.IPAddress.String()
+		}
+		out = append(out, attach)
+	}
+	return out
 }

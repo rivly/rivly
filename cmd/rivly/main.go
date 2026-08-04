@@ -28,13 +28,16 @@ import (
 const shutdownTimeout = 10 * time.Second
 
 func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
-	if err := run(ctx, os.Getenv, os.Stdout); err != nil {
+	if err := start(); err != nil {
 		fmt.Fprintf(os.Stderr, "rivly: %s\n", err)
 		os.Exit(1)
 	}
+}
+
+func start() error {
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+	return run(ctx, os.Getenv, os.Stdout)
 }
 
 func run(ctx context.Context, getenv func(string) string, stdout io.Writer) error {
@@ -79,7 +82,7 @@ func run(ctx context.Context, getenv func(string) string, stdout io.Writer) erro
 	dockerManager.SetAuthResolver(registries.AuthFor)
 	defer dockerManager.Close()
 
-	composeRunner := compose.NewRunner(cfg.ComposeBin, cfg.DataDir)
+	composeRunner := compose.NewRunner(ctx, cfg.ComposeBin, cfg.DataDir)
 	if command := composeRunner.Command(); command == "" {
 		logger.Warn("no docker compose executable found, managed stacks will fail to deploy", "hint", "set RIVLY_COMPOSE_BIN")
 	} else {

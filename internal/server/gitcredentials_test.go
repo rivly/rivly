@@ -26,8 +26,8 @@ func TestGitCredentialsCRUD(t *testing.T) {
 	}
 
 	var created gitCredentialResponse
-	postJSONStatus(t, client, ts.URL+"/api/v1/git-credentials",
-		`{"name":"GitHub","username":"bob","token":"ghp_secret"}`, http.StatusCreated, &created)
+	postJSONCreated(t, client, ts.URL+"/api/v1/git-credentials",
+		`{"name":"GitHub","username":"bob","token":"ghp_secret"}`, &created)
 	if created.Name != "GitHub" || created.Username != "bob" {
 		t.Fatalf("create: got %+v", created)
 	}

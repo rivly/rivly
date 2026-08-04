@@ -28,8 +28,8 @@ func TestRegistriesCRUD(t *testing.T) {
 	}
 
 	var created registryResponse
-	postJSONStatus(t, client, ts.URL+"/api/v1/registries",
-		`{"name":"GitHub","server":"https://ghcr.io/","username":"bob","password":"s3cret"}`, http.StatusCreated, &created)
+	postJSONCreated(t, client, ts.URL+"/api/v1/registries",
+		`{"name":"GitHub","server":"https://ghcr.io/","username":"bob","password":"s3cret"}`, &created)
 	if created.Name != "GitHub" || created.Server != "ghcr.io" || created.Username != "bob" {
 		t.Fatalf("create: got %+v", created)
 	}

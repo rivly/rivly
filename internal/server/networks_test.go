@@ -72,7 +72,7 @@ func TestCreateNetwork(t *testing.T) {
 		ID   string `json:"id"`
 		Name string `json:"name"`
 	}
-	postJSONStatus(t, client, ts.URL+"/api/v1/environments/1/networks", `{"name":"app_net","driver":"bridge","subnet":"172.20.0.0/16"}`, http.StatusCreated, &out)
+	postJSONCreated(t, client, ts.URL+"/api/v1/environments/1/networks", `{"name":"app_net","driver":"bridge","subnet":"172.20.0.0/16"}`, &out)
 	if out.ID != "net456" || out.Name != "app_net" {
 		t.Fatalf("create network: got %+v", out)
 	}

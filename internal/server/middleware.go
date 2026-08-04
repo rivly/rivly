@@ -85,7 +85,7 @@ func (s *Server) recoverer(next http.Handler) http.Handler {
 			if rec == nil {
 				return
 			}
-			if rec == http.ErrAbortHandler {
+			if err, ok := rec.(error); ok && errors.Is(err, http.ErrAbortHandler) {
 				panic(rec)
 			}
 			s.logger.Error("panic recovered",

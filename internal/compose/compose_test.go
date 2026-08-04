@@ -38,7 +38,7 @@ func TestResolveCommandRejectsAnOverrideThatDoesNotExist(t *testing.T) {
 	t.Parallel()
 
 	missing := filepath.Join(t.TempDir(), "compose-that-is-not-there")
-	if got := resolveCommand(missing); got != nil {
+	if got := resolveCommand(context.Background(), missing); got != nil {
 		t.Fatalf("a configured executable that does not exist must not be trusted, got %v", got)
 	}
 }
@@ -46,7 +46,7 @@ func TestResolveCommandRejectsAnOverrideThatDoesNotExist(t *testing.T) {
 func TestRunnerReportsItsCommand(t *testing.T) {
 	t.Parallel()
 
-	if got := NewRunner("docker compose", t.TempDir()).Command(); got != "docker compose" {
+	if got := NewRunner(context.Background(), "docker compose", t.TempDir()).Command(); got != "docker compose" {
 		t.Fatalf("Command() = %q, want %q", got, "docker compose")
 	}
 }

@@ -71,7 +71,7 @@ func TestCreateVolume(t *testing.T) {
 	client := authedClient(t, ts)
 
 	var vol volumeResponse
-	postJSONStatus(t, client, ts.URL+"/api/v1/environments/1/volumes", `{"name":"app_data","driver":"local"}`, http.StatusCreated, &vol)
+	postJSONCreated(t, client, ts.URL+"/api/v1/environments/1/volumes", `{"name":"app_data","driver":"local"}`, &vol)
 	if vol.Name != "app_data" || vol.Driver != "local" {
 		t.Fatalf("create volume: got %+v", vol)
 	}

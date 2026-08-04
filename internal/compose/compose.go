@@ -32,8 +32,8 @@ type Runner struct {
 	dataDir string
 }
 
-func NewRunner(bin, dataDir string) *Runner {
-	return &Runner{command: resolveCommand(bin), dataDir: dataDir}
+func NewRunner(ctx context.Context, bin, dataDir string) *Runner {
+	return &Runner{command: resolveCommand(ctx, bin), dataDir: dataDir}
 }
 
 func (r *Runner) Command() string {
@@ -44,7 +44,7 @@ func parseCommand(bin string) []string {
 	return strings.Fields(bin)
 }
 
-func resolveCommand(bin string) []string {
+func resolveCommand(ctx context.Context, bin string) []string {
 	if override := parseCommand(bin); len(override) > 0 {
 		if _, err := exec.LookPath(override[0]); err != nil {
 			return nil
@@ -52,18 +52,18 @@ func resolveCommand(bin string) []string {
 		return override
 	}
 	for _, candidate := range candidates {
-		if available(candidate) {
+		if available(ctx, candidate) {
 			return candidate
 		}
 	}
 	return nil
 }
 
-func available(command []string) bool {
+func available(ctx context.Context, command []string) bool {
 	if _, err := exec.LookPath(command[0]); err != nil {
 		return false
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), probeTimeout)
+	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
 	defer cancel()
 
 	args := make([]string, 0, len(command))
@@ -140,7 +140,7 @@ func (r *Runner) projectDir(envID int64, project string) string {
 
 func (r *Runner) materialize(envID int64, project, content, env string) (string, error) {
 	dir := r.projectDir(envID, project)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", err
 	}
 	if err := os.WriteFile(filepath.Join(dir, composeFile), []byte(content), 0o600); err != nil {
@@ -157,7 +157,7 @@ func (r *Runner) writeRepoEnv(envID int64, project, env string) (string, error) 
 		return "", nil
 	}
 	dir := r.projectDir(envID, project)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", err
 	}
 	path, err := filepath.Abs(filepath.Join(dir, envFile))

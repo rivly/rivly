@@ -102,7 +102,7 @@ func TestCreateContainer(t *testing.T) {
 	var out struct {
 		ID string `json:"id"`
 	}
-	postJSONStatus(t, client, ts.URL+"/api/v1/environments/1/containers", body, http.StatusCreated, &out)
+	postJSONCreated(t, client, ts.URL+"/api/v1/environments/1/containers", body, &out)
 	if out.ID != "newid123" {
 		t.Fatalf("create container: got %+v", out)
 	}

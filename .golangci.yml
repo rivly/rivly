@@ -1,11 +1,95 @@
 version: "2"
+
 linters:
+  default: standard
   enable:
-    - errcheck
-    - govet
-    - ineffassign
-    - staticcheck
-    - unused
+    - bodyclose
+    - canonicalheader
+    - contextcheck
+    - copyloopvar
+    - depguard
+    - dupl
+    - durationcheck
+    - errname
+    - errorlint
+    - exhaustive
+    - gocheckcompilerdirectives
+    - gocognit
+    - gocritic
+    - gosec
+    - makezero
+    - misspell
+    - nestif
+    - nilerr
+    - noctx
+    - perfsprint
+    - prealloc
+    - predeclared
+    - reassign
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - thelper
+    - tparallel
+    - unconvert
+    - unparam
+    - usestdlibvars
+    - wastedassign
+
+  settings:
+    depguard:
+      rules:
+        docker-sdk:
+          deny:
+            - pkg: github.com/docker/docker
+              desc: deprecated since Docker v29 and flagged by govulncheck, use github.com/moby/moby/client (ADR-0005)
+        sqlite-driver:
+          deny:
+            - pkg: github.com/mattn/go-sqlite3
+              desc: requires CGO, use modernc.org/sqlite (ADR-0003)
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+        - name: package-comments
+          disabled: true
+    gocognit:
+      min-complexity: 25
+    nestif:
+      min-complexity: 5
+    dupl:
+      threshold: 180
+    exhaustive:
+      default-signifies-exhaustive: true
+
+  exclusions:
+    paths:
+      - data
+    rules:
+      - path: _test\.go
+        linters:
+          - dupl
+          - gosec
+          - noctx
+          - bodyclose
+          - unparam
+          - prealloc
+          - perfsprint
+      - path: internal/compose/compose\.go
+        text: "G204"
+      - path: (internal/secret|internal/stack)/
+        text: "G304"
+      - path: internal/registry/registry\.go
+        text: "G117"
+      - path: cmd/rivly/main\.go
+        text: "Non-inherited new context"
+      - path: internal/server/(exec|logs|stats|images)\.go
+        text: "Non-inherited new context"
+
+formatters:
+  enable:
+    - gofmt
+    - gofumpt
   exclusions:
     paths:
       - data

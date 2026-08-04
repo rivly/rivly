@@ -25,6 +25,7 @@ import (
 )
 
 func newTestServer(t *testing.T, dockerClient dockerService, composeRunner composeRunner) *Server {
+	t.Helper()
 	srv, _ := newTestServerWithDB(t, dockerClient, composeRunner)
 	return srv
 }
@@ -238,8 +239,9 @@ func postJSON(t *testing.T, c *http.Client, url, body string, dst any) {
 	}
 }
 
-func postJSONStatus(t *testing.T, c *http.Client, url, body string, want int, dst any) {
+func postJSONCreated(t *testing.T, c *http.Client, url, body string, dst any) {
 	t.Helper()
+	const want = http.StatusCreated
 	resp, err := c.Post(url, "application/json", bytes.NewBufferString(body))
 	if err != nil {
 		t.Fatalf("POST %s: %v", url, err)

@@ -16,7 +16,7 @@ import (
 func TestCloneFailureKeepsTheWorkingCheckout(t *testing.T) {
 	t.Parallel()
 
-	unreachable := httptest.NewServer(http.HandlerFunc(http.NotFound))
+	unreachable := httptest.NewServer(http.NotFoundHandler())
 	defer unreachable.Close()
 
 	project := t.TempDir()

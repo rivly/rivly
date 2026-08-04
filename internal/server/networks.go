@@ -1,12 +1,13 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"net/netip"
 	"strings"
-	"sync"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/rivly/rivly/internal/database/db"
 	"github.com/rivly/rivly/internal/docker"
 )
 
@@ -148,38 +149,11 @@ func (s *Server) handleNetworkDetail(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleNetworkActions(w http.ResponseWriter, r *http.Request) {
-	var req bulkActionRequest
-	if err := decodeJSON(w, r, &req); err != nil {
-		s.badRequest(w, err)
-		return
-	}
-	if !validNetworkActions[req.Action] {
-		s.writeError(w, http.StatusBadRequest, "invalid action")
-		return
-	}
-	if len(req.IDs) == 0 || len(req.IDs) > maxBulkActions {
-		s.writeError(w, http.StatusBadRequest, "invalid network selection")
-		return
-	}
-
-	env := environmentFrom(r)
-
-	results := make([]actionResult, len(req.IDs))
-	var wg sync.WaitGroup
-	for i, networkID := range req.IDs {
-		wg.Add(1)
-		go func(i int, networkID string) {
-			defer wg.Done()
-			if err := s.docker.NetworkAction(r.Context(), env.ID, env.Url, networkID, req.Action); err != nil {
-				s.logger.Warn("network action failed",
-					"action", req.Action, "network", networkID, "err", err)
-				results[i] = actionResult{ID: networkID, OK: false, Error: "action failed"}
-				return
-			}
-			results[i] = actionResult{ID: networkID, OK: true}
-		}(i, networkID)
-	}
-	wg.Wait()
-
-	s.writeJSON(w, http.StatusOK, map[string]any{"results": results})
+	s.handleBulkAction(w, r, bulkAction{
+		noun:    "network",
+		allowed: validNetworkActions,
+		apply: func(ctx context.Context, env db.Environment, id, action string) error {
+			return s.docker.NetworkAction(ctx, env.ID, env.Url, id, action)
+		},
+	})
 }

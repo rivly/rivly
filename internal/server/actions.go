@@ -1,8 +1,11 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"sync"
+
+	"github.com/rivly/rivly/internal/database/db"
 )
 
 const maxBulkActions = 200
@@ -28,39 +31,56 @@ type actionResult struct {
 	Error string `json:"error,omitempty"`
 }
 
-func (s *Server) handleContainerActions(w http.ResponseWriter, r *http.Request) {
+type bulkAction struct {
+	noun    string
+	allowed map[string]bool
+	apply   func(ctx context.Context, env db.Environment, id, action string) error
+}
+
+func (s *Server) handleBulkAction(w http.ResponseWriter, r *http.Request, spec bulkAction) {
 	var req bulkActionRequest
 	if err := decodeJSON(w, r, &req); err != nil {
 		s.badRequest(w, err)
 		return
 	}
-	if !validActions[req.Action] {
+	if !spec.allowed[req.Action] {
 		s.writeError(w, http.StatusBadRequest, "invalid action")
 		return
 	}
 	if len(req.IDs) == 0 || len(req.IDs) > maxBulkActions {
-		s.writeError(w, http.StatusBadRequest, "invalid container selection")
+		s.writeError(w, http.StatusBadRequest, "invalid "+spec.noun+" selection")
 		return
 	}
 
+	ctx := r.Context()
 	env := environmentFrom(r)
 
 	results := make([]actionResult, len(req.IDs))
 	var wg sync.WaitGroup
-	for i, containerID := range req.IDs {
+	for i, id := range req.IDs {
 		wg.Add(1)
-		go func(i int, containerID string) {
+		go func() {
 			defer wg.Done()
-			if err := s.docker.ContainerAction(r.Context(), env.ID, env.Url, containerID, req.Action); err != nil {
-				s.logger.Warn("container action failed",
-					"action", req.Action, "container", containerID, "err", err)
-				results[i] = actionResult{ID: containerID, OK: false, Error: "action failed"}
+			if err := spec.apply(ctx, env, id, req.Action); err != nil {
+				s.logger.Warn("bulk action failed",
+					"kind", spec.noun, "action", req.Action, "id", id, "err", err)
+				results[i] = actionResult{ID: id, OK: false, Error: "action failed"}
 				return
 			}
-			results[i] = actionResult{ID: containerID, OK: true}
-		}(i, containerID)
+			results[i] = actionResult{ID: id, OK: true}
+		}()
 	}
 	wg.Wait()
 
 	s.writeJSON(w, http.StatusOK, map[string]any{"results": results})
+}
+
+func (s *Server) handleContainerActions(w http.ResponseWriter, r *http.Request) {
+	s.handleBulkAction(w, r, bulkAction{
+		noun:    "container",
+		allowed: validActions,
+		apply: func(ctx context.Context, env db.Environment, id, action string) error {
+			return s.docker.ContainerAction(ctx, env.ID, env.Url, id, action)
+		},
+	})
 }

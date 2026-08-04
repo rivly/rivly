@@ -1,11 +1,12 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"strings"
-	"sync"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/rivly/rivly/internal/database/db"
 	"github.com/rivly/rivly/internal/docker"
 )
 
@@ -125,38 +126,11 @@ func (s *Server) handleVolumeDetail(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleVolumeActions(w http.ResponseWriter, r *http.Request) {
-	var req bulkActionRequest
-	if err := decodeJSON(w, r, &req); err != nil {
-		s.badRequest(w, err)
-		return
-	}
-	if !validVolumeActions[req.Action] {
-		s.writeError(w, http.StatusBadRequest, "invalid action")
-		return
-	}
-	if len(req.IDs) == 0 || len(req.IDs) > maxBulkActions {
-		s.writeError(w, http.StatusBadRequest, "invalid volume selection")
-		return
-	}
-
-	env := environmentFrom(r)
-
-	results := make([]actionResult, len(req.IDs))
-	var wg sync.WaitGroup
-	for i, name := range req.IDs {
-		wg.Add(1)
-		go func(i int, name string) {
-			defer wg.Done()
-			if err := s.docker.VolumeAction(r.Context(), env.ID, env.Url, name, req.Action); err != nil {
-				s.logger.Warn("volume action failed",
-					"action", req.Action, "volume", name, "err", err)
-				results[i] = actionResult{ID: name, OK: false, Error: "action failed"}
-				return
-			}
-			results[i] = actionResult{ID: name, OK: true}
-		}(i, name)
-	}
-	wg.Wait()
-
-	s.writeJSON(w, http.StatusOK, map[string]any{"results": results})
+	s.handleBulkAction(w, r, bulkAction{
+		noun:    "volume",
+		allowed: validVolumeActions,
+		apply: func(ctx context.Context, env db.Environment, id, action string) error {
+			return s.docker.VolumeAction(ctx, env.ID, env.Url, id, action)
+		},
+	})
 }

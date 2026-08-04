@@ -78,26 +78,41 @@ func (s *Service) Deploy(ctx context.Context, env db.Environment, in DeployInput
 		if err := s.deployGit(ctx, env, name, existing.ID, &params, in.Git, envContent, isNew); err != nil {
 			return err
 		}
-	} else {
-		if strings.TrimSpace(in.Content) == "" {
-			return invalid("compose file is empty")
-		}
-		out, derr := s.compose.Deploy(ctx, env.Url, env.ID, name, in.Content, envContent)
-		if derr != nil {
-			s.logger.Warn("stack deploy failed", "stack", name, "err", derr)
-			if isNew {
-				s.compose.Discard(ctx, env.Url, env.ID, name)
-			}
-			return rejected(ComposeErrorMessage(out))
-		}
-		params.Content = in.Content
-		if !isNew && existing.Source == SourceGit {
-			s.discardCheckout(env.ID, name)
-		}
+	} else if err := s.deployContent(ctx, env, name, &params, in.Content, envContent, existing, isNew); err != nil {
+		return err
 	}
 
 	if _, err := s.queries.UpsertStack(ctx, params); err != nil {
 		return fmt.Errorf("save stack %q: %w", name, err)
+	}
+	return nil
+}
+
+func (s *Service) deployContent(
+	ctx context.Context,
+	env db.Environment,
+	name string,
+	params *db.UpsertStackParams,
+	content, envContent string,
+	existing db.Stack,
+	isNew bool,
+) error {
+	if strings.TrimSpace(content) == "" {
+		return invalid("compose file is empty")
+	}
+
+	out, err := s.compose.Deploy(ctx, env.Url, env.ID, name, content, envContent)
+	if err != nil {
+		s.logger.Warn("stack deploy failed", "stack", name, "err", err)
+		if isNew {
+			s.compose.Discard(ctx, env.Url, env.ID, name)
+		}
+		return rejected(ComposeErrorMessage(out))
+	}
+
+	params.Content = content
+	if !isNew && existing.Source == SourceGit {
+		s.discardCheckout(env.ID, name)
 	}
 	return nil
 }

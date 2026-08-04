@@ -74,7 +74,7 @@ func Clone(ctx context.Context, dir string, opts Options) (string, error) {
 
 func newStaging(dir string) (string, error) {
 	parent := filepath.Dir(dir)
-	if err := os.MkdirAll(parent, 0o755); err != nil {
+	if err := os.MkdirAll(parent, 0o700); err != nil {
 		return "", fmt.Errorf("create repository parent directory: %w", err)
 	}
 	staging, err := os.MkdirTemp(parent, ".clone-")
@@ -128,7 +128,7 @@ func reset(dir string) error {
 	if err := os.RemoveAll(dir); err != nil {
 		return fmt.Errorf("clear repository directory: %w", err)
 	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return fmt.Errorf("create repository directory: %w", err)
 	}
 	return nil
@@ -193,19 +193,7 @@ func resolveRef(refs []*plumbing.Reference, ref string) (string, error) {
 	}
 
 	if ref == "" {
-		if head == nil {
-			return "", ErrRef
-		}
-		if head.Type() == plumbing.SymbolicReference {
-			if hash, ok := hashes[head.Target()]; ok && !hash.IsZero() {
-				return hash.String(), nil
-			}
-			return "", ErrRef
-		}
-		if !head.Hash().IsZero() {
-			return head.Hash().String(), nil
-		}
-		return "", ErrRef
+		return resolveHead(head, hashes)
 	}
 
 	for _, name := range []plumbing.ReferenceName{
@@ -217,6 +205,22 @@ func resolveRef(refs []*plumbing.Reference, ref string) (string, error) {
 		}
 	}
 	return "", ErrRef
+}
+
+func resolveHead(head *plumbing.Reference, hashes map[plumbing.ReferenceName]plumbing.Hash) (string, error) {
+	if head == nil {
+		return "", ErrRef
+	}
+	if head.Type() == plumbing.SymbolicReference {
+		if hash, ok := hashes[head.Target()]; ok && !hash.IsZero() {
+			return hash.String(), nil
+		}
+		return "", ErrRef
+	}
+	if head.Hash().IsZero() {
+		return "", ErrRef
+	}
+	return head.Hash().String(), nil
 }
 
 func NormalizeURL(raw string) (string, error) {

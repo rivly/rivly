@@ -1,16 +1,17 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/rivly/rivly/internal/database/db"
 )
 
 type imageResponse struct {
@@ -103,40 +104,13 @@ func (s *Server) handleImageDetail(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleImageActions(w http.ResponseWriter, r *http.Request) {
-	var req bulkActionRequest
-	if err := decodeJSON(w, r, &req); err != nil {
-		s.badRequest(w, err)
-		return
-	}
-	if !validImageActions[req.Action] {
-		s.writeError(w, http.StatusBadRequest, "invalid action")
-		return
-	}
-	if len(req.IDs) == 0 || len(req.IDs) > maxBulkActions {
-		s.writeError(w, http.StatusBadRequest, "invalid image selection")
-		return
-	}
-
-	env := environmentFrom(r)
-
-	results := make([]actionResult, len(req.IDs))
-	var wg sync.WaitGroup
-	for i, imageID := range req.IDs {
-		wg.Add(1)
-		go func(i int, imageID string) {
-			defer wg.Done()
-			if err := s.docker.ImageAction(r.Context(), env.ID, env.Url, imageID, req.Action); err != nil {
-				s.logger.Warn("image action failed",
-					"action", req.Action, "image", imageID, "err", err)
-				results[i] = actionResult{ID: imageID, OK: false, Error: "action failed"}
-				return
-			}
-			results[i] = actionResult{ID: imageID, OK: true}
-		}(i, imageID)
-	}
-	wg.Wait()
-
-	s.writeJSON(w, http.StatusOK, map[string]any{"results": results})
+	s.handleBulkAction(w, r, bulkAction{
+		noun:    "image",
+		allowed: validImageActions,
+		apply: func(ctx context.Context, env db.Environment, id, action string) error {
+			return s.docker.ImageAction(ctx, env.ID, env.Url, id, action)
+		},
+	})
 }
 
 type pullProgressResponse struct {
