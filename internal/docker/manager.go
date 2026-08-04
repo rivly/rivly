@@ -44,11 +44,24 @@ func (m *Manager) SetAuthResolver(fn AuthResolver) {
 	m.authFor = fn
 }
 
-func (m *Manager) registryAuth(ctx context.Context, ref string) string {
-	if m.authFor == nil {
+type Client struct {
+	cli     *client.Client
+	authFor AuthResolver
+}
+
+func (m *Manager) Client(id int64, host string) (*Client, error) {
+	cli, err := m.clientFor(id, host)
+	if err != nil {
+		return nil, err
+	}
+	return &Client{cli: cli, authFor: m.authFor}, nil
+}
+
+func (d *Client) registryAuth(ctx context.Context, ref string) string {
+	if d.authFor == nil {
 		return ""
 	}
-	return m.authFor(ctx, ref)
+	return d.authFor(ctx, ref)
 }
 
 type SystemInfo struct {
@@ -87,14 +100,10 @@ func (m *Manager) clientFor(id int64, host string) (*client.Client, error) {
 	return cli, nil
 }
 
-func (m *Manager) Info(ctx context.Context, id int64, host string) (SystemInfo, error) {
-	cli, err := m.clientFor(id, host)
-	if err != nil {
-		return SystemInfo{}, err
-	}
+func (d *Client) Info(ctx context.Context) (SystemInfo, error) {
 	ctx, cancel := context.WithTimeout(ctx, callTimeout)
 	defer cancel()
-	res, err := cli.Info(ctx, client.InfoOptions{})
+	res, err := d.cli.Info(ctx, client.InfoOptions{})
 	if err != nil {
 		return SystemInfo{}, err
 	}

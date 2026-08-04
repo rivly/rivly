@@ -17,13 +17,8 @@ type ExecSession struct {
 	closed sync.Once
 }
 
-func (m *Manager) ContainerExec(ctx context.Context, id int64, host, containerID string) (*ExecSession, error) {
-	cli, err := m.clientFor(id, host)
-	if err != nil {
-		return nil, err
-	}
-
-	created, err := cli.ExecCreate(ctx, containerID, client.ExecCreateOptions{
+func (d *Client) ContainerExec(ctx context.Context, containerID string) (*ExecSession, error) {
+	created, err := d.cli.ExecCreate(ctx, containerID, client.ExecCreateOptions{
 		AttachStdin:  true,
 		AttachStdout: true,
 		AttachStderr: true,
@@ -34,12 +29,12 @@ func (m *Manager) ContainerExec(ctx context.Context, id int64, host, containerID
 		return nil, err
 	}
 
-	attached, err := cli.ExecAttach(ctx, created.ID, client.ExecAttachOptions{TTY: true})
+	attached, err := d.cli.ExecAttach(ctx, created.ID, client.ExecAttachOptions{TTY: true})
 	if err != nil {
 		return nil, err
 	}
 
-	return &ExecSession{cli: cli, execID: created.ID, resp: attached.HijackedResponse}, nil
+	return &ExecSession{cli: d.cli, execID: created.ID, resp: attached.HijackedResponse}, nil
 }
 
 func (s *ExecSession) Stdin() io.Writer {

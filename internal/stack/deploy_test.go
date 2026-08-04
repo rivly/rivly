@@ -27,7 +27,7 @@ func TestDeployRejectsInvalidInput(t *testing.T) {
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			h := newHarness(t, fakeDocker{}, fakeCompose{})
+			h := newHarness(t, fakeDocker{}.factory(), fakeCompose{})
 
 			err := h.Deploy(context.Background(), h.env(t), tc.in)
 			if err == nil {
@@ -42,7 +42,7 @@ func TestDeployRejectsInvalidInput(t *testing.T) {
 
 func TestDeployStoresTheStack(t *testing.T) {
 	deployed := make(chan string, 1)
-	h := newHarness(t, fakeDocker{}, fakeCompose{deployed: deployed})
+	h := newHarness(t, fakeDocker{}.factory(), fakeCompose{deployed: deployed})
 
 	in := DeployInput{
 		Name:    "my-app",
@@ -87,7 +87,7 @@ func TestDeployStoresTheStack(t *testing.T) {
 }
 
 func TestDeployReportsAComposeFailure(t *testing.T) {
-	h := newHarness(t, fakeDocker{}, fakeCompose{
+	h := newHarness(t, fakeDocker{}.factory(), fakeCompose{
 		out: "yaml: line 3: did not find expected key",
 		err: errComposeFailed,
 	})
@@ -112,7 +112,7 @@ func TestDeployReportsAComposeFailure(t *testing.T) {
 }
 
 func TestDeployRefusesAStackBeingUpdated(t *testing.T) {
-	h := newHarness(t, fakeDocker{}, fakeCompose{})
+	h := newHarness(t, fakeDocker{}.factory(), fakeCompose{})
 
 	existing := h.seed(t, "app", fakeRemote(t, headA), headA, 15, 1)
 	if !h.Acquire(existing.ID) {
@@ -135,7 +135,7 @@ func TestDeployRefusesAStackBeingUpdated(t *testing.T) {
 
 func TestDeploySwitchingFromGitToContentDropsTheCheckout(t *testing.T) {
 	root := t.TempDir()
-	h := newHarness(t, fakeDocker{}, fakeCompose{repoDir: root})
+	h := newHarness(t, fakeDocker{}.factory(), fakeCompose{repoDir: root})
 	h.seed(t, "app", fakeRemote(t, headA), headA, 15, 1)
 
 	checkout := filepath.Join(root, "app")
@@ -166,7 +166,7 @@ func TestDeploySwitchingFromGitToContentDropsTheCheckout(t *testing.T) {
 
 func TestDeployContentStackLeavesTheCheckoutAlone(t *testing.T) {
 	root := t.TempDir()
-	h := newHarness(t, fakeDocker{}, fakeCompose{repoDir: root})
+	h := newHarness(t, fakeDocker{}.factory(), fakeCompose{repoDir: root})
 
 	if err := h.Deploy(context.Background(), h.env(t), DeployInput{Name: "app", Content: "services: {}"}); err != nil {
 		t.Fatalf("first Deploy: %v", err)

@@ -22,9 +22,7 @@ type volumeResponse struct {
 var validVolumeActions = map[string]bool{"remove": true}
 
 func (s *Server) handleListVolumes(w http.ResponseWriter, r *http.Request) {
-	env := environmentFrom(r)
-
-	volumes, err := s.docker.Volumes(r.Context(), env.ID, env.Url)
+	volumes, err := dockerFrom(r).Volumes(r.Context())
 	if err != nil {
 		s.writeError(w, http.StatusBadGateway, "environment is unreachable")
 		return
@@ -63,7 +61,7 @@ func (s *Server) handleCreateVolume(w http.ResponseWriter, r *http.Request) {
 
 	env := environmentFrom(r)
 
-	vol, err := s.docker.VolumeCreate(r.Context(), env.ID, env.Url, docker.VolumeCreateInput{
+	vol, err := dockerFrom(r).VolumeCreate(r.Context(), docker.VolumeCreateInput{
 		Name:   req.Name,
 		Driver: strings.TrimSpace(req.Driver),
 	})
@@ -101,9 +99,7 @@ type volumeDetailResponse struct {
 func (s *Server) handleVolumeDetail(w http.ResponseWriter, r *http.Request) {
 	name := chi.URLParam(r, "name")
 
-	env := environmentFrom(r)
-
-	detail, err := s.docker.VolumeDetail(r.Context(), env.ID, env.Url, name)
+	detail, err := dockerFrom(r).VolumeDetail(r.Context(), name)
 	if err != nil {
 		s.writeError(w, http.StatusBadGateway, "could not inspect volume")
 		return
@@ -130,7 +126,7 @@ func (s *Server) handleVolumeActions(w http.ResponseWriter, r *http.Request) {
 		noun:    "volume",
 		allowed: validVolumeActions,
 		apply: func(ctx context.Context, env db.Environment, id, action string) error {
-			return s.docker.VolumeAction(ctx, env.ID, env.Url, id, action)
+			return dockerFrom(r).VolumeAction(ctx, id, action)
 		},
 	})
 }

@@ -11,7 +11,11 @@ func TestInfoUnreachable(t *testing.T) {
 	m := NewManager()
 	defer m.Close()
 
-	if _, err := m.Info(context.Background(), 1, missingSocket); err == nil {
+	client, err := m.Client(1, missingSocket)
+	if err != nil {
+		t.Fatalf("Client: %v", err)
+	}
+	if _, err := client.Info(context.Background()); err == nil {
 		t.Fatal("expected an error for a nonexistent socket")
 	}
 }

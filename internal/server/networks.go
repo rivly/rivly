@@ -24,9 +24,7 @@ type networkResponse struct {
 var validNetworkActions = map[string]bool{"remove": true}
 
 func (s *Server) handleListNetworks(w http.ResponseWriter, r *http.Request) {
-	env := environmentFrom(r)
-
-	networks, err := s.docker.Networks(r.Context(), env.ID, env.Url)
+	networks, err := dockerFrom(r).Networks(r.Context())
 	if err != nil {
 		s.writeError(w, http.StatusBadGateway, "environment is unreachable")
 		return
@@ -74,7 +72,7 @@ func (s *Server) handleCreateNetwork(w http.ResponseWriter, r *http.Request) {
 
 	env := environmentFrom(r)
 
-	created, err := s.docker.NetworkCreate(r.Context(), env.ID, env.Url, docker.NetworkCreateInput{
+	created, err := dockerFrom(r).NetworkCreate(r.Context(), docker.NetworkCreateInput{
 		Name:   req.Name,
 		Driver: strings.TrimSpace(req.Driver),
 		Subnet: req.Subnet,
@@ -118,9 +116,7 @@ type networkDetailResponse struct {
 func (s *Server) handleNetworkDetail(w http.ResponseWriter, r *http.Request) {
 	networkID := chi.URLParam(r, "networkID")
 
-	env := environmentFrom(r)
-
-	detail, err := s.docker.NetworkDetail(r.Context(), env.ID, env.Url, networkID)
+	detail, err := dockerFrom(r).NetworkDetail(r.Context(), networkID)
 	if err != nil {
 		s.writeError(w, http.StatusBadGateway, "could not inspect network")
 		return
@@ -153,7 +149,7 @@ func (s *Server) handleNetworkActions(w http.ResponseWriter, r *http.Request) {
 		noun:    "network",
 		allowed: validNetworkActions,
 		apply: func(ctx context.Context, env db.Environment, id, action string) error {
-			return s.docker.NetworkAction(ctx, env.ID, env.Url, id, action)
+			return dockerFrom(r).NetworkAction(ctx, id, action)
 		},
 	})
 }

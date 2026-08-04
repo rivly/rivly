@@ -69,7 +69,7 @@ func TestEnvFileContentNeverEmitsMoreLinesThanKeys(t *testing.T) {
 func TestDeployRejectsMalformedEnvKeys(t *testing.T) {
 	for _, key := range []string{"MY-VAR", "1START", "has space", "a=b", "DOLLAR$", "quote\"key"} {
 		t.Run(key, func(t *testing.T) {
-			h := newHarness(t, fakeDocker{}, fakeCompose{})
+			h := newHarness(t, fakeDocker{}.factory(), fakeCompose{})
 
 			err := h.Deploy(context.Background(), h.env(t), DeployInput{
 				Name:    "app",
@@ -87,7 +87,7 @@ func TestDeployRejectsMalformedEnvKeys(t *testing.T) {
 }
 
 func TestDeployAcceptsValidEnvKeys(t *testing.T) {
-	h := newHarness(t, fakeDocker{}, fakeCompose{})
+	h := newHarness(t, fakeDocker{}.factory(), fakeCompose{})
 
 	err := h.Deploy(context.Background(), h.env(t), DeployInput{
 		Name:    "app",

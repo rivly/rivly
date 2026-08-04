@@ -33,14 +33,10 @@ type Port struct {
 	IP          string
 }
 
-func (m *Manager) Containers(ctx context.Context, id int64, host string) ([]Container, error) {
-	cli, err := m.clientFor(id, host)
-	if err != nil {
-		return nil, err
-	}
+func (d *Client) Containers(ctx context.Context) ([]Container, error) {
 	ctx, cancel := context.WithTimeout(ctx, callTimeout)
 	defer cancel()
-	res, err := cli.ContainerList(ctx, client.ContainerListOptions{All: true})
+	res, err := d.cli.ContainerList(ctx, client.ContainerListOptions{All: true})
 	if err != nil {
 		return nil, err
 	}
@@ -117,14 +113,10 @@ type ContainerDetail struct {
 	Labels        map[string]string
 }
 
-func (m *Manager) ContainerDetail(ctx context.Context, id int64, host, containerID string) (ContainerDetail, error) {
-	cli, err := m.clientFor(id, host)
-	if err != nil {
-		return ContainerDetail{}, err
-	}
+func (d *Client) ContainerDetail(ctx context.Context, containerID string) (ContainerDetail, error) {
 	ctx, cancel := context.WithTimeout(ctx, callTimeout)
 	defer cancel()
-	res, err := cli.ContainerInspect(ctx, containerID, client.ContainerInspectOptions{})
+	res, err := d.cli.ContainerInspect(ctx, containerID, client.ContainerInspectOptions{})
 	if err != nil {
 		return ContainerDetail{}, err
 	}
@@ -193,11 +185,7 @@ type ContainerCreateInput struct {
 	Start         bool
 }
 
-func (m *Manager) ContainerCreate(ctx context.Context, id int64, host string, in ContainerCreateInput) (string, error) {
-	cli, err := m.clientFor(id, host)
-	if err != nil {
-		return "", err
-	}
+func (d *Client) ContainerCreate(ctx context.Context, in ContainerCreateInput) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, pullCreateTimeout)
 	defer cancel()
 
@@ -230,33 +218,29 @@ func (m *Manager) ContainerCreate(ctx context.Context, id int64, host string, in
 		Config:     config,
 		HostConfig: hostConfig,
 	}
-	res, err := cli.ContainerCreate(ctx, opts)
+	res, err := d.cli.ContainerCreate(ctx, opts)
 	if err != nil && cerrdefs.IsNotFound(err) {
-		if perr := m.pullImage(ctx, cli, in.Image); perr != nil {
+		if perr := d.pullImage(ctx, in.Image); perr != nil {
 			return "", fmt.Errorf("%w %q: %w", ErrImagePull, in.Image, perr)
 		}
-		res, err = cli.ContainerCreate(ctx, opts)
+		res, err = d.cli.ContainerCreate(ctx, opts)
 	}
 	if err != nil {
 		return "", err
 	}
 
 	if in.Start {
-		if _, err := cli.ContainerStart(ctx, res.ID, client.ContainerStartOptions{}); err != nil {
+		if _, err := d.cli.ContainerStart(ctx, res.ID, client.ContainerStartOptions{}); err != nil {
 			return res.ID, fmt.Errorf("container created but failed to start: %w", err)
 		}
 	}
 	return res.ID, nil
 }
 
-func (m *Manager) ContainerAction(ctx context.Context, id int64, host, containerID, action string) error {
-	cli, err := m.clientFor(id, host)
-	if err != nil {
-		return err
-	}
+func (d *Client) ContainerAction(ctx context.Context, containerID, action string) error {
 	ctx, cancel := context.WithTimeout(ctx, actionTimeout)
 	defer cancel()
-	return applyContainerAction(ctx, cli, containerID, action)
+	return applyContainerAction(ctx, d.cli, containerID, action)
 }
 
 func applyContainerAction(ctx context.Context, cli *client.Client, containerID, action string) error {

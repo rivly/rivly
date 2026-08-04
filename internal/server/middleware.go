@@ -22,7 +22,10 @@ const sessionUserID = "userID"
 
 type contextKey int
 
-const environmentKey contextKey = iota
+const (
+	environmentKey contextKey = iota
+	dockerKey
+)
 
 func (s *Server) withEnvironment(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -42,8 +45,21 @@ func (s *Server) withEnvironment(next http.Handler) http.Handler {
 			return
 		}
 
-		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), environmentKey, env)))
+		client, err := s.docker(env.ID, env.Url)
+		if err != nil {
+			s.serverError(w, r, "could not reach the environment", err)
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), environmentKey, env)
+		ctx = context.WithValue(ctx, dockerKey, client)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+func dockerFrom(r *http.Request) DockerClient {
+	client, _ := r.Context().Value(dockerKey).(DockerClient)
+	return client
 }
 
 func environmentFrom(r *http.Request) db.Environment {

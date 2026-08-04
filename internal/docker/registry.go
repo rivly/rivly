@@ -6,14 +6,10 @@ import (
 	"github.com/moby/moby/client"
 )
 
-func (m *Manager) RegistryLogin(ctx context.Context, id int64, host, server, username, password string) error {
-	cli, err := m.clientFor(id, host)
-	if err != nil {
-		return err
-	}
+func (d *Client) RegistryLogin(ctx context.Context, server, username, password string) error {
 	ctx, cancel := context.WithTimeout(ctx, actionTimeout)
 	defer cancel()
-	_, err = cli.RegistryLogin(ctx, client.RegistryLoginOptions{
+	_, err := d.cli.RegistryLogin(ctx, client.RegistryLoginOptions{
 		Username:      username,
 		Password:      password,
 		ServerAddress: server,

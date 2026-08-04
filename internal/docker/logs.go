@@ -15,14 +15,9 @@ type LogLine struct {
 	Message string
 }
 
-func (m *Manager) ContainerLogs(ctx context.Context, id int64, host, containerID string, tail int, follow bool) (<-chan LogLine, error) {
-	cli, err := m.clientFor(id, host)
-	if err != nil {
-		return nil, err
-	}
-
+func (d *Client) ContainerLogs(ctx context.Context, containerID string, tail int, follow bool) (<-chan LogLine, error) {
 	inspectCtx, cancel := context.WithTimeout(ctx, callTimeout)
-	info, err := cli.ContainerInspect(inspectCtx, containerID, client.ContainerInspectOptions{})
+	info, err := d.cli.ContainerInspect(inspectCtx, containerID, client.ContainerInspectOptions{})
 	cancel()
 	if err != nil {
 		return nil, err
@@ -33,7 +28,7 @@ func (m *Manager) ContainerLogs(ctx context.Context, id int64, host, containerID
 	if tail > 0 {
 		tailValue = strconv.Itoa(tail)
 	}
-	res, err := cli.ContainerLogs(ctx, containerID, client.ContainerLogsOptions{
+	res, err := d.cli.ContainerLogs(ctx, containerID, client.ContainerLogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 		Follow:     follow,

@@ -23,33 +23,35 @@ import (
 	"github.com/rivly/rivly/web"
 )
 
-type dockerService interface {
-	Info(ctx context.Context, id int64, host string) (docker.SystemInfo, error)
-	Containers(ctx context.Context, id int64, host string) ([]docker.Container, error)
-	ContainerDetail(ctx context.Context, id int64, host, containerID string) (docker.ContainerDetail, error)
-	ContainerCreate(ctx context.Context, id int64, host string, in docker.ContainerCreateInput) (string, error)
-	ContainerStats(ctx context.Context, id int64, host, containerID string) (<-chan docker.Stats, error)
-	Images(ctx context.Context, id int64, host string) ([]docker.Image, error)
-	ImageAction(ctx context.Context, id int64, host, imageID, action string) error
-	ImageDetail(ctx context.Context, id int64, host, imageID string) (docker.ImageDetail, error)
-	ImagePull(ctx context.Context, id int64, host, ref string) (<-chan docker.PullProgress, error)
-	ImagesPrune(ctx context.Context, id int64, host string, all bool) (docker.PruneResult, error)
-	Volumes(ctx context.Context, id int64, host string) ([]docker.Volume, error)
-	VolumeAction(ctx context.Context, id int64, host, volumeName, action string) error
-	VolumeCreate(ctx context.Context, id int64, host string, in docker.VolumeCreateInput) (docker.Volume, error)
-	VolumeDetail(ctx context.Context, id int64, host, name string) (docker.VolumeDetail, error)
-	Networks(ctx context.Context, id int64, host string) ([]docker.Network, error)
-	NetworkAction(ctx context.Context, id int64, host, networkID, action string) error
-	NetworkCreate(ctx context.Context, id int64, host string, in docker.NetworkCreateInput) (docker.CreatedNetwork, error)
-	NetworkDetail(ctx context.Context, id int64, host, networkID string) (docker.NetworkDetail, error)
-	Stacks(ctx context.Context, id int64, host string) ([]docker.Stack, error)
-	StackAction(ctx context.Context, id int64, host, project, action string) error
-	ContainerLogs(ctx context.Context, id int64, host, containerID string, tail int, follow bool) (<-chan docker.LogLine, error)
-	ContainerExec(ctx context.Context, id int64, host, containerID string) (*docker.ExecSession, error)
-	ContainerAction(ctx context.Context, id int64, host, containerID, action string) error
-	WatchEvents(ctx context.Context, id int64, host string) (<-chan struct{}, <-chan error)
-	RegistryLogin(ctx context.Context, id int64, host, server, username, password string) error
+type DockerClient interface {
+	Info(ctx context.Context) (docker.SystemInfo, error)
+	Containers(ctx context.Context) ([]docker.Container, error)
+	ContainerDetail(ctx context.Context, containerID string) (docker.ContainerDetail, error)
+	ContainerCreate(ctx context.Context, in docker.ContainerCreateInput) (string, error)
+	ContainerStats(ctx context.Context, containerID string) (<-chan docker.Stats, error)
+	ContainerLogs(ctx context.Context, containerID string, tail int, follow bool) (<-chan docker.LogLine, error)
+	ContainerExec(ctx context.Context, containerID string) (*docker.ExecSession, error)
+	ContainerAction(ctx context.Context, containerID, action string) error
+	Images(ctx context.Context) ([]docker.Image, error)
+	ImageAction(ctx context.Context, imageID, action string) error
+	ImageDetail(ctx context.Context, imageID string) (docker.ImageDetail, error)
+	ImagePull(ctx context.Context, ref string) (<-chan docker.PullProgress, error)
+	ImagesPrune(ctx context.Context, all bool) (docker.PruneResult, error)
+	Volumes(ctx context.Context) ([]docker.Volume, error)
+	VolumeAction(ctx context.Context, volumeName, action string) error
+	VolumeCreate(ctx context.Context, in docker.VolumeCreateInput) (docker.Volume, error)
+	VolumeDetail(ctx context.Context, name string) (docker.VolumeDetail, error)
+	Networks(ctx context.Context) ([]docker.Network, error)
+	NetworkAction(ctx context.Context, networkID, action string) error
+	NetworkCreate(ctx context.Context, in docker.NetworkCreateInput) (docker.CreatedNetwork, error)
+	NetworkDetail(ctx context.Context, networkID string) (docker.NetworkDetail, error)
+	Stacks(ctx context.Context) ([]docker.Stack, error)
+	StackAction(ctx context.Context, project, action string) error
+	WatchEvents(ctx context.Context) (<-chan struct{}, <-chan error)
+	RegistryLogin(ctx context.Context, server, username, password string) error
 }
+
+type DockerFactory func(envID int64, host string) (DockerClient, error)
 
 type composeRunner interface {
 	Deploy(ctx context.Context, dockerHost string, envID int64, project, content, env string) (string, error)
@@ -66,7 +68,7 @@ type Server struct {
 	queries        *db.Queries
 	sessions       *scs.SessionManager
 	local          *auth.Local
-	docker         dockerService
+	docker         DockerFactory
 	compose        composeRunner
 	events         *events.Hub
 	registries     *registry.Store
@@ -111,7 +113,7 @@ func New(
 	queries *db.Queries,
 	sessions *scs.SessionManager,
 	local *auth.Local,
-	docker dockerService,
+	docker DockerFactory,
 	compose composeRunner,
 	eventsHub *events.Hub,
 	registries *registry.Store,
@@ -134,12 +136,18 @@ func New(
 		closeStreams:   closeStreams,
 	}
 	s.environments = environment.New(
-		logger, queries, docker, cfg.PollInterval,
+		logger, queries,
+		func(id int64, host string) (environment.DockerClient, error) { return docker(id, host) },
+		cfg.PollInterval,
 		s.emitEnvironment,
 		func(ctx context.Context, envID int64) string { return s.stacks.Signature(ctx, envID) },
 		s.spawn,
 	)
-	s.stacks = stack.New(logger, queries, docker, compose, gitcreds, s.environments.Publish, s.spawn)
+	s.stacks = stack.New(
+		logger, queries,
+		func(id int64, host string) (stack.DockerClient, error) { return docker(id, host) },
+		compose, gitcreds, s.environments.Publish, s.spawn,
+	)
 	return s
 }
 

@@ -21,8 +21,6 @@ type execControl struct {
 func (s *Server) handleContainerExec(w http.ResponseWriter, r *http.Request) {
 	containerID := chi.URLParam(r, "containerID")
 
-	env := environmentFrom(r)
-
 	conn, err := websocket.Accept(w, r, nil)
 	if err != nil {
 		return
@@ -32,7 +30,7 @@ func (s *Server) handleContainerExec(w http.ResponseWriter, r *http.Request) {
 
 	ctx, cancel := s.streamContext(r)
 	defer cancel()
-	session, err := s.docker.ContainerExec(ctx, env.ID, env.Url, containerID)
+	session, err := dockerFrom(r).ContainerExec(ctx, containerID)
 	if err != nil {
 		_ = conn.Write(ctx, websocket.MessageText, execError("could not start a shell in this container"))
 		_ = conn.Close(websocket.StatusInternalError, "exec failed")

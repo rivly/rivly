@@ -8,20 +8,13 @@ import (
 	"github.com/moby/moby/client"
 )
 
-func (m *Manager) WatchEvents(ctx context.Context, id int64, host string) (<-chan struct{}, <-chan error) {
+func (d *Client) WatchEvents(ctx context.Context) (<-chan struct{}, <-chan error) {
 	out := make(chan struct{})
 	errc := make(chan error, 1)
 
-	cli, err := m.clientFor(id, host)
-	if err != nil {
-		errc <- err
-		close(out)
-		return out, errc
-	}
-
 	go func() {
 		defer close(out)
-		res := cli.Events(ctx, client.EventsListOptions{})
+		res := d.cli.Events(ctx, client.EventsListOptions{})
 		for {
 			select {
 			case <-ctx.Done():

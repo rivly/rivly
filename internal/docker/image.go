@@ -18,20 +18,16 @@ type Image struct {
 	InUse   bool
 }
 
-func (m *Manager) Images(ctx context.Context, id int64, host string) ([]Image, error) {
-	cli, err := m.clientFor(id, host)
-	if err != nil {
-		return nil, err
-	}
+func (d *Client) Images(ctx context.Context) ([]Image, error) {
 	ctx, cancel := context.WithTimeout(ctx, callTimeout)
 	defer cancel()
-	res, err := cli.ImageList(ctx, client.ImageListOptions{})
+	res, err := d.cli.ImageList(ctx, client.ImageListOptions{})
 	if err != nil {
 		return nil, err
 	}
 
 	used := make(map[string]bool)
-	if containers, cerr := cli.ContainerList(ctx, client.ContainerListOptions{All: true}); cerr == nil {
+	if containers, cerr := d.cli.ContainerList(ctx, client.ContainerListOptions{All: true}); cerr == nil {
 		for _, c := range containers.Items {
 			used[c.ImageID] = true
 		}
@@ -57,17 +53,14 @@ func (m *Manager) Images(ctx context.Context, id int64, host string) ([]Image, e
 	return out, nil
 }
 
-func (m *Manager) ImageAction(ctx context.Context, id int64, host, imageID, action string) error {
-	cli, err := m.clientFor(id, host)
-	if err != nil {
-		return err
-	}
+func (d *Client) ImageAction(ctx context.Context, imageID, action string) error {
 	ctx, cancel := context.WithTimeout(ctx, actionTimeout)
 	defer cancel()
 
+	var err error
 	switch action {
 	case "remove":
-		_, err = cli.ImageRemove(ctx, imageID, client.ImageRemoveOptions{Force: true, PruneChildren: true})
+		_, err = d.cli.ImageRemove(ctx, imageID, client.ImageRemoveOptions{Force: true, PruneChildren: true})
 	default:
 		return fmt.Errorf("unknown image action %q", action)
 	}
@@ -82,12 +75,8 @@ type PullProgress struct {
 	Error   string
 }
 
-func (m *Manager) ImagePull(ctx context.Context, id int64, host, ref string) (<-chan PullProgress, error) {
-	cli, err := m.clientFor(id, host)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := cli.ImagePull(ctx, ref, client.ImagePullOptions{RegistryAuth: m.registryAuth(ctx, ref)})
+func (d *Client) ImagePull(ctx context.Context, ref string) (<-chan PullProgress, error) {
+	resp, err := d.cli.ImagePull(ctx, ref, client.ImagePullOptions{RegistryAuth: d.registryAuth(ctx, ref)})
 	if err != nil {
 		return nil, err
 	}
@@ -129,16 +118,12 @@ type PruneResult struct {
 	SpaceReclaimed uint64
 }
 
-func (m *Manager) ImagesPrune(ctx context.Context, id int64, host string, all bool) (PruneResult, error) {
-	cli, err := m.clientFor(id, host)
-	if err != nil {
-		return PruneResult{}, err
-	}
+func (d *Client) ImagesPrune(ctx context.Context, all bool) (PruneResult, error) {
 	ctx, cancel := context.WithTimeout(ctx, actionTimeout)
 	defer cancel()
 
 	imageIDs := make(map[string]bool)
-	if list, lerr := cli.ImageList(ctx, client.ImageListOptions{}); lerr == nil {
+	if list, lerr := d.cli.ImageList(ctx, client.ImageListOptions{}); lerr == nil {
 		for _, img := range list.Items {
 			imageIDs[img.ID] = true
 		}
@@ -148,7 +133,7 @@ func (m *Manager) ImagesPrune(ctx context.Context, id int64, host string, all bo
 	if all {
 		filters = filters.Add("dangling", "false")
 	}
-	res, err := cli.ImagePrune(ctx, client.ImagePruneOptions{Filters: filters})
+	res, err := d.cli.ImagePrune(ctx, client.ImagePruneOptions{Filters: filters})
 	if err != nil {
 		return PruneResult{}, err
 	}
@@ -188,15 +173,11 @@ type ImageDetail struct {
 	Containers   []ImageContainer
 }
 
-func (m *Manager) ImageDetail(ctx context.Context, id int64, host, imageID string) (ImageDetail, error) {
-	cli, err := m.clientFor(id, host)
-	if err != nil {
-		return ImageDetail{}, err
-	}
+func (d *Client) ImageDetail(ctx context.Context, imageID string) (ImageDetail, error) {
 	ctx, cancel := context.WithTimeout(ctx, callTimeout)
 	defer cancel()
 
-	res, err := cli.ImageInspect(ctx, imageID)
+	res, err := d.cli.ImageInspect(ctx, imageID)
 	if err != nil {
 		return ImageDetail{}, err
 	}
@@ -228,7 +209,7 @@ func (m *Manager) ImageDetail(ctx context.Context, id int64, host, imageID strin
 		sort.Strings(detail.ExposedPorts)
 	}
 
-	if containers, cerr := cli.ContainerList(ctx, client.ContainerListOptions{All: true}); cerr == nil {
+	if containers, cerr := d.cli.ContainerList(ctx, client.ContainerListOptions{All: true}); cerr == nil {
 		for _, c := range containers.Items {
 			if c.ImageID != r.ID {
 				continue
@@ -243,8 +224,8 @@ func (m *Manager) ImageDetail(ctx context.Context, id int64, host, imageID strin
 	return detail, nil
 }
 
-func (m *Manager) pullImage(ctx context.Context, cli *client.Client, ref string) error {
-	resp, err := cli.ImagePull(ctx, ref, client.ImagePullOptions{RegistryAuth: m.registryAuth(ctx, ref)})
+func (d *Client) pullImage(ctx context.Context, ref string) error {
+	resp, err := d.cli.ImagePull(ctx, ref, client.ImagePullOptions{RegistryAuth: d.registryAuth(ctx, ref)})
 	if err != nil {
 		return err
 	}

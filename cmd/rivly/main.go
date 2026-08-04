@@ -91,7 +91,7 @@ func run(ctx context.Context, getenv func(string) string, stdout io.Writer) erro
 	eventsHub := events.NewHub()
 	sessions := auth.NewSessionManager(sqlDB)
 	local := auth.NewLocal(queries, sqlDB)
-	srv := server.New(logger, queries, sessions, local, dockerManager, composeRunner, eventsHub, registries, gitCredentials, cfg)
+	srv := server.New(logger, queries, sessions, local, func(id int64, host string) (server.DockerClient, error) { return dockerManager.Client(id, host) }, composeRunner, eventsHub, registries, gitCredentials, cfg)
 
 	ctx, stop := context.WithCancel(ctx)
 	defer stop()

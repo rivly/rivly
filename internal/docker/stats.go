@@ -21,12 +21,8 @@ type Stats struct {
 	Pids       uint64
 }
 
-func (m *Manager) ContainerStats(ctx context.Context, id int64, host, containerID string) (<-chan Stats, error) {
-	cli, err := m.clientFor(id, host)
-	if err != nil {
-		return nil, err
-	}
-	res, err := cli.ContainerStats(ctx, containerID, client.ContainerStatsOptions{Stream: true})
+func (d *Client) ContainerStats(ctx context.Context, containerID string) (<-chan Stats, error) {
+	res, err := d.cli.ContainerStats(ctx, containerID, client.ContainerStatsOptions{Stream: true})
 	if err != nil {
 		return nil, err
 	}

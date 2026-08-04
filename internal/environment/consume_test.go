@@ -7,7 +7,7 @@ import (
 )
 
 func TestReconnectTriggersAResync(t *testing.T) {
-	h := newWatcherHarness(t, fakeDocker{})
+	h := newWatcherHarness(t, fakeDocker{}.factory())
 	h.seedEnvironment(t)
 
 	env, err := h.queries.GetEnvironment(context.Background(), 1)
@@ -28,7 +28,7 @@ func TestReconnectTriggersAResync(t *testing.T) {
 }
 
 func TestFirstConnectDoesNotResync(t *testing.T) {
-	h := newWatcherHarness(t, fakeDocker{})
+	h := newWatcherHarness(t, fakeDocker{}.factory())
 	h.seedEnvironment(t)
 
 	env, err := h.queries.GetEnvironment(context.Background(), 1)

@@ -19,11 +19,24 @@ type fakeDocker struct {
 	watchStarted chan int64
 }
 
-func (f fakeDocker) Info(_ context.Context, _ int64, _ string) (docker.SystemInfo, error) {
+func (f fakeDocker) Info(_ context.Context) (docker.SystemInfo, error) {
 	return f.info, f.infoErr
 }
 
-func (f fakeDocker) WatchEvents(_ context.Context, id int64, _ string) (<-chan struct{}, <-chan error) {
+func (f fakeDocker) factory() Docker {
+	return func(id int64, _ string) (DockerClient, error) { return environmentClient{f, id}, nil }
+}
+
+type environmentClient struct {
+	fakeDocker
+	id int64
+}
+
+func (c environmentClient) WatchEvents(ctx context.Context) (<-chan struct{}, <-chan error) {
+	return c.watch(c.id)
+}
+
+func (f fakeDocker) watch(id int64) (<-chan struct{}, <-chan error) {
 	if f.watchStarted != nil {
 		select {
 		case f.watchStarted <- id:

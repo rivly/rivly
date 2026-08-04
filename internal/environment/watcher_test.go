@@ -8,7 +8,7 @@ import (
 
 func TestWatchersPickUpAnEnvironmentTheyMissedAtStartup(t *testing.T) {
 	started := make(chan int64, 4)
-	h := newWatcherHarness(t, fakeDocker{watchStarted: started})
+	h := newWatcherHarness(t, fakeDocker{watchStarted: started}.factory())
 
 	previous := watcherRefresh
 	watcherRefresh = 20 * time.Millisecond
@@ -43,7 +43,7 @@ func TestWatchersPickUpAnEnvironmentTheyMissedAtStartup(t *testing.T) {
 
 func TestWatchersDoNotStartTwiceForTheSameEnvironment(t *testing.T) {
 	started := make(chan int64, 8)
-	h := newWatcherHarness(t, fakeDocker{watchStarted: started})
+	h := newWatcherHarness(t, fakeDocker{watchStarted: started}.factory())
 	h.seedEnvironment(t)
 
 	previous := watcherRefresh

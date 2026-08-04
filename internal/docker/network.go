@@ -22,20 +22,16 @@ type Network struct {
 	InUse   bool
 }
 
-func (m *Manager) Networks(ctx context.Context, id int64, host string) ([]Network, error) {
-	cli, err := m.clientFor(id, host)
-	if err != nil {
-		return nil, err
-	}
+func (d *Client) Networks(ctx context.Context) ([]Network, error) {
 	ctx, cancel := context.WithTimeout(ctx, callTimeout)
 	defer cancel()
-	res, err := cli.NetworkList(ctx, client.NetworkListOptions{})
+	res, err := d.cli.NetworkList(ctx, client.NetworkListOptions{})
 	if err != nil {
 		return nil, err
 	}
 
 	used := make(map[string]bool)
-	if containers, cerr := cli.ContainerList(ctx, client.ContainerListOptions{All: true}); cerr == nil {
+	if containers, cerr := d.cli.ContainerList(ctx, client.ContainerListOptions{All: true}); cerr == nil {
 		for _, c := range containers.Items {
 			if c.NetworkSettings == nil {
 				continue
@@ -61,17 +57,14 @@ func (m *Manager) Networks(ctx context.Context, id int64, host string) ([]Networ
 	return out, nil
 }
 
-func (m *Manager) NetworkAction(ctx context.Context, id int64, host, networkID, action string) error {
-	cli, err := m.clientFor(id, host)
-	if err != nil {
-		return err
-	}
+func (d *Client) NetworkAction(ctx context.Context, networkID, action string) error {
 	ctx, cancel := context.WithTimeout(ctx, actionTimeout)
 	defer cancel()
 
+	var err error
 	switch action {
 	case "remove":
-		_, err = cli.NetworkRemove(ctx, networkID, client.NetworkRemoveOptions{})
+		_, err = d.cli.NetworkRemove(ctx, networkID, client.NetworkRemoveOptions{})
 	default:
 		return fmt.Errorf("unknown network action %q", action)
 	}
@@ -89,11 +82,7 @@ type CreatedNetwork struct {
 	Warning string
 }
 
-func (m *Manager) NetworkCreate(ctx context.Context, id int64, host string, in NetworkCreateInput) (CreatedNetwork, error) {
-	cli, err := m.clientFor(id, host)
-	if err != nil {
-		return CreatedNetwork{}, err
-	}
+func (d *Client) NetworkCreate(ctx context.Context, in NetworkCreateInput) (CreatedNetwork, error) {
 	ctx, cancel := context.WithTimeout(ctx, actionTimeout)
 	defer cancel()
 
@@ -110,7 +99,7 @@ func (m *Manager) NetworkCreate(ctx context.Context, id int64, host string, in N
 		opts.IPAM = &network.IPAM{Config: []network.IPAMConfig{{Subnet: prefix}}}
 	}
 
-	res, err := cli.NetworkCreate(ctx, in.Name, opts)
+	res, err := d.cli.NetworkCreate(ctx, in.Name, opts)
 	if err != nil {
 		return CreatedNetwork{}, err
 	}
@@ -141,15 +130,11 @@ type NetworkDetail struct {
 	Containers []NetworkContainer
 }
 
-func (m *Manager) NetworkDetail(ctx context.Context, id int64, host, networkID string) (NetworkDetail, error) {
-	cli, err := m.clientFor(id, host)
-	if err != nil {
-		return NetworkDetail{}, err
-	}
+func (d *Client) NetworkDetail(ctx context.Context, networkID string) (NetworkDetail, error) {
 	ctx, cancel := context.WithTimeout(ctx, callTimeout)
 	defer cancel()
 
-	res, err := cli.NetworkInspect(ctx, networkID, client.NetworkInspectOptions{})
+	res, err := d.cli.NetworkInspect(ctx, networkID, client.NetworkInspectOptions{})
 	if err != nil {
 		return NetworkDetail{}, err
 	}

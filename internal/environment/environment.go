@@ -17,10 +17,12 @@ const (
 	StatusDown = "down"
 )
 
-type Docker interface {
-	Info(ctx context.Context, id int64, host string) (docker.SystemInfo, error)
-	WatchEvents(ctx context.Context, id int64, host string) (<-chan struct{}, <-chan error)
+type DockerClient interface {
+	Info(ctx context.Context) (docker.SystemInfo, error)
+	WatchEvents(ctx context.Context) (<-chan struct{}, <-chan error)
 }
+
+type Docker func(envID int64, host string) (DockerClient, error)
 
 type Detail struct {
 	ID       int64
@@ -88,11 +90,13 @@ func (s *Service) Build(ctx context.Context, e db.Environment) Detail {
 		detail.LastSeen = &seen
 	}
 
-	if info, err := s.docker.Info(ctx, e.ID, e.Url); err == nil {
-		detail.Status = StatusUp
-		detail.System = &info
-		s.saveSnapshot(ctx, e.ID, info)
-		return detail
+	if client, cerr := s.docker(e.ID, e.Url); cerr == nil {
+		if info, err := client.Info(ctx); err == nil {
+			detail.Status = StatusUp
+			detail.System = &info
+			s.saveSnapshot(ctx, e.ID, info)
+			return detail
+		}
 	}
 
 	if e.Snapshot.Valid {

@@ -80,7 +80,7 @@ func (s *Server) handleContainerActions(w http.ResponseWriter, r *http.Request) 
 		noun:    "container",
 		allowed: validActions,
 		apply: func(ctx context.Context, env db.Environment, id, action string) error {
-			return s.docker.ContainerAction(ctx, env.ID, env.Url, id, action)
+			return dockerFrom(r).ContainerAction(ctx, id, action)
 		},
 	})
 }

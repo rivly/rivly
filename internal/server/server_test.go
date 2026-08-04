@@ -24,9 +24,9 @@ import (
 	"github.com/rivly/rivly/internal/secret"
 )
 
-func newTestServer(t *testing.T, dockerClient dockerService, composeRunner composeRunner) *Server {
+func newTestServer(t *testing.T, client DockerClient, composeRunner composeRunner) *Server {
 	t.Helper()
-	srv, _ := newTestServerWithDB(t, dockerClient, composeRunner)
+	srv, _ := newTestServerWithDB(t, client, composeRunner)
 	return srv
 }
 
@@ -43,7 +43,7 @@ func closeTestDatabase(t *testing.T, srv *Server) {
 
 var testDatabases = map[*Server]*sql.DB{}
 
-func newTestServerWithDB(t *testing.T, dockerClient dockerService, composeRunner composeRunner) (*Server, *sql.DB) {
+func newTestServerWithDB(t *testing.T, client DockerClient, composeRunner composeRunner) (*Server, *sql.DB) {
 	t.Helper()
 	sqlDB, err := database.Open(filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {
@@ -61,7 +61,8 @@ func newTestServerWithDB(t *testing.T, dockerClient dockerService, composeRunner
 	}
 	registries := registry.NewStore(queries, cipher)
 	gitCredentials := gitcred.NewStore(queries, cipher)
-	srv := New(logger, queries, auth.NewSessionManager(sqlDB), auth.NewLocal(queries, sqlDB), dockerClient, composeRunner, events.NewHub(), registries, gitCredentials, config.Config{SetupToken: testSetupToken})
+	srv := New(logger, queries, auth.NewSessionManager(sqlDB), auth.NewLocal(queries, sqlDB),
+		func(int64, string) (DockerClient, error) { return client, nil }, composeRunner, events.NewHub(), registries, gitCredentials, config.Config{SetupToken: testSetupToken})
 	testDatabases[srv] = sqlDB
 	t.Cleanup(func() { delete(testDatabases, srv) })
 	return srv, sqlDB

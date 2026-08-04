@@ -202,7 +202,12 @@ func (s *Server) handleTestRegistry(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, http.StatusBadGateway, "no local environment to test against")
 		return
 	}
-	if err := s.docker.RegistryLogin(r.Context(), env.ID, env.Url, server, username, password); err != nil {
+	client, err := s.docker(env.ID, env.Url)
+	if err != nil {
+		s.writeError(w, http.StatusBadGateway, "no local environment to test against")
+		return
+	}
+	if err := client.RegistryLogin(r.Context(), server, username, password); err != nil {
 		s.logger.Warn("registry login failed", "server", server, "err", err)
 		s.writeError(w, http.StatusBadGateway, "could not authenticate with the registry")
 		return

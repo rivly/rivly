@@ -30,9 +30,7 @@ type portResponse struct {
 }
 
 func (s *Server) handleListContainers(w http.ResponseWriter, r *http.Request) {
-	env := environmentFrom(r)
-
-	containers, err := s.docker.Containers(r.Context(), env.ID, env.Url)
+	containers, err := dockerFrom(r).Containers(r.Context())
 	if err != nil {
 		s.writeError(w, http.StatusBadGateway, "environment is unreachable")
 		return
@@ -161,7 +159,7 @@ func (s *Server) handleCreateContainer(w http.ResponseWriter, r *http.Request) {
 
 	env := environmentFrom(r)
 
-	containerID, err := s.docker.ContainerCreate(r.Context(), env.ID, env.Url, input)
+	containerID, err := dockerFrom(r).ContainerCreate(r.Context(), input)
 	if err != nil {
 		s.logger.Warn("container create failed", "image", req.Image, "err", err)
 		if containerID != "" {
@@ -212,9 +210,7 @@ type containerDetailResponse struct {
 func (s *Server) handleContainerDetail(w http.ResponseWriter, r *http.Request) {
 	containerID := chi.URLParam(r, "containerID")
 
-	env := environmentFrom(r)
-
-	detail, err := s.docker.ContainerDetail(r.Context(), env.ID, env.Url, containerID)
+	detail, err := dockerFrom(r).ContainerDetail(r.Context(), containerID)
 	if err != nil {
 		s.writeError(w, http.StatusBadGateway, "could not inspect container")
 		return

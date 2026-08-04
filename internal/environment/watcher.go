@@ -45,7 +45,12 @@ func (s *Service) startWatchers(ctx context.Context, watched map[int64]bool) {
 func (s *Service) watch(ctx context.Context, e db.Environment) {
 	first := true
 	for ctx.Err() == nil {
-		signals, errc := s.docker.WatchEvents(ctx, e.ID, e.Url)
+		client, err := s.docker(e.ID, e.Url)
+		if err != nil {
+			s.logger.Error("watcher: could not reach the environment", "env", e.ID, "err", err)
+			return
+		}
+		signals, errc := client.WatchEvents(ctx)
 		s.consume(ctx, e, signals, errc, first)
 		first = false
 		select {

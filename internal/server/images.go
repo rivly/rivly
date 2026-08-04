@@ -25,9 +25,7 @@ type imageResponse struct {
 var validImageActions = map[string]bool{"remove": true}
 
 func (s *Server) handleListImages(w http.ResponseWriter, r *http.Request) {
-	env := environmentFrom(r)
-
-	images, err := s.docker.Images(r.Context(), env.ID, env.Url)
+	images, err := dockerFrom(r).Images(r.Context())
 	if err != nil {
 		s.writeError(w, http.StatusBadGateway, "environment is unreachable")
 		return
@@ -72,9 +70,7 @@ type imageDetailResponse struct {
 func (s *Server) handleImageDetail(w http.ResponseWriter, r *http.Request) {
 	imageID := chi.URLParam(r, "imageID")
 
-	env := environmentFrom(r)
-
-	detail, err := s.docker.ImageDetail(r.Context(), env.ID, env.Url, imageID)
+	detail, err := dockerFrom(r).ImageDetail(r.Context(), imageID)
 	if err != nil {
 		s.writeError(w, http.StatusBadGateway, "could not inspect image")
 		return
@@ -108,7 +104,7 @@ func (s *Server) handleImageActions(w http.ResponseWriter, r *http.Request) {
 		noun:    "image",
 		allowed: validImageActions,
 		apply: func(ctx context.Context, env db.Environment, id, action string) error {
-			return s.docker.ImageAction(ctx, env.ID, env.Url, id, action)
+			return dockerFrom(r).ImageAction(ctx, id, action)
 		},
 	})
 }
@@ -139,7 +135,7 @@ func (s *Server) handleImagePull(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := s.streamContext(r)
 	defer cancel()
 
-	stream, err := s.docker.ImagePull(ctx, env.ID, env.Url, ref)
+	stream, err := dockerFrom(r).ImagePull(ctx, ref)
 	if err != nil {
 		s.writeError(w, http.StatusBadGateway, "could not pull image")
 		return
@@ -207,7 +203,7 @@ func (s *Server) handleImagePrune(w http.ResponseWriter, r *http.Request) {
 
 	env := environmentFrom(r)
 
-	res, err := s.docker.ImagesPrune(r.Context(), env.ID, env.Url, req.All)
+	res, err := dockerFrom(r).ImagesPrune(r.Context(), req.All)
 	if err != nil {
 		s.writeError(w, http.StatusBadGateway, "could not prune images")
 		return

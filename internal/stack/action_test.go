@@ -20,7 +20,7 @@ func TestValidAction(t *testing.T) {
 
 func TestActRemovesAManagedStackAndForgetsIt(t *testing.T) {
 	removed := make(chan string, 1)
-	h := newHarness(t, fakeDocker{}, fakeCompose{removed: removed})
+	h := newHarness(t, fakeDocker{}.factory(), fakeCompose{removed: removed})
 	h.seed(t, "app", fakeRemote(t, headA), headA, 15, 1)
 
 	results := h.Act(context.Background(), h.env(t), "remove", []string{"app"})
@@ -43,7 +43,7 @@ func TestActRemovesAManagedStackAndForgetsIt(t *testing.T) {
 }
 
 func TestActKeepsTheRecordWhenTeardownFails(t *testing.T) {
-	h := newHarness(t, fakeDocker{}, fakeCompose{err: errComposeFailed})
+	h := newHarness(t, fakeDocker{}.factory(), fakeCompose{err: errComposeFailed})
 	h.seed(t, "app", fakeRemote(t, headA), headA, 15, 1)
 
 	results := h.Act(context.Background(), h.env(t), "remove", []string{"app"})
@@ -57,7 +57,7 @@ func TestActKeepsTheRecordWhenTeardownFails(t *testing.T) {
 }
 
 func TestActRefusesToRemoveAStackBeingUpdated(t *testing.T) {
-	h := newHarness(t, fakeDocker{}, fakeCompose{})
+	h := newHarness(t, fakeDocker{}.factory(), fakeCompose{})
 	record := h.seed(t, "app", fakeRemote(t, headA), headA, 15, 1)
 
 	if !h.Acquire(record.ID) {
@@ -76,7 +76,7 @@ func TestActRefusesToRemoveAStackBeingUpdated(t *testing.T) {
 
 func TestActOnAnUnmanagedStackGoesToDocker(t *testing.T) {
 	removed := make(chan string, 1)
-	h := newHarness(t, fakeDocker{}, fakeCompose{removed: removed})
+	h := newHarness(t, fakeDocker{}.factory(), fakeCompose{removed: removed})
 
 	results := h.Act(context.Background(), h.env(t), "remove", []string{"external"})
 
@@ -91,7 +91,7 @@ func TestActOnAnUnmanagedStackGoesToDocker(t *testing.T) {
 }
 
 func TestActReportsPerStackResults(t *testing.T) {
-	h := newHarness(t, fakeDocker{actionErr: errComposeFailed}, fakeCompose{})
+	h := newHarness(t, fakeDocker{actionErr: errComposeFailed}.factory(), fakeCompose{})
 
 	results := h.Act(context.Background(), h.env(t), "restart", []string{"a", "b", "c"})
 	if len(results) != 3 {

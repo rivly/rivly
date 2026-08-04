@@ -18,20 +18,16 @@ type Volume struct {
 	InUse      bool
 }
 
-func (m *Manager) Volumes(ctx context.Context, id int64, host string) ([]Volume, error) {
-	cli, err := m.clientFor(id, host)
-	if err != nil {
-		return nil, err
-	}
+func (d *Client) Volumes(ctx context.Context) ([]Volume, error) {
 	ctx, cancel := context.WithTimeout(ctx, callTimeout)
 	defer cancel()
-	res, err := cli.VolumeList(ctx, client.VolumeListOptions{})
+	res, err := d.cli.VolumeList(ctx, client.VolumeListOptions{})
 	if err != nil {
 		return nil, err
 	}
 
 	used := make(map[string]bool)
-	if containers, cerr := cli.ContainerList(ctx, client.ContainerListOptions{All: true}); cerr == nil {
+	if containers, cerr := d.cli.ContainerList(ctx, client.ContainerListOptions{All: true}); cerr == nil {
 		for _, c := range containers.Items {
 			for _, mnt := range c.Mounts {
 				if mnt.Name != "" {
@@ -59,17 +55,14 @@ func (m *Manager) Volumes(ctx context.Context, id int64, host string) ([]Volume,
 	return out, nil
 }
 
-func (m *Manager) VolumeAction(ctx context.Context, id int64, host, volumeName, action string) error {
-	cli, err := m.clientFor(id, host)
-	if err != nil {
-		return err
-	}
+func (d *Client) VolumeAction(ctx context.Context, volumeName, action string) error {
 	ctx, cancel := context.WithTimeout(ctx, actionTimeout)
 	defer cancel()
 
+	var err error
 	switch action {
 	case "remove":
-		_, err = cli.VolumeRemove(ctx, volumeName, client.VolumeRemoveOptions{Force: true})
+		_, err = d.cli.VolumeRemove(ctx, volumeName, client.VolumeRemoveOptions{Force: true})
 	default:
 		return fmt.Errorf("unknown volume action %q", action)
 	}
@@ -81,11 +74,7 @@ type VolumeCreateInput struct {
 	Driver string
 }
 
-func (m *Manager) VolumeCreate(ctx context.Context, id int64, host string, in VolumeCreateInput) (Volume, error) {
-	cli, err := m.clientFor(id, host)
-	if err != nil {
-		return Volume{}, err
-	}
+func (d *Client) VolumeCreate(ctx context.Context, in VolumeCreateInput) (Volume, error) {
 	ctx, cancel := context.WithTimeout(ctx, actionTimeout)
 	defer cancel()
 
@@ -93,7 +82,7 @@ func (m *Manager) VolumeCreate(ctx context.Context, id int64, host string, in Vo
 	if driver == "" {
 		driver = "local"
 	}
-	res, err := cli.VolumeCreate(ctx, client.VolumeCreateOptions{
+	res, err := d.cli.VolumeCreate(ctx, client.VolumeCreateOptions{
 		Name:   in.Name,
 		Driver: driver,
 	})
@@ -132,15 +121,11 @@ type VolumeDetail struct {
 	Containers []VolumeContainer
 }
 
-func (m *Manager) VolumeDetail(ctx context.Context, id int64, host, name string) (VolumeDetail, error) {
-	cli, err := m.clientFor(id, host)
-	if err != nil {
-		return VolumeDetail{}, err
-	}
+func (d *Client) VolumeDetail(ctx context.Context, name string) (VolumeDetail, error) {
 	ctx, cancel := context.WithTimeout(ctx, callTimeout)
 	defer cancel()
 
-	res, err := cli.VolumeInspect(ctx, name, client.VolumeInspectOptions{})
+	res, err := d.cli.VolumeInspect(ctx, name, client.VolumeInspectOptions{})
 	if err != nil {
 		return VolumeDetail{}, err
 	}
@@ -159,7 +144,7 @@ func (m *Manager) VolumeDetail(ctx context.Context, id int64, host, name string)
 		Options:    v.Options,
 	}
 
-	if containers, cerr := cli.ContainerList(ctx, client.ContainerListOptions{All: true}); cerr == nil {
+	if containers, cerr := d.cli.ContainerList(ctx, client.ContainerListOptions{All: true}); cerr == nil {
 		for _, c := range containers.Items {
 			for _, mnt := range c.Mounts {
 				if mnt.Name != name {

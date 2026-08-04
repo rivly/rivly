@@ -26,10 +26,12 @@ const (
 	maxComposeError = 4000
 )
 
-type Docker interface {
-	Stacks(ctx context.Context, id int64, host string) ([]docker.Stack, error)
-	StackAction(ctx context.Context, id int64, host, project, action string) error
+type DockerClient interface {
+	Stacks(ctx context.Context) ([]docker.Stack, error)
+	StackAction(ctx context.Context, project, action string) error
 }
+
+type Docker func(envID int64, host string) (DockerClient, error)
 
 type Compose interface {
 	Deploy(ctx context.Context, dockerHost string, envID int64, project, content, env string) (string, error)

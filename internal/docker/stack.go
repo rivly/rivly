@@ -17,14 +17,10 @@ type Stack struct {
 	WorkingDir string
 }
 
-func (m *Manager) Stacks(ctx context.Context, id int64, host string) ([]Stack, error) {
-	cli, err := m.clientFor(id, host)
-	if err != nil {
-		return nil, err
-	}
+func (d *Client) Stacks(ctx context.Context) ([]Stack, error) {
 	ctx, cancel := context.WithTimeout(ctx, callTimeout)
 	defer cancel()
-	res, err := cli.ContainerList(ctx, client.ContainerListOptions{All: true})
+	res, err := d.cli.ContainerList(ctx, client.ContainerListOptions{All: true})
 	if err != nil {
 		return nil, err
 	}
@@ -74,13 +70,9 @@ func (m *Manager) Stacks(ctx context.Context, id int64, host string) ([]Stack, e
 	return out, nil
 }
 
-func (m *Manager) StackAction(ctx context.Context, id int64, host, project, action string) error {
-	cli, err := m.clientFor(id, host)
-	if err != nil {
-		return err
-	}
+func (d *Client) StackAction(ctx context.Context, project, action string) error {
 	listCtx, cancel := context.WithTimeout(ctx, callTimeout)
-	res, err := cli.ContainerList(listCtx, client.ContainerListOptions{All: true})
+	res, err := d.cli.ContainerList(listCtx, client.ContainerListOptions{All: true})
 	cancel()
 	if err != nil {
 		return err
@@ -98,7 +90,7 @@ func (m *Manager) StackAction(ctx context.Context, id int64, host, project, acti
 			defer wg.Done()
 			actionCtx, actionCancel := context.WithTimeout(ctx, actionTimeout)
 			defer actionCancel()
-			if aerr := applyContainerAction(actionCtx, cli, containerID, action); aerr != nil {
+			if aerr := applyContainerAction(actionCtx, d.cli, containerID, action); aerr != nil {
 				mu.Lock()
 				if firstErr == nil {
 					firstErr = aerr

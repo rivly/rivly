@@ -47,7 +47,12 @@ func (s *Service) act(ctx context.Context, env db.Environment, name, action stri
 		}
 	}
 
-	if err := s.docker.StackAction(ctx, env.ID, env.Url, name, action); err != nil {
+	client, err := s.docker(env.ID, env.Url)
+	if err != nil {
+		s.logger.Warn("stack action failed", "action", action, "stack", name, "err", err)
+		return ActionResult{Name: name, OK: false, Error: "action failed"}
+	}
+	if err := client.StackAction(ctx, name, action); err != nil {
 		s.logger.Warn("stack action failed", "action", action, "stack", name, "err", err)
 		return ActionResult{Name: name, OK: false, Error: "action failed"}
 	}

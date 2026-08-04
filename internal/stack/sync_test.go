@@ -28,12 +28,16 @@ type fakeDocker struct {
 	actionErr error
 }
 
-func (f fakeDocker) Stacks(_ context.Context, _ int64, _ string) ([]docker.Stack, error) {
+func (f fakeDocker) Stacks(_ context.Context) ([]docker.Stack, error) {
 	return f.stacks, f.err
 }
 
-func (f fakeDocker) StackAction(_ context.Context, _ int64, _, _, _ string) error {
+func (f fakeDocker) StackAction(_ context.Context, _, _ string) error {
 	return f.actionErr
+}
+
+func (f fakeDocker) factory() Docker {
+	return func(int64, string) (DockerClient, error) { return f, nil }
 }
 
 type fakeCompose struct {
@@ -251,7 +255,7 @@ func (h *harness) markChecked(t *testing.T, id int64, hash string) {
 func TestSyncLeavesAStoppedStackAlone(t *testing.T) {
 	deployed := make(chan string, 1)
 	h := newHarness(t,
-		fakeDocker{stacks: []docker.Stack{{Name: "app", Running: 0, Total: 2}}},
+		fakeDocker{stacks: []docker.Stack{{Name: "app", Running: 0, Total: 2}}}.factory(),
 		fakeCompose{deployed: deployed},
 	)
 	h.seed(t, "app", fakeRemote(t, headB), headA, 15, 1)
@@ -279,7 +283,7 @@ func TestSyncLeavesAStoppedStackAlone(t *testing.T) {
 func TestSyncDoesNothingWhenTheRemoteIsUnchanged(t *testing.T) {
 	deployed := make(chan string, 1)
 	h := newHarness(t,
-		fakeDocker{stacks: []docker.Stack{{Name: "app", Running: 2, Total: 2}}},
+		fakeDocker{stacks: []docker.Stack{{Name: "app", Running: 2, Total: 2}}}.factory(),
 		fakeCompose{deployed: deployed},
 	)
 	h.seed(t, "app", fakeRemote(t, headA), headA, 15, 1)
@@ -302,7 +306,7 @@ func TestSyncDoesNothingWhenTheRemoteIsUnchanged(t *testing.T) {
 }
 
 func TestSyncHonoursThePollInterval(t *testing.T) {
-	h := newHarness(t, fakeDocker{}, fakeCompose{})
+	h := newHarness(t, fakeDocker{}.factory(), fakeCompose{})
 
 	fresh := h.seed(t, "fresh", fakeRemote(t, headB), headA, 3600, 1)
 	h.seed(t, "stale", fakeRemote(t, headB), headA, 15, 1)
@@ -319,7 +323,7 @@ func TestSyncHonoursThePollInterval(t *testing.T) {
 }
 
 func TestSyncAppliesTheMinimumInterval(t *testing.T) {
-	h := newHarness(t, fakeDocker{}, fakeCompose{})
+	h := newHarness(t, fakeDocker{}.factory(), fakeCompose{})
 
 	st := h.seed(t, "app", fakeRemote(t, headB), headA, 0, 1)
 	h.markChecked(t, st.ID, headA)
@@ -332,7 +336,7 @@ func TestSyncAppliesTheMinimumInterval(t *testing.T) {
 }
 
 func TestSyncSkipsAStackAlreadyInFlight(t *testing.T) {
-	h := newHarness(t, fakeDocker{}, fakeCompose{})
+	h := newHarness(t, fakeDocker{}.factory(), fakeCompose{})
 
 	st := h.seed(t, "app", fakeRemote(t, headB), headA, 15, 1)
 	if !h.Acquire(st.ID) {
@@ -352,7 +356,7 @@ func TestSyncSkipsAStackAlreadyInFlight(t *testing.T) {
 }
 
 func TestSyncIgnoresStacksWithoutAutoUpdate(t *testing.T) {
-	h := newHarness(t, fakeDocker{}, fakeCompose{})
+	h := newHarness(t, fakeDocker{}.factory(), fakeCompose{})
 	h.seed(t, "manual", fakeRemote(t, headB), headA, 15, 0)
 
 	h.syncAndWait(t)
@@ -376,7 +380,7 @@ func TestIsRunning(t *testing.T) {
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			h := newHarness(t, fakeDocker{stacks: tc.stacks}, fakeCompose{})
+			h := newHarness(t, fakeDocker{stacks: tc.stacks}.factory(), fakeCompose{})
 
 			env, err := h.queries.GetEnvironment(context.Background(), 1)
 			if err != nil {
@@ -397,7 +401,7 @@ func TestIsRunning(t *testing.T) {
 func TestSyncFetchesTheStoredCredential(t *testing.T) {
 	asked := make(chan int64, 1)
 	creds := &fakeCredentials{asked: asked}
-	h := newHarnessWithCredentials(t, fakeDocker{}, fakeCompose{}, creds)
+	h := newHarnessWithCredentials(t, fakeDocker{}.factory(), fakeCompose{}, creds)
 	h.seedWithCredential(t, "app", fakeRemote(t, headA), 42)
 
 	h.syncAndWait(t)
@@ -415,7 +419,7 @@ func TestSyncFetchesTheStoredCredential(t *testing.T) {
 func TestSyncSkipsTheCredentialLookupWhenThereIsNone(t *testing.T) {
 	asked := make(chan int64, 1)
 	creds := &fakeCredentials{asked: asked}
-	h := newHarnessWithCredentials(t, fakeDocker{}, fakeCompose{}, creds)
+	h := newHarnessWithCredentials(t, fakeDocker{}.factory(), fakeCompose{}, creds)
 	h.seed(t, "app", fakeRemote(t, headA), headA, 15, 1)
 
 	h.syncAndWait(t)
@@ -429,7 +433,7 @@ func TestSyncSkipsTheCredentialLookupWhenThereIsNone(t *testing.T) {
 
 func TestSyncReportsAMissingCredential(t *testing.T) {
 	creds := &fakeCredentials{err: errComposeFailed}
-	h := newHarnessWithCredentials(t, fakeDocker{}, fakeCompose{}, creds)
+	h := newHarnessWithCredentials(t, fakeDocker{}.factory(), fakeCompose{}, creds)
 	h.seedWithCredential(t, "app", fakeRemote(t, headB), 42)
 
 	h.syncAndWait(t)

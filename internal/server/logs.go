@@ -29,12 +29,10 @@ func (s *Server) handleContainerLogs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	env := environmentFrom(r)
-
 	ctx, cancel := s.streamContext(r)
 	defer cancel()
 
-	lines, err := s.docker.ContainerLogs(ctx, env.ID, env.Url, containerID, parseLogTail(r), true)
+	lines, err := dockerFrom(r).ContainerLogs(ctx, containerID, parseLogTail(r), true)
 	if err != nil {
 		s.writeError(w, http.StatusBadGateway, "could not stream container logs")
 		return

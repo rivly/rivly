@@ -14,7 +14,7 @@ func TestListMergesDiscoveredAndManagedStacks(t *testing.T) {
 	h := newHarness(t, fakeDocker{stacks: []docker.Stack{
 		{Name: "zulu", Type: "external", Services: 1, Running: 1, Total: 1, State: "running", WorkingDir: "/srv/zulu"},
 		{Name: "alpha", Type: "external", Services: 2, Running: 1, Total: 2, State: "partial"},
-	}}, fakeCompose{})
+	}}.factory(), fakeCompose{})
 
 	h.seed(t, "alpha", fakeRemote(t, headA), headA, 15, 1)
 	h.seed(t, "mike", fakeRemote(t, headA), headA, 15, 1)
@@ -46,7 +46,7 @@ func TestListMergesDiscoveredAndManagedStacks(t *testing.T) {
 }
 
 func TestListReportsAnUnreachableDaemon(t *testing.T) {
-	h := newHarness(t, fakeDocker{err: errComposeFailed}, fakeCompose{})
+	h := newHarness(t, fakeDocker{err: errComposeFailed}.factory(), fakeCompose{})
 
 	_, err := h.List(context.Background(), h.env(t))
 	if err == nil {
@@ -58,7 +58,7 @@ func TestListReportsAnUnreachableDaemon(t *testing.T) {
 }
 
 func TestGetReturnsGitDetailsForAGitStack(t *testing.T) {
-	h := newHarness(t, fakeDocker{}, fakeCompose{})
+	h := newHarness(t, fakeDocker{}.factory(), fakeCompose{})
 	h.seed(t, "app", "https://example.test/acme/app.git", headA, 300, 1)
 
 	detail, err := h.Get(context.Background(), h.env(t), "app")
@@ -77,7 +77,7 @@ func TestGetReturnsGitDetailsForAGitStack(t *testing.T) {
 }
 
 func TestGetReportsAMissingStack(t *testing.T) {
-	h := newHarness(t, fakeDocker{}, fakeCompose{})
+	h := newHarness(t, fakeDocker{}.factory(), fakeCompose{})
 
 	_, err := h.Get(context.Background(), h.env(t), "nope")
 	if got := kindOf(t, err); got != KindNotFound {
@@ -86,7 +86,7 @@ func TestGetReportsAMissingStack(t *testing.T) {
 }
 
 func TestSignatureTracksManagedStacks(t *testing.T) {
-	h := newHarness(t, fakeDocker{}, fakeCompose{})
+	h := newHarness(t, fakeDocker{}.factory(), fakeCompose{})
 
 	empty := h.Signature(context.Background(), 1)
 	h.seed(t, "app", fakeRemote(t, headA), headA, 15, 1)

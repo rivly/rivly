@@ -96,7 +96,9 @@ func TestRegistryTest(t *testing.T) {
 		t.Fatalf("test ok: want 200, got %d", code)
 	}
 
-	srv.docker = fakeDocker{registryLoginErr: errors.New("unauthorized")}
+	srv.docker = func(int64, string) (DockerClient, error) {
+		return fakeDocker{registryLoginErr: errors.New("unauthorized")}, nil
+	}
 	if code := postStatus(t, client, ts.URL+"/api/v1/registries/test",
 		`{"server":"ghcr.io","username":"bob","password":"bad"}`); code != http.StatusBadGateway {
 		t.Fatalf("test bad: want 502, got %d", code)

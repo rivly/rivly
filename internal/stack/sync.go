@@ -96,7 +96,11 @@ func (s *Service) checkStack(ctx context.Context, st db.Stack) {
 }
 
 func (s *Service) isRunning(ctx context.Context, env db.Environment, name string) (bool, error) {
-	discovered, err := s.docker.Stacks(ctx, env.ID, env.Url)
+	client, err := s.docker(env.ID, env.Url)
+	if err != nil {
+		return false, err
+	}
+	discovered, err := client.Stacks(ctx)
 	if err != nil {
 		return false, err
 	}

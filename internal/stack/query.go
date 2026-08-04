@@ -47,7 +47,11 @@ type Detail struct {
 }
 
 func (s *Service) List(ctx context.Context, env db.Environment) ([]Summary, error) {
-	discovered, err := s.docker.Stacks(ctx, env.ID, env.Url)
+	client, err := s.docker(env.ID, env.Url)
+	if err != nil {
+		return nil, unreachable("environment is unreachable")
+	}
+	discovered, err := client.Stacks(ctx)
 	if err != nil {
 		return nil, unreachable("environment is unreachable")
 	}

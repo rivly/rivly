@@ -60,23 +60,23 @@ type fakeDocker struct {
 	registryLoginErr   error
 }
 
-func (f fakeDocker) Info(_ context.Context, _ int64, _ string) (docker.SystemInfo, error) {
+func (f fakeDocker) Info(_ context.Context) (docker.SystemInfo, error) {
 	return f.info, f.infoErr
 }
 
-func (f fakeDocker) Containers(_ context.Context, _ int64, _ string) ([]docker.Container, error) {
+func (f fakeDocker) Containers(_ context.Context) ([]docker.Container, error) {
 	return f.containers, f.containersErr
 }
 
-func (f fakeDocker) ContainerDetail(_ context.Context, _ int64, _, _ string) (docker.ContainerDetail, error) {
+func (f fakeDocker) ContainerDetail(_ context.Context, _ string) (docker.ContainerDetail, error) {
 	return f.detail, f.detailErr
 }
 
-func (f fakeDocker) ContainerCreate(_ context.Context, _ int64, _ string, _ docker.ContainerCreateInput) (string, error) {
+func (f fakeDocker) ContainerCreate(_ context.Context, _ docker.ContainerCreateInput) (string, error) {
 	return f.createdContainerID, f.createContainerErr
 }
 
-func (f fakeDocker) ContainerStats(_ context.Context, _ int64, _, _ string) (<-chan docker.Stats, error) {
+func (f fakeDocker) ContainerStats(_ context.Context, _ string) (<-chan docker.Stats, error) {
 	if f.statsErr != nil {
 		return nil, f.statsErr
 	}
@@ -88,19 +88,19 @@ func (f fakeDocker) ContainerStats(_ context.Context, _ int64, _, _ string) (<-c
 	return out, nil
 }
 
-func (f fakeDocker) Images(_ context.Context, _ int64, _ string) ([]docker.Image, error) {
+func (f fakeDocker) Images(_ context.Context) ([]docker.Image, error) {
 	return f.images, f.imagesErr
 }
 
-func (f fakeDocker) ImageAction(_ context.Context, _ int64, _, _, _ string) error {
+func (f fakeDocker) ImageAction(_ context.Context, _, _ string) error {
 	return f.imageActionErr
 }
 
-func (f fakeDocker) ImageDetail(_ context.Context, _ int64, _, _ string) (docker.ImageDetail, error) {
+func (f fakeDocker) ImageDetail(_ context.Context, _ string) (docker.ImageDetail, error) {
 	return f.imageDetail, f.imageDetailErr
 }
 
-func (f fakeDocker) ImagePull(_ context.Context, _ int64, _, _ string) (<-chan docker.PullProgress, error) {
+func (f fakeDocker) ImagePull(_ context.Context, _ string) (<-chan docker.PullProgress, error) {
 	if f.pullErr != nil {
 		return nil, f.pullErr
 	}
@@ -112,51 +112,51 @@ func (f fakeDocker) ImagePull(_ context.Context, _ int64, _, _ string) (<-chan d
 	return out, nil
 }
 
-func (f fakeDocker) ImagesPrune(_ context.Context, _ int64, _ string, _ bool) (docker.PruneResult, error) {
+func (f fakeDocker) ImagesPrune(_ context.Context, _ bool) (docker.PruneResult, error) {
 	return f.pruneResult, f.pruneErr
 }
 
-func (f fakeDocker) Volumes(_ context.Context, _ int64, _ string) ([]docker.Volume, error) {
+func (f fakeDocker) Volumes(_ context.Context) ([]docker.Volume, error) {
 	return f.volumes, f.volumesErr
 }
 
-func (f fakeDocker) VolumeAction(_ context.Context, _ int64, _, _, _ string) error {
+func (f fakeDocker) VolumeAction(_ context.Context, _, _ string) error {
 	return f.volumeActionErr
 }
 
-func (f fakeDocker) VolumeCreate(_ context.Context, _ int64, _ string, _ docker.VolumeCreateInput) (docker.Volume, error) {
+func (f fakeDocker) VolumeCreate(_ context.Context, _ docker.VolumeCreateInput) (docker.Volume, error) {
 	return f.volumeCreated, f.volumeCreateErr
 }
 
-func (f fakeDocker) VolumeDetail(_ context.Context, _ int64, _, _ string) (docker.VolumeDetail, error) {
+func (f fakeDocker) VolumeDetail(_ context.Context, _ string) (docker.VolumeDetail, error) {
 	return f.volumeDetail, f.volumeDetailErr
 }
 
-func (f fakeDocker) Networks(_ context.Context, _ int64, _ string) ([]docker.Network, error) {
+func (f fakeDocker) Networks(_ context.Context) ([]docker.Network, error) {
 	return f.networks, f.networksErr
 }
 
-func (f fakeDocker) NetworkAction(_ context.Context, _ int64, _, _, _ string) error {
+func (f fakeDocker) NetworkAction(_ context.Context, _, _ string) error {
 	return f.networkActionErr
 }
 
-func (f fakeDocker) NetworkCreate(_ context.Context, _ int64, _ string, _ docker.NetworkCreateInput) (docker.CreatedNetwork, error) {
+func (f fakeDocker) NetworkCreate(_ context.Context, _ docker.NetworkCreateInput) (docker.CreatedNetwork, error) {
 	return f.networkCreated, f.networkCreateErr
 }
 
-func (f fakeDocker) NetworkDetail(_ context.Context, _ int64, _, _ string) (docker.NetworkDetail, error) {
+func (f fakeDocker) NetworkDetail(_ context.Context, _ string) (docker.NetworkDetail, error) {
 	return f.networkDetail, f.networkDetailErr
 }
 
-func (f fakeDocker) Stacks(_ context.Context, _ int64, _ string) ([]docker.Stack, error) {
+func (f fakeDocker) Stacks(_ context.Context) ([]docker.Stack, error) {
 	return f.stacks, f.stacksErr
 }
 
-func (f fakeDocker) StackAction(_ context.Context, _ int64, _, _, _ string) error {
+func (f fakeDocker) StackAction(_ context.Context, _, _ string) error {
 	return f.stackActionErr
 }
 
-func (f fakeDocker) ContainerLogs(_ context.Context, _ int64, _, _ string, _ int, _ bool) (<-chan docker.LogLine, error) {
+func (f fakeDocker) ContainerLogs(_ context.Context, _ string, _ int, _ bool) (<-chan docker.LogLine, error) {
 	if f.logErr != nil {
 		return nil, f.logErr
 	}
@@ -168,25 +168,25 @@ func (f fakeDocker) ContainerLogs(_ context.Context, _ int64, _, _ string, _ int
 	return out, nil
 }
 
-func (f fakeDocker) ContainerExec(_ context.Context, _ int64, _, _ string) (*docker.ExecSession, error) {
+func (f fakeDocker) ContainerExec(_ context.Context, _ string) (*docker.ExecSession, error) {
 	return nil, f.execErr
 }
 
-func (f fakeDocker) ContainerAction(_ context.Context, _ int64, _, _, _ string) error {
+func (f fakeDocker) ContainerAction(_ context.Context, _, _ string) error {
 	return f.actionErr
 }
 
-func (f fakeDocker) WatchEvents(_ context.Context, id int64, _ string) (<-chan struct{}, <-chan error) {
+func (f fakeDocker) WatchEvents(_ context.Context) (<-chan struct{}, <-chan error) {
 	if f.watchStarted != nil {
 		select {
-		case f.watchStarted <- id:
+		case f.watchStarted <- 1:
 		default:
 		}
 	}
 	return nil, nil
 }
 
-func (f fakeDocker) RegistryLogin(_ context.Context, _ int64, _, _, _, _ string) error {
+func (f fakeDocker) RegistryLogin(_ context.Context, _, _, _ string) error {
 	return f.registryLoginErr
 }
 

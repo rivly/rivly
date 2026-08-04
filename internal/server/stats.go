@@ -30,12 +30,10 @@ func (s *Server) handleContainerStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	env := environmentFrom(r)
-
 	ctx, cancel := s.streamContext(r)
 	defer cancel()
 
-	stream, err := s.docker.ContainerStats(ctx, env.ID, env.Url, containerID)
+	stream, err := dockerFrom(r).ContainerStats(ctx, containerID)
 	if err != nil {
 		s.writeError(w, http.StatusBadGateway, "could not stream stats")
 		return
