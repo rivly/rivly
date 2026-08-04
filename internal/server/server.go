@@ -15,6 +15,7 @@ import (
 	"github.com/rivly/rivly/internal/config"
 	"github.com/rivly/rivly/internal/database/db"
 	"github.com/rivly/rivly/internal/docker"
+	"github.com/rivly/rivly/internal/environment"
 	"github.com/rivly/rivly/internal/events"
 	"github.com/rivly/rivly/internal/gitcred"
 	"github.com/rivly/rivly/internal/registry"
@@ -71,9 +72,8 @@ type Server struct {
 	gitcreds       *gitcred.Store
 	cfg            config.Config
 	setupMu        sync.Mutex
-	envStateMu     sync.Mutex
-	lastEnvState   map[int64]string
 	stacks         *stack.Service
+	environments   *environment.Service
 	streamsClosing context.Context
 	closeStreams   context.CancelFunc
 	running        sync.WaitGroup
@@ -129,16 +129,29 @@ func New(
 		registries:     registries,
 		gitcreds:       gitcreds,
 		cfg:            cfg,
-		lastEnvState:   make(map[int64]string),
 		streamsClosing: streamsClosing,
 		closeStreams:   closeStreams,
 	}
-	s.stacks = stack.New(logger, queries, docker, compose, gitcreds, s.publishEnvironment, s.spawn)
+	s.environments = environment.New(
+		logger, queries, docker, cfg.PollInterval,
+		s.emitEnvironment,
+		func(ctx context.Context, envID int64) string { return s.stacks.Signature(ctx, envID) },
+		s.spawn,
+	)
+	s.stacks = stack.New(logger, queries, docker, compose, gitcreds, s.environments.Publish, s.spawn)
 	return s
 }
 
 func (s *Server) RunStackSync(ctx context.Context) {
 	s.stacks.RunSync(ctx)
+}
+
+func (s *Server) RunPoller(ctx context.Context) {
+	s.environments.RunPoller(ctx)
+}
+
+func (s *Server) RunWatchers(ctx context.Context) {
+	s.environments.RunWatchers(ctx)
 }
 
 func (s *Server) CloseStreams() {

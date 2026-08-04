@@ -1,4 +1,4 @@
-package server
+package environment
 
 import (
 	"context"
@@ -15,7 +15,7 @@ const (
 
 var watcherRefresh = 30 * time.Second
 
-func (s *Server) RunWatchers(ctx context.Context) {
+func (s *Service) RunWatchers(ctx context.Context) {
 	watched := make(map[int64]bool)
 	for {
 		s.startWatchers(ctx, watched)
@@ -27,7 +27,7 @@ func (s *Server) RunWatchers(ctx context.Context) {
 	}
 }
 
-func (s *Server) startWatchers(ctx context.Context, watched map[int64]bool) {
+func (s *Service) startWatchers(ctx context.Context, watched map[int64]bool) {
 	envs, err := s.queries.ListEnvironments(ctx)
 	if err != nil {
 		s.logger.Error("watcher: could not list environments", "err", err)
@@ -38,15 +38,15 @@ func (s *Server) startWatchers(ctx context.Context, watched map[int64]bool) {
 			continue
 		}
 		watched[e.ID] = true
-		s.spawn(func() { s.watchEnvironment(ctx, e) })
+		s.spawn(func() { s.watch(ctx, e) })
 	}
 }
 
-func (s *Server) watchEnvironment(ctx context.Context, e db.Environment) {
+func (s *Service) watch(ctx context.Context, e db.Environment) {
 	first := true
 	for ctx.Err() == nil {
 		signals, errc := s.docker.WatchEvents(ctx, e.ID, e.Url)
-		s.consumeEvents(ctx, e, signals, errc, first)
+		s.consume(ctx, e, signals, errc, first)
 		first = false
 		select {
 		case <-ctx.Done():
@@ -56,7 +56,7 @@ func (s *Server) watchEnvironment(ctx context.Context, e db.Environment) {
 	}
 }
 
-func (s *Server) consumeEvents(
+func (s *Service) consume(
 	ctx context.Context,
 	e db.Environment,
 	signals <-chan struct{},
@@ -81,7 +81,7 @@ func (s *Server) consumeEvents(
 		case <-errc:
 			return
 		case <-connected:
-			s.publishEnvironment(ctx, e)
+			s.Publish(ctx, e)
 			connected = nil
 		case _, ok := <-signals:
 			if !ok {
@@ -89,7 +89,7 @@ func (s *Server) consumeEvents(
 			}
 			debounce.Reset(eventDebounce)
 		case <-debounce.C:
-			s.publishEnvironment(ctx, e)
+			s.Publish(ctx, e)
 		}
 	}
 }

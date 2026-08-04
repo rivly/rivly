@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/rivly/rivly/internal/database/db"
 )
@@ -132,6 +133,18 @@ func (s *Service) Get(ctx context.Context, env db.Environment, name string) (Det
 		}
 	}
 	return detail, nil
+}
+
+func (s *Service) Signature(ctx context.Context, envID int64) string {
+	stacks, err := s.queries.ListStacks(ctx, envID)
+	if err != nil {
+		return ""
+	}
+	var b strings.Builder
+	for _, st := range stacks {
+		fmt.Fprintf(&b, "|%s:%d", st.Name, st.UpdatedAt)
+	}
+	return b.String()
 }
 
 func (s *Service) managedByName(ctx context.Context, envID int64) map[string]db.Stack {

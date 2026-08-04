@@ -1,4 +1,4 @@
-package server
+package environment
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 
 func TestWatchersPickUpAnEnvironmentTheyMissedAtStartup(t *testing.T) {
 	started := make(chan int64, 4)
-	srv := newTestServer(t, fakeDocker{watchStarted: started}, fakeCompose{})
+	h := newWatcherHarness(t, fakeDocker{watchStarted: started})
 
 	previous := watcherRefresh
 	watcherRefresh = 20 * time.Millisecond
@@ -19,12 +19,12 @@ func TestWatchersPickUpAnEnvironmentTheyMissedAtStartup(t *testing.T) {
 		cancel()
 		stopCtx, stopCancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer stopCancel()
-		if err := srv.Wait(stopCtx); err != nil {
+		if err := h.wait(stopCtx); err != nil {
 			t.Errorf("watchers did not stop: %v", err)
 		}
 	})
 
-	srv.Background(ctx, srv.RunWatchers)
+	h.background(ctx, h.RunWatchers)
 
 	select {
 	case id := <-started:
@@ -32,7 +32,7 @@ func TestWatchersPickUpAnEnvironmentTheyMissedAtStartup(t *testing.T) {
 	case <-time.After(100 * time.Millisecond):
 	}
 
-	seedEnvironment(t, srv)
+	h.seedEnvironment(t)
 
 	select {
 	case <-started:
@@ -43,8 +43,8 @@ func TestWatchersPickUpAnEnvironmentTheyMissedAtStartup(t *testing.T) {
 
 func TestWatchersDoNotStartTwiceForTheSameEnvironment(t *testing.T) {
 	started := make(chan int64, 8)
-	srv := newTestServer(t, fakeDocker{watchStarted: started}, fakeCompose{})
-	seedEnvironment(t, srv)
+	h := newWatcherHarness(t, fakeDocker{watchStarted: started})
+	h.seedEnvironment(t)
 
 	previous := watcherRefresh
 	watcherRefresh = 10 * time.Millisecond
@@ -55,12 +55,12 @@ func TestWatchersDoNotStartTwiceForTheSameEnvironment(t *testing.T) {
 		cancel()
 		stopCtx, stopCancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer stopCancel()
-		if err := srv.Wait(stopCtx); err != nil {
+		if err := h.wait(stopCtx); err != nil {
 			t.Errorf("watchers did not stop: %v", err)
 		}
 	})
 
-	srv.Background(ctx, srv.RunWatchers)
+	h.background(ctx, h.RunWatchers)
 
 	select {
 	case <-started:

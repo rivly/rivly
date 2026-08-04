@@ -2,13 +2,11 @@ package server
 
 import (
 	"context"
-	"database/sql"
-	"encoding/json"
 	"net/http"
-	"sync"
 
 	"github.com/rivly/rivly/internal/database/db"
 	"github.com/rivly/rivly/internal/docker"
+	"github.com/rivly/rivly/internal/environment"
 )
 
 type environmentResponse struct {
@@ -43,92 +41,24 @@ type environmentDetailResponse struct {
 	System *systemInfoResponse `json:"system,omitempty"`
 }
 
-func toEnvironmentResponse(e db.Environment, status string) environmentResponse {
-	resp := environmentResponse{
-		ID:     e.ID,
-		Name:   e.Name,
-		Kind:   e.Kind,
-		URL:    e.Url,
-		Status: status,
-	}
-	if e.SnapshotAt.Valid {
-		seen := e.SnapshotAt.Int64
-		resp.LastSeen = &seen
-	}
-	return resp
-}
-
-func statusLabel(up bool) string {
-	if up {
-		return "up"
-	}
-	return "down"
-}
-
-// buildEnvironment queries the daemon live. On success it returns the fresh
-// system info and refreshes the stored snapshot; on failure it falls back to
-// the last known snapshot so the environment stays informative while down.
-func (s *Server) buildEnvironment(ctx context.Context, e db.Environment) environmentDetailResponse {
-	detail := environmentDetailResponse{
-		environmentResponse: toEnvironmentResponse(e, statusLabel(false)),
-	}
-
-	if info, err := s.docker.Info(ctx, e.ID, e.Url); err == nil {
-		detail.Status = statusLabel(true)
-		detail.System = toSystemInfoResponse(info)
-		s.saveSnapshot(ctx, e.ID, info)
-		return detail
-	}
-
-	if e.Snapshot.Valid {
-		var snap docker.SystemInfo
-		if err := json.Unmarshal([]byte(e.Snapshot.String), &snap); err == nil {
-			detail.System = toSystemInfoResponse(snap)
-		}
-	}
-	return detail
-}
-
-func (s *Server) saveSnapshot(ctx context.Context, id int64, info docker.SystemInfo) {
-	data, err := json.Marshal(info)
-	if err != nil {
-		return
-	}
-	if err := s.queries.UpdateEnvironmentSnapshot(ctx, db.UpdateEnvironmentSnapshotParams{
-		Snapshot: sql.NullString{String: string(data), Valid: true},
-		ID:       id,
-	}); err != nil {
-		s.logger.Error("could not save environment snapshot", "err", err, "env", id)
+func toEnvironmentDetailResponse(d environment.Detail) environmentDetailResponse {
+	return environmentDetailResponse{
+		environmentResponse: environmentResponse{
+			ID:       d.ID,
+			Name:     d.Name,
+			Kind:     d.Kind,
+			URL:      d.URL,
+			Status:   d.Status,
+			LastSeen: d.LastSeen,
+		},
+		System: toSystemInfoResponse(d.System),
 	}
 }
 
-func (s *Server) handleListEnvironments(w http.ResponseWriter, r *http.Request) {
-	envs, err := s.queries.ListEnvironments(r.Context())
-	if err != nil {
-		s.serverError(w, r, "could not list environments", err)
-		return
+func toSystemInfoResponse(i *docker.SystemInfo) *systemInfoResponse {
+	if i == nil {
+		return nil
 	}
-
-	out := make([]environmentDetailResponse, len(envs))
-	var wg sync.WaitGroup
-	for i, e := range envs {
-		wg.Add(1)
-		go func(i int, e db.Environment) {
-			defer wg.Done()
-			out[i] = s.buildEnvironment(r.Context(), e)
-		}(i, e)
-	}
-	wg.Wait()
-	s.writeJSON(w, http.StatusOK, out)
-}
-
-func (s *Server) handleGetEnvironment(w http.ResponseWriter, r *http.Request) {
-	env := environmentFrom(r)
-
-	s.writeJSON(w, http.StatusOK, s.buildEnvironment(r.Context(), env))
-}
-
-func toSystemInfoResponse(i docker.SystemInfo) *systemInfoResponse {
 	return &systemInfoResponse{
 		ServerVersion:     i.ServerVersion,
 		OSType:            i.OSType,
@@ -146,4 +76,31 @@ func toSystemInfoResponse(i docker.SystemInfo) *systemInfoResponse {
 		ContainersStopped: i.ContainersStopped,
 		Images:            i.Images,
 	}
+}
+
+func (s *Server) emitEnvironment(_ context.Context, detail environment.Detail) {
+	s.events.Publish("environment.updated", toEnvironmentDetailResponse(detail))
+}
+
+func (s *Server) publishEnvironment(ctx context.Context, e db.Environment) {
+	s.environments.Publish(ctx, e)
+}
+
+func (s *Server) handleListEnvironments(w http.ResponseWriter, r *http.Request) {
+	details, err := s.environments.BuildAll(r.Context())
+	if err != nil {
+		s.serverError(w, r, "could not list environments", err)
+		return
+	}
+
+	out := make([]environmentDetailResponse, 0, len(details))
+	for _, d := range details {
+		out = append(out, toEnvironmentDetailResponse(d))
+	}
+	s.writeJSON(w, http.StatusOK, out)
+}
+
+func (s *Server) handleGetEnvironment(w http.ResponseWriter, r *http.Request) {
+	detail := s.environments.Build(r.Context(), environmentFrom(r))
+	s.writeJSON(w, http.StatusOK, toEnvironmentDetailResponse(detail))
 }
