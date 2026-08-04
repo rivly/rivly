@@ -2,6 +2,7 @@ package stack
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -37,21 +38,36 @@ func (f fakeDocker) StackAction(_ context.Context, _ int64, _, _, _ string) erro
 
 type fakeCompose struct {
 	deployed chan string
+	removed  chan string
+	out      string
 	err      error
 }
 
-func (f fakeCompose) Deploy(_ context.Context, _ string, _ int64, _, _, _ string) (string, error) {
-	return "", f.err
+func (f fakeCompose) record(ch chan string, project string) {
+	if ch == nil {
+		return
+	}
+	select {
+	case ch <- project:
+	default:
+	}
 }
 
-func (f fakeCompose) Remove(_ context.Context, _ string, _ int64, _, _, _ string) (string, error) {
-	return "", f.err
+func (f fakeCompose) Deploy(_ context.Context, _ string, _ int64, project, _, _ string) (string, error) {
+	f.record(f.deployed, project)
+	return f.out, f.err
+}
+
+func (f fakeCompose) Remove(_ context.Context, _ string, _ int64, project, _, _ string) (string, error) {
+	f.record(f.removed, project)
+	return f.out, f.err
 }
 
 func (f fakeCompose) Discard(_ context.Context, _ string, _ int64, _ string) {}
 
-func (f fakeCompose) RemoveRepo(_ context.Context, _ string, _ int64, _, _, _ string) (string, error) {
-	return "", f.err
+func (f fakeCompose) RemoveRepo(_ context.Context, _ string, _ int64, project, _, _ string) (string, error) {
+	f.record(f.removed, project)
+	return f.out, f.err
 }
 
 func (f fakeCompose) DiscardRepo(_ context.Context, _ string, _ int64, _, _ string) {}
@@ -61,13 +77,8 @@ func (f fakeCompose) RepoDir(_ int64, project string) string {
 }
 
 func (f fakeCompose) DeployRepo(_ context.Context, _ string, _ int64, project, _, _ string) (string, error) {
-	if f.deployed != nil {
-		select {
-		case f.deployed <- project:
-		default:
-		}
-	}
-	return "", f.err
+	f.record(f.deployed, project)
+	return f.out, f.err
 }
 
 type fakeCredentials struct {
@@ -177,6 +188,24 @@ func (h *harness) reload(t *testing.T, name string) db.Stack {
 		t.Fatalf("GetStack(%s): %v", name, err)
 	}
 	return st
+}
+
+func (h *harness) env(t *testing.T) db.Environment {
+	t.Helper()
+	env, err := h.queries.GetEnvironment(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("GetEnvironment: %v", err)
+	}
+	return env
+}
+
+func kindOf(t *testing.T, err error) Kind {
+	t.Helper()
+	var known *Error
+	if !errors.As(err, &known) {
+		t.Fatalf("expected a stack.Error, got %v", err)
+	}
+	return known.Kind
 }
 
 func (h *harness) markChecked(t *testing.T, id int64, hash string) {
