@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -103,6 +104,8 @@ type EnvVar struct {
 	Value string `json:"value"`
 }
 
+var envKeyPattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+
 func EnvFileContent(vars []EnvVar) string {
 	var b strings.Builder
 	for _, v := range vars {
@@ -110,9 +113,43 @@ func EnvFileContent(vars []EnvVar) string {
 		if key == "" {
 			continue
 		}
-		fmt.Fprintf(&b, "%s=%s\n", key, v.Value)
+		fmt.Fprintf(&b, "%s=%s\n", key, quoteEnvValue(v.Value))
 	}
 	return b.String()
+}
+
+func quoteEnvValue(value string) string {
+	var b strings.Builder
+	b.WriteByte('"')
+	for _, r := range value {
+		switch r {
+		case '\\':
+			b.WriteString(`\\`)
+		case '"':
+			b.WriteString(`\"`)
+		case '\n':
+			b.WriteString(`\n`)
+		case '\r':
+			b.WriteString(`\r`)
+		default:
+			b.WriteRune(r)
+		}
+	}
+	b.WriteByte('"')
+	return b.String()
+}
+
+func validateEnv(vars []EnvVar) error {
+	for _, v := range vars {
+		key := strings.TrimSpace(v.Key)
+		if key == "" {
+			continue
+		}
+		if !envKeyPattern.MatchString(key) {
+			return invalid(fmt.Sprintf("%q is not a valid environment variable name", key))
+		}
+	}
+	return nil
 }
 
 func ParseEnvVars(stored string) []EnvVar {

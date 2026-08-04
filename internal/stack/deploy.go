@@ -49,6 +49,10 @@ func (s *Service) Deploy(ctx context.Context, env db.Environment, in DeployInput
 		return invalid("invalid stack source")
 	}
 
+	if err := validateEnv(in.Env); err != nil {
+		return err
+	}
+
 	existing, getErr := s.queries.GetStack(ctx, db.GetStackParams{EnvID: env.ID, Name: name})
 	if getErr != nil && !errors.Is(getErr, sql.ErrNoRows) {
 		return fmt.Errorf("load stack %q: %w", name, getErr)
