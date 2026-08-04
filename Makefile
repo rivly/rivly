@@ -1,4 +1,4 @@
-.PHONY: run build build-web build-all image test test-race vet lint vuln fmt
+.PHONY: run build build-web build-all image packages test test-race vet lint vuln fmt
 
 VERSION ?= dev
 PKGS = $(shell go list ./... | grep -v '/data/')
@@ -17,20 +17,23 @@ build:
 image:
 	docker build --build-arg VERSION=$(VERSION) -t rivly:$(VERSION) .
 
-test:
+packages:
+	@test -n "$(PKGS)" || { echo "go list found nothing, is web/dist missing? run make build-web"; exit 1; }
+
+test: packages
 	go test $(PKGS)
 
-test-race:
+test-race: packages
 	go test -race $(PKGS)
 
-vet:
+vet: packages
 	go vet $(PKGS)
 
 lint:
 	golangci-lint run
 
-vuln:
+vuln: packages
 	go run golang.org/x/vuln/cmd/govulncheck@latest $(PKGS)
 
-fmt:
+fmt: packages
 	go fmt $(PKGS)
