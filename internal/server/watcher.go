@@ -20,7 +20,7 @@ func (s *Server) RunWatchers(ctx context.Context) {
 		return
 	}
 	for _, e := range envs {
-		go s.watchEnvironment(ctx, e)
+		s.spawn(func() { s.watchEnvironment(ctx, e) })
 	}
 }
 

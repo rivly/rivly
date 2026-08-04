@@ -23,6 +23,8 @@ import (
 	"github.com/rivly/rivly/internal/server"
 )
 
+const shutdownTimeout = 10 * time.Second
+
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	if err := run(logger); err != nil {
@@ -82,9 +84,9 @@ func run(logger *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	go srv.RunPoller(ctx)
-	go srv.RunWatchers(ctx)
-	go srv.RunGitPoller(ctx)
+	for _, loop := range []func(context.Context){srv.RunPoller, srv.RunWatchers, srv.RunGitPoller} {
+		srv.Background(ctx, loop)
+	}
 
 	httpServer := &http.Server{
 		Addr:              cfg.Addr,
@@ -105,9 +107,14 @@ func run(logger *slog.Logger) error {
 	<-ctx.Done()
 	logger.Info("shutting down")
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
-	return httpServer.Shutdown(shutdownCtx)
+
+	err = httpServer.Shutdown(shutdownCtx)
+	if waitErr := srv.Wait(shutdownCtx); waitErr != nil {
+		logger.Warn("background work did not finish before the deadline", "err", waitErr)
+	}
+	return err
 }
 
 func resolveSetupToken(ctx context.Context, queries *db.Queries, pinned string, logger *slog.Logger) (string, error) {

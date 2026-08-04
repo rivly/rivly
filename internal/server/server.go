@@ -76,6 +76,33 @@ type Server struct {
 	gitInflight    map[int64]bool
 	streamsClosing context.Context
 	closeStreams   context.CancelFunc
+	running        sync.WaitGroup
+}
+
+func (s *Server) spawn(fn func()) {
+	s.running.Add(1)
+	go func() {
+		defer s.running.Done()
+		fn()
+	}()
+}
+
+func (s *Server) Background(ctx context.Context, loop func(context.Context)) {
+	s.spawn(func() { loop(ctx) })
+}
+
+func (s *Server) Wait(ctx context.Context) error {
+	done := make(chan struct{})
+	go func() {
+		s.running.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func New(

@@ -49,10 +49,10 @@ func (s *Server) pollGitStacks(ctx context.Context) {
 		if !s.acquireGitStack(stack.ID) {
 			continue
 		}
-		go func(stack db.Stack) {
+		s.spawn(func() {
 			defer s.releaseGitStack(stack.ID)
 			s.checkGitStack(ctx, stack)
-		}(stack)
+		})
 	}
 }
 

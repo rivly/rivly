@@ -66,6 +66,12 @@ The poller guarantees liveness when a daemon is unreachable. The watchers give
 sub-second reactivity when it is. Both converge on the same event, and the
 fingerprint comparison prevents duplicate publishes.
 
+Every background goroutine is tracked, including the ones the loops spawn
+themselves, one per watched environment and one per Git stack being checked. On
+shutdown the process cancels their context and waits for them to unwind, bounded
+by the same deadline as the HTTP shutdown. Work that outlives the deadline is
+reported rather than silently killed.
+
 ---
 
 ## Realtime
