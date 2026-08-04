@@ -2,7 +2,7 @@ This page describes how architectural decisions are recorded in Rivly.
 
 Structural decisions are documented so that their context, their justification
 and their consequences survive the people who made them. A note tells you how
-Rivly works today. An ADR tells you why it works that way, and what was rejected.
+Rivly works today. An ADR tells you why it became that way.
 
 ---
 
@@ -21,14 +21,28 @@ that is trivially reversible.
 
 ---
 
+## Format
+
+Rivly uses the Nygard format: Context, Decision, Consequences, preceded by a
+metadata table. See [0000 - Template](<ADR/0000 - Template.md>).
+
+That format is deliberate. A 2026 empirical comparison of ADR templates found
+Nygard scored higher than MADR on comprehension, usability and ease of adoption.
+Heavier templates get written once and abandoned.
+
+Keep an ADR short. One that nobody rereads has failed at its only job.
+
+---
+
 ## Rules
 
 An ADR is immutable once accepted. It is a record, not a living document.
 
-To change a decision, write a new ADR that supersedes the old one, and update the
-status of the old one to point at its replacement. Never rewrite history.
+To change a decision, write a new ADR that supersedes the old one, and set the
+old one's status to Superseded with a link to its replacement. Never rewrite
+history.
 
-The number is sequential and never reused. The file name is
+Numbers are sequential and never reused. The file name is
 `NNNN - Short title.md`.
 
 ---
@@ -41,15 +55,6 @@ The number is sequential and never reused. The file name is
 | Accepted | In force |
 | Superseded | Replaced by a later ADR, which must be linked |
 | Deprecated | No longer applies, with no replacement |
-
----
-
-## Structure
-
-Every ADR uses [0000 - Template](<ADR/0000 - Template.md>): a metadata table,
-then Context, Decision, Rationale, Consequences and Alternatives considered.
-
-Keep it short. An ADR that nobody rereads has failed at its only job.
 
 ---
 

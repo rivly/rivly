@@ -3,7 +3,6 @@
 | Field | Value |
 | --- | --- |
 | **Identifier** | ADR-0000 |
-| **Title** | Template |
 | **Date** | YYYY-MM-DD |
 | **Status** | Proposed |
 
@@ -11,8 +10,8 @@
 
 ## Context
 
-What situation forced a decision. State the constraints and the facts that were
-verified, with their source. Keep it factual: no solution here.
+What forced a decision. The constraints, and the facts that were verified with
+their source. No solution here, only the situation.
 
 ---
 
@@ -20,23 +19,12 @@ verified, with their source. Keep it factual: no solution here.
 
 What was decided, in the present tense, as an instruction a reader can follow.
 
----
-
-## Rationale
-
-Why this option won. Tie each reason back to a constraint from the context.
+State the reason inline when a choice is not obvious, and name the options that
+were rejected in one line each.
 
 ---
 
 ## Consequences
 
-What this makes easier, what it makes harder, and what it forecloses. Include the
-consequences you dislike.
-
----
-
-## Alternatives considered
-
-| Option | Why it was rejected |
-| --- | --- |
-| | |
+What becomes easier, what becomes harder, what is now foreclosed. Include the
+consequences you dislike, because those are the ones a future reader needs.

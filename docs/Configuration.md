@@ -1,0 +1,42 @@
+This page lists every environment variable Rivly reads.
+
+All configuration comes from the environment. There is no configuration file, no
+flags, and no hardcoded path or secret. An invalid value fails at startup rather
+than being silently ignored.
+
+---
+
+## Variables
+
+| Variable | Default | Effect |
+| --- | --- | --- |
+| `RIVLY_ADDR` | `:8080` | Address the HTTP server listens on |
+| `RIVLY_DATABASE` | `rivly.db` | Path to the SQLite file |
+| `RIVLY_DATA` | `data` | Directory for the encryption key and stack working directories |
+| `DOCKER_HOST` | `unix:///var/run/docker.sock` | Endpoint used to seed the local environment on first run |
+| `RIVLY_POLL_INTERVAL` | `5s` | How often each environment is polled. Any Go duration |
+| `RIVLY_COMPOSE_BIN` | `docker-compose` | Compose executable used to deploy managed stacks |
+| `RIVLY_TRUSTED_ORIGINS` | empty | Comma-separated origins allowed to send unsafe requests, as `scheme://host` |
+| `RIVLY_SETUP_TOKEN` | generated | Token required to claim the instance |
+
+---
+
+## Notes
+
+`DOCKER_HOST` is read once, to seed the `local` environment when the database is
+empty. Changing it later has no effect on an existing environment, whose URL
+lives in the database.
+
+`RIVLY_DATA` holds `secret.key`, which decrypts every stored credential. Losing
+it means losing every registry password and Git token. It must be persisted and
+backed up.
+
+`RIVLY_COMPOSE_BIN` takes an executable, not a command line. Pointing it at the
+Compose v2 plugin binary is the way to use Compose v2.
+
+`RIVLY_TRUSTED_ORIGINS` is only needed when the dashboard is served from a
+different origin than the API. An invalid origin aborts startup.
+
+`RIVLY_SETUP_TOKEN` pins the setup token instead of generating a new one, which
+is what makes an automated first-run provisioning possible. It is ignored once an
+account exists.
