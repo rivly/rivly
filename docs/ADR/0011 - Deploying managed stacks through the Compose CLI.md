@@ -4,6 +4,11 @@
 | **Date** | 2026-07-14 |
 | **Status** | Accepted |
 
+> **Amended 2026-08-04.** A consequence originally stated that
+> `RIVLY_COMPOSE_BIN` accepted a single executable, which made Compose v2
+> awkward to configure. That was a defect and has been fixed. The decision
+> itself is unchanged.
+
 ---
 
 ## Context
@@ -47,9 +52,9 @@ in direct tension with [ADR-0001](<0001 - A single self-hosted binary.md>) and [
 no Compose binary, so the two goals are currently incompatible. See
 [Packaging](../Packaging.md).
 
-`RIVLY_COMPOSE_BIN` takes an executable, not a command line, so using the Compose
-v2 plugin means pointing it at the plugin binary rather than writing
-`docker compose`.
+Rivly has to locate a Compose executable, and the two supported forms differ:
+Compose v2 is a `docker` subcommand, Compose v1 is a standalone binary. The
+command is detected at startup and can be overridden with `RIVLY_COMPOSE_BIN`.
 
 Compose output can carry host paths, so returning it to the client leaks more
 than a generic error would. Accepted deliberately, because a hidden compose error

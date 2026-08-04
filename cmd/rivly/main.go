@@ -69,6 +69,11 @@ func run(logger *slog.Logger) error {
 	defer dockerManager.Close()
 
 	composeRunner := compose.NewRunner(cfg.ComposeBin, cfg.DataDir)
+	if command := composeRunner.Command(); command == "" {
+		logger.Warn("no docker compose executable found, managed stacks will fail to deploy", "hint", "set RIVLY_COMPOSE_BIN")
+	} else {
+		logger.Info("compose ready", "command", command)
+	}
 	eventsHub := events.NewHub()
 	sessions := auth.NewSessionManager(sqlDB)
 	local := auth.NewLocal(queries, sqlDB)

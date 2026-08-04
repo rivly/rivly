@@ -2,6 +2,7 @@ package compose
 
 import (
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,18 +13,55 @@ import (
 
 const (
 	composeTimeout = 5 * time.Minute
+	probeTimeout   = 5 * time.Second
 	composeFile    = "docker-compose.yml"
 	envFile        = ".env"
 	repoSubdir     = "repo"
 )
 
+var ErrNoCompose = errors.New("no docker compose executable found, set RIVLY_COMPOSE_BIN")
+
+var candidates = [][]string{
+	{"docker", "compose"},
+	{"docker-compose"},
+}
+
 type Runner struct {
-	bin     string
+	command []string
 	dataDir string
 }
 
 func NewRunner(bin, dataDir string) *Runner {
-	return &Runner{bin: bin, dataDir: dataDir}
+	return &Runner{command: resolveCommand(bin), dataDir: dataDir}
+}
+
+func (r *Runner) Command() string {
+	return strings.Join(r.command, " ")
+}
+
+func resolveCommand(bin string) []string {
+	if override := strings.Fields(bin); len(override) > 0 {
+		return override
+	}
+	for _, candidate := range candidates {
+		if available(candidate) {
+			return candidate
+		}
+	}
+	return nil
+}
+
+func available(command []string) bool {
+	if _, err := exec.LookPath(command[0]); err != nil {
+		return false
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), probeTimeout)
+	defer cancel()
+
+	args := make([]string, 0, len(command))
+	args = append(args, command[1:]...)
+	args = append(args, "version")
+	return exec.CommandContext(ctx, command[0], args...).Run() == nil
 }
 
 func (r *Runner) Deploy(ctx context.Context, dockerHost string, envID int64, project, content, env string) (string, error) {
@@ -129,16 +167,22 @@ func (r *Runner) pull(ctx context.Context, dockerHost, dir, project, file, envPa
 }
 
 func (r *Runner) run(ctx context.Context, dockerHost, dir, project, file, envPath string, args ...string) (string, error) {
+	if len(r.command) == 0 {
+		return "", ErrNoCompose
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, composeTimeout)
 	defer cancel()
 
-	full := []string{"-p", project, "-f", file}
+	full := make([]string, 0, len(r.command)+len(args)+6)
+	full = append(full, r.command[1:]...)
+	full = append(full, "-p", project, "-f", file)
 	if envPath != "" {
 		full = append(full, "--env-file", envPath)
 	}
 	full = append(full, args...)
 
-	cmd := exec.CommandContext(ctx, r.bin, full...)
+	cmd := exec.CommandContext(ctx, r.command[0], full...)
 	cmd.Dir = dir
 	cmd.Env = withDockerHost(os.Environ(), dockerHost)
 

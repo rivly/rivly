@@ -15,7 +15,7 @@ than being silently ignored.
 | `RIVLY_DATA` | `data` | Directory for the encryption key and stack working directories |
 | `DOCKER_HOST` | `unix:///var/run/docker.sock` | Endpoint used to seed the local environment on first run |
 | `RIVLY_POLL_INTERVAL` | `5s` | How often each environment is polled. Any Go duration |
-| `RIVLY_COMPOSE_BIN` | `docker-compose` | Compose executable used to deploy managed stacks |
+| `RIVLY_COMPOSE_BIN` | detected | Compose command used to deploy managed stacks |
 | `RIVLY_TRUSTED_ORIGINS` | empty | Comma-separated origins allowed to send unsafe requests, as `scheme://host` |
 | `RIVLY_SETUP_TOKEN` | generated | Token required to claim the instance |
 
@@ -31,8 +31,13 @@ lives in the database.
 it means losing every registry password and Git token. It must be persisted and
 backed up.
 
-`RIVLY_COMPOSE_BIN` takes an executable, not a command line. Pointing it at the
-Compose v2 plugin binary is the way to use Compose v2.
+`RIVLY_COMPOSE_BIN` is detected at startup when it is not set. Rivly probes
+`docker compose` first, then `docker-compose`, and logs which one it resolved.
+
+Setting it accepts a full command, not just an executable, so `docker compose`,
+`docker-compose` and an absolute path to the plugin binary are all valid. When
+nothing resolves, Rivly still starts and every other feature works, but
+deploying a managed stack fails with an explicit error.
 
 `RIVLY_TRUSTED_ORIGINS` is only needed when the dashboard is served from a
 different origin than the API. An invalid origin aborts startup.

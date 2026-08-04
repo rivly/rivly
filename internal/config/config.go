@@ -32,7 +32,7 @@ func Load() (Config, error) {
 		DockerHost:     env("DOCKER_HOST", "unix:///var/run/docker.sock"),
 		PollInterval:   pollInterval,
 		DataDir:        env("RIVLY_DATA", "data"),
-		ComposeBin:     env("RIVLY_COMPOSE_BIN", "docker-compose"),
+		ComposeBin:     os.Getenv("RIVLY_COMPOSE_BIN"),
 		SetupToken:     os.Getenv("RIVLY_SETUP_TOKEN"),
 	}
 
