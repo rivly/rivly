@@ -10,12 +10,11 @@ import (
 )
 
 func TestListNetworks(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{
+	srv := newTestServer(t, fakeDocker{
 		networks: []docker.Network{
 			{ID: "net123", Name: "bridge", Driver: "bridge", Scope: "local", InUse: true},
 		},
-	}
+	}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -35,8 +34,7 @@ func TestListNetworks(t *testing.T) {
 }
 
 func TestNetworkActions(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{}
+	srv := newTestServer(t, fakeDocker{}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -58,8 +56,7 @@ func TestNetworkActions(t *testing.T) {
 }
 
 func TestCreateNetwork(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{networkCreated: docker.CreatedNetwork{ID: "net456"}}
+	srv := newTestServer(t, fakeDocker{networkCreated: docker.CreatedNetwork{ID: "net456"}}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -90,8 +87,7 @@ func TestCreateNetwork(t *testing.T) {
 }
 
 func TestCreateNetworkUnreachable(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{networkCreateErr: errors.New("cannot connect")}
+	srv := newTestServer(t, fakeDocker{networkCreateErr: errors.New("cannot connect")}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -104,12 +100,11 @@ func TestCreateNetworkUnreachable(t *testing.T) {
 }
 
 func TestNetworkDetail(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{networkDetail: docker.NetworkDetail{
+	srv := newTestServer(t, fakeDocker{networkDetail: docker.NetworkDetail{
 		ID: "net123", Name: "app_net", Driver: "bridge", Scope: "local",
 		Subnets:    []docker.NetworkSubnet{{Subnet: "172.20.0.0/16", Gateway: "172.20.0.1"}},
 		Containers: []docker.NetworkContainer{{ID: "c1", Name: "web", IPv4: "172.20.0.2/16"}},
-	}}
+	}}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -128,8 +123,7 @@ func TestNetworkDetail(t *testing.T) {
 }
 
 func TestNetworkDetailUnreachable(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{networkDetailErr: errors.New("no such network")}
+	srv := newTestServer(t, fakeDocker{networkDetailErr: errors.New("no such network")}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -142,8 +136,7 @@ func TestNetworkDetailUnreachable(t *testing.T) {
 }
 
 func TestListNetworksUnreachable(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{networksErr: errors.New("cannot connect")}
+	srv := newTestServer(t, fakeDocker{networksErr: errors.New("cannot connect")}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())

@@ -12,8 +12,7 @@ import (
 )
 
 func TestListContainers(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{
+	srv := newTestServer(t, fakeDocker{
 		containers: []docker.Container{
 			{
 				ID:      "abc123",
@@ -24,7 +23,7 @@ func TestListContainers(t *testing.T) {
 				Created: 1700000000,
 			},
 		},
-	}
+	}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -51,8 +50,7 @@ func TestListContainers(t *testing.T) {
 }
 
 func TestListContainersUnreachable(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{containersErr: errors.New("cannot connect")}
+	srv := newTestServer(t, fakeDocker{containersErr: errors.New("cannot connect")}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -65,11 +63,10 @@ func TestListContainersUnreachable(t *testing.T) {
 }
 
 func TestContainerDetail(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{detail: docker.ContainerDetail{
+	srv := newTestServer(t, fakeDocker{detail: docker.ContainerDetail{
 		ID: "abc", Name: "web", Image: "nginx:latest", State: "running",
 		Env: []string{"FOO=bar"}, RestartPolicy: "unless-stopped",
-	}}
+	}}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -88,8 +85,7 @@ func TestContainerDetail(t *testing.T) {
 }
 
 func TestCreateContainer(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{createdContainerID: "newid123"}
+	srv := newTestServer(t, fakeDocker{createdContainerID: "newid123"}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -123,8 +119,7 @@ func TestCreateContainer(t *testing.T) {
 }
 
 func TestCreateContainerUnreachable(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{createContainerErr: errors.New("cannot connect")}
+	srv := newTestServer(t, fakeDocker{createContainerErr: errors.New("cannot connect")}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -137,8 +132,7 @@ func TestCreateContainerUnreachable(t *testing.T) {
 }
 
 func TestContainerStatsStream(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{statsData: []docker.Stats{{CPUPercent: 12.5, MemUsage: 100, MemLimit: 1000, MemPercent: 10}}}
+	srv := newTestServer(t, fakeDocker{statsData: []docker.Stats{{CPUPercent: 12.5, MemUsage: 100, MemLimit: 1000, MemPercent: 10}}}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -168,11 +162,10 @@ func TestContainerStatsStream(t *testing.T) {
 }
 
 func TestContainerLogsStream(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{logLines: []docker.LogLine{
+	srv := newTestServer(t, fakeDocker{logLines: []docker.LogLine{
 		{Stream: "stdout", Message: "starting up"},
 		{Stream: "stderr", Message: "a warning"},
-	}}
+	}}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -213,8 +206,7 @@ func TestContainerLogsStream(t *testing.T) {
 }
 
 func TestContainerLogsUnreachable(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{logErr: errors.New("no such container")}
+	srv := newTestServer(t, fakeDocker{logErr: errors.New("no such container")}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())

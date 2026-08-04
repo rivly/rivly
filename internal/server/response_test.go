@@ -9,7 +9,7 @@ import (
 )
 
 func TestDeployStackRejectsOversizedBody(t *testing.T) {
-	srv := newTestServer(t)
+	srv := newTestServer(t, fakeDocker{}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -23,7 +23,7 @@ func TestDeployStackRejectsOversizedBody(t *testing.T) {
 }
 
 func TestDeployStackRejectsUnknownField(t *testing.T) {
-	srv := newTestServer(t)
+	srv := newTestServer(t, fakeDocker{}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -37,8 +37,7 @@ func TestDeployStackRejectsUnknownField(t *testing.T) {
 }
 
 func TestImagePruneAcceptsEmptyBody(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{}
+	srv := newTestServer(t, fakeDocker{}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())

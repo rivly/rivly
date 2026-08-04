@@ -10,12 +10,11 @@ import (
 )
 
 func TestListVolumes(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{
+	srv := newTestServer(t, fakeDocker{
 		volumes: []docker.Volume{
 			{Name: "app_data", Driver: "local", Created: 1700000000, InUse: true},
 		},
-	}
+	}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -35,8 +34,7 @@ func TestListVolumes(t *testing.T) {
 }
 
 func TestVolumeActions(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{}
+	srv := newTestServer(t, fakeDocker{}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -58,10 +56,9 @@ func TestVolumeActions(t *testing.T) {
 }
 
 func TestCreateVolume(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{
+	srv := newTestServer(t, fakeDocker{
 		volumeCreated: docker.Volume{Name: "app_data", Driver: "local", Mountpoint: "/data"},
-	}
+	}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -85,8 +82,7 @@ func TestCreateVolume(t *testing.T) {
 }
 
 func TestCreateVolumeUnreachable(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{volumeCreateErr: errors.New("cannot connect")}
+	srv := newTestServer(t, fakeDocker{volumeCreateErr: errors.New("cannot connect")}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -99,11 +95,10 @@ func TestCreateVolumeUnreachable(t *testing.T) {
 }
 
 func TestVolumeDetail(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{volumeDetail: docker.VolumeDetail{
+	srv := newTestServer(t, fakeDocker{volumeDetail: docker.VolumeDetail{
 		Name: "app_data", Driver: "local", Mountpoint: "/data", Scope: "local",
 		Containers: []docker.VolumeContainer{{ID: "c1", Name: "web"}},
-	}}
+	}}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -122,8 +117,7 @@ func TestVolumeDetail(t *testing.T) {
 }
 
 func TestVolumeDetailUnreachable(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{volumeDetailErr: errors.New("no such volume")}
+	srv := newTestServer(t, fakeDocker{volumeDetailErr: errors.New("no such volume")}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -136,8 +130,7 @@ func TestVolumeDetailUnreachable(t *testing.T) {
 }
 
 func TestListVolumesUnreachable(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{volumesErr: errors.New("cannot connect")}
+	srv := newTestServer(t, fakeDocker{volumesErr: errors.New("cannot connect")}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())

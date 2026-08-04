@@ -41,7 +41,7 @@ func sessionCookie(t *testing.T, resp *http.Response) string {
 }
 
 func TestSecurityHeadersOnEveryResponse(t *testing.T) {
-	ts := httptest.NewServer(newTestServer(t).Router())
+	ts := httptest.NewServer(newTestServer(t, fakeDocker{}, fakeCompose{}).Router())
 	defer ts.Close()
 
 	want := map[string]string{
@@ -66,7 +66,7 @@ func TestSecurityHeadersOnEveryResponse(t *testing.T) {
 }
 
 func TestSecureCookiesMarksSessionCookieBehindTLSProxy(t *testing.T) {
-	ts := httptest.NewServer(newTestServer(t).Router())
+	ts := httptest.NewServer(newTestServer(t, fakeDocker{}, fakeCompose{}).Router())
 	defer ts.Close()
 
 	cookie := sessionCookie(t, setupOverProxy(t, ts, "https"))
@@ -76,7 +76,7 @@ func TestSecureCookiesMarksSessionCookieBehindTLSProxy(t *testing.T) {
 }
 
 func TestSecureCookiesLeavesPlainHTTPCookieUsable(t *testing.T) {
-	ts := httptest.NewServer(newTestServer(t).Router())
+	ts := httptest.NewServer(newTestServer(t, fakeDocker{}, fakeCompose{}).Router())
 	defer ts.Close()
 
 	cookie := sessionCookie(t, setupOverProxy(t, ts, ""))

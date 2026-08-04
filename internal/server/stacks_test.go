@@ -10,12 +10,11 @@ import (
 )
 
 func TestListStacks(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{
+	srv := newTestServer(t, fakeDocker{
 		stacks: []docker.Stack{
 			{Name: "green-roots", Type: "external", Services: 3, Running: 3, Total: 3, State: "running", WorkingDir: "/home/me/green-roots"},
 		},
-	}
+	}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -35,8 +34,7 @@ func TestListStacks(t *testing.T) {
 }
 
 func TestStackActions(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{}
+	srv := newTestServer(t, fakeDocker{}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -58,9 +56,7 @@ func TestStackActions(t *testing.T) {
 }
 
 func TestDeployStack(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{}
-	srv.compose = fakeCompose{}
+	srv := newTestServer(t, fakeDocker{}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -90,8 +86,7 @@ func TestDeployStack(t *testing.T) {
 }
 
 func TestDeployStackInvalidName(t *testing.T) {
-	srv := newTestServer(t)
-	srv.compose = fakeCompose{}
+	srv := newTestServer(t, fakeDocker{}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -104,8 +99,7 @@ func TestDeployStackInvalidName(t *testing.T) {
 }
 
 func TestDeployStackComposeError(t *testing.T) {
-	srv := newTestServer(t)
-	srv.compose = fakeCompose{deployOut: "yaml: line 3: bad indentation", deployErr: errors.New("exit 1")}
+	srv := newTestServer(t, fakeDocker{}, fakeCompose{deployOut: "yaml: line 3: bad indentation", deployErr: errors.New("exit 1")})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())

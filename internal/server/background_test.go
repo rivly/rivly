@@ -8,7 +8,7 @@ import (
 )
 
 func TestWaitBlocksUntilBackgroundWorkFinishes(t *testing.T) {
-	srv := newTestServer(t)
+	srv := newTestServer(t, fakeDocker{}, fakeCompose{})
 
 	release := make(chan struct{})
 	srv.Background(context.Background(), func(context.Context) { <-release })
@@ -35,7 +35,7 @@ func TestWaitBlocksUntilBackgroundWorkFinishes(t *testing.T) {
 }
 
 func TestWaitGivesUpAtTheDeadline(t *testing.T) {
-	srv := newTestServer(t)
+	srv := newTestServer(t, fakeDocker{}, fakeCompose{})
 
 	release := make(chan struct{})
 	defer close(release)
@@ -50,8 +50,7 @@ func TestWaitGivesUpAtTheDeadline(t *testing.T) {
 }
 
 func TestBackgroundLoopsStopWithTheContext(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{}
+	srv := newTestServer(t, fakeDocker{}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ctx, cancel := context.WithCancel(context.Background())

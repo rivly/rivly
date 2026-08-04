@@ -23,7 +23,7 @@ import (
 	"github.com/rivly/rivly/internal/secret"
 )
 
-func newTestServer(t *testing.T) *Server {
+func newTestServer(t *testing.T, dockerClient dockerService, composeRunner composeRunner) *Server {
 	t.Helper()
 	sqlDB, err := database.Open(filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {
@@ -41,11 +41,11 @@ func newTestServer(t *testing.T) *Server {
 	}
 	registries := registry.NewStore(queries, cipher)
 	gitCredentials := gitcred.NewStore(queries, cipher)
-	return New(logger, queries, auth.NewSessionManager(sqlDB), auth.NewLocal(queries, sqlDB), fakeDocker{}, fakeCompose{}, events.NewHub(), registries, gitCredentials, config.Config{SetupToken: testSetupToken})
+	return New(logger, queries, auth.NewSessionManager(sqlDB), auth.NewLocal(queries, sqlDB), dockerClient, composeRunner, events.NewHub(), registries, gitCredentials, config.Config{SetupToken: testSetupToken})
 }
 
 func TestAuthFlow(t *testing.T) {
-	ts := httptest.NewServer(newTestServer(t).Router())
+	ts := httptest.NewServer(newTestServer(t, fakeDocker{}, fakeCompose{}).Router())
 	defer ts.Close()
 
 	jar, _ := cookiejar.New(nil)
@@ -101,7 +101,7 @@ func TestAuthFlow(t *testing.T) {
 }
 
 func TestSetupRequiresTheSetupToken(t *testing.T) {
-	ts := httptest.NewServer(newTestServer(t).Router())
+	ts := httptest.NewServer(newTestServer(t, fakeDocker{}, fakeCompose{}).Router())
 	defer ts.Close()
 
 	jar, _ := cookiejar.New(nil)
@@ -131,7 +131,7 @@ func TestSetupRequiresTheSetupToken(t *testing.T) {
 }
 
 func TestSetupRejectsAnOversizedDisplayName(t *testing.T) {
-	ts := httptest.NewServer(newTestServer(t).Router())
+	ts := httptest.NewServer(newTestServer(t, fakeDocker{}, fakeCompose{}).Router())
 	defer ts.Close()
 
 	jar, _ := cookiejar.New(nil)
@@ -155,7 +155,7 @@ func TestSetupRejectsAnOversizedDisplayName(t *testing.T) {
 }
 
 func TestSetupStaysClosedWhenNoTokenIsConfigured(t *testing.T) {
-	srv := newTestServer(t)
+	srv := newTestServer(t, fakeDocker{}, fakeCompose{})
 	srv.cfg.SetupToken = ""
 	ts := httptest.NewServer(srv.Router())
 	defer ts.Close()

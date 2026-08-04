@@ -1,21 +1,10 @@
 package server
 
 import (
-	"context"
-	"database/sql"
-	"encoding/json"
 	"errors"
 	"net/http"
-	"os"
-	"path/filepath"
-	"regexp"
-	"sort"
-	"strings"
-	"sync"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/rivly/rivly/internal/database/db"
-	"github.com/rivly/rivly/internal/gitrepo"
 	"github.com/rivly/rivly/internal/stack"
 )
 
@@ -32,302 +21,6 @@ type stackResponse struct {
 	UpdatedAt  int64  `json:"updatedAt"`
 	CreatedBy  string `json:"createdBy"`
 	UpdatedBy  string `json:"updatedBy"`
-}
-
-var validStackActions = map[string]bool{
-	"start":   true,
-	"stop":    true,
-	"restart": true,
-	"remove":  true,
-}
-
-var stackNamePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,62}$`)
-
-func (s *Server) handleListStacks(w http.ResponseWriter, r *http.Request) {
-	env := environmentFrom(r)
-
-	discovered, err := s.docker.Stacks(r.Context(), env.ID, env.Url)
-	if err != nil {
-		s.writeError(w, http.StatusBadGateway, "environment is unreachable")
-		return
-	}
-
-	managed := make(map[string]db.Stack)
-	if list, lerr := s.queries.ListStacks(r.Context(), env.ID); lerr == nil {
-		for _, m := range list {
-			managed[m.Name] = m
-		}
-	}
-
-	merged := make(map[string]stackResponse, len(discovered))
-	for _, d := range discovered {
-		sr := stackResponse{
-			Name:       d.Name,
-			Type:       d.Type,
-			Services:   d.Services,
-			Running:    d.Running,
-			Total:      d.Total,
-			State:      d.State,
-			WorkingDir: d.WorkingDir,
-		}
-		if m, ok := managed[d.Name]; ok {
-			sr.Type = "rivly"
-			sr.Source = m.Source
-			sr.CreatedAt = m.CreatedAt
-			sr.UpdatedAt = m.UpdatedAt
-			sr.CreatedBy = m.CreatedBy
-			sr.UpdatedBy = m.UpdatedBy
-		}
-		merged[d.Name] = sr
-	}
-	for name, m := range managed {
-		if _, ok := merged[name]; !ok {
-			merged[name] = stackResponse{
-				Name:      name,
-				Type:      "rivly",
-				Source:    m.Source,
-				State:     "stopped",
-				CreatedAt: m.CreatedAt,
-				UpdatedAt: m.UpdatedAt,
-				CreatedBy: m.CreatedBy,
-				UpdatedBy: m.UpdatedBy,
-			}
-		}
-	}
-
-	names := make([]string, 0, len(merged))
-	for name := range merged {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-
-	out := make([]stackResponse, 0, len(names))
-	for _, name := range names {
-		out = append(out, merged[name])
-	}
-	s.writeJSON(w, http.StatusOK, out)
-}
-
-type gitSource struct {
-	URL          string `json:"url"`
-	Ref          string `json:"ref"`
-	Path         string `json:"path"`
-	CredentialID int64  `json:"credentialId"`
-	AutoUpdate   bool   `json:"autoUpdate"`
-	PollInterval int64  `json:"pollInterval"`
-}
-
-type deployStackRequest struct {
-	Name    string         `json:"name"`
-	Source  string         `json:"source"`
-	Content string         `json:"content"`
-	Env     []stack.EnvVar `json:"env"`
-	Git     *gitSource     `json:"git"`
-}
-
-func (s *Server) handleDeployStack(w http.ResponseWriter, r *http.Request) {
-	var req deployStackRequest
-	if err := decodeJSON(w, r, &req); err != nil {
-		s.badRequest(w, err)
-		return
-	}
-	name := strings.TrimSpace(req.Name)
-	if !stackNamePattern.MatchString(name) {
-		s.writeError(w, http.StatusBadRequest, "name must be lowercase letters, digits, - or _")
-		return
-	}
-
-	source := strings.TrimSpace(req.Source)
-	if source == "" {
-		source = stack.SourceContent
-	}
-	if source != stack.SourceContent && source != stack.SourceGit {
-		s.writeError(w, http.StatusBadRequest, "invalid stack source")
-		return
-	}
-
-	env := environmentFrom(r)
-
-	existing, getErr := s.queries.GetStack(r.Context(), db.GetStackParams{EnvID: env.ID, Name: name})
-	isNew := errors.Is(getErr, sql.ErrNoRows)
-
-	envJSON, err := json.Marshal(req.Env)
-	if err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid environment variables")
-		return
-	}
-	envContent := stack.EnvFileContent(req.Env)
-	author := s.currentUserName(r)
-
-	params := db.UpsertStackParams{
-		EnvID:     env.ID,
-		Name:      name,
-		Env:       string(envJSON),
-		CreatedBy: author,
-		UpdatedBy: author,
-		Source:    source,
-	}
-
-	if source == stack.SourceGit {
-		if !s.deployGitStack(w, r, env, name, existing.ID, &params, req.Git, envContent, isNew) {
-			return
-		}
-	} else {
-		if strings.TrimSpace(req.Content) == "" {
-			s.writeError(w, http.StatusBadRequest, "compose file is empty")
-			return
-		}
-		out, derr := s.compose.Deploy(r.Context(), env.Url, env.ID, name, req.Content, envContent)
-		if derr != nil {
-			s.logger.Warn("stack deploy failed", "stack", name, "err", derr)
-			if isNew {
-				s.compose.Discard(r.Context(), env.Url, env.ID, name)
-			}
-			s.writeError(w, http.StatusUnprocessableEntity, stack.ComposeErrorMessage(out))
-			return
-		}
-		params.Content = req.Content
-	}
-
-	if _, err := s.queries.UpsertStack(r.Context(), params); err != nil {
-		s.serverError(w, r, "could not save stack", err)
-		return
-	}
-
-	s.publishEnvironment(r.Context(), env)
-	s.writeJSON(w, http.StatusOK, map[string]string{"name": name})
-}
-
-func (s *Server) deployGitStack(
-	w http.ResponseWriter,
-	r *http.Request,
-	env db.Environment,
-	name string,
-	stackID int64,
-	params *db.UpsertStackParams,
-	src *gitSource,
-	envContent string,
-	isNew bool,
-) bool {
-	if src == nil {
-		s.writeError(w, http.StatusBadRequest, "git settings are required")
-		return false
-	}
-
-	if stackID != 0 {
-		if !s.stacks.Acquire(stackID) {
-			s.writeError(w, http.StatusConflict, "an update is already running for this stack")
-			return false
-		}
-		defer s.stacks.Release(stackID)
-	}
-
-	repoURL, err := gitrepo.NormalizeURL(src.URL)
-	if err != nil {
-		s.writeError(w, http.StatusBadRequest, err.Error())
-		return false
-	}
-	path, err := gitrepo.ComposePath(src.Path)
-	if err != nil {
-		s.writeError(w, http.StatusBadRequest, err.Error())
-		return false
-	}
-
-	opts := gitrepo.Options{URL: repoURL, Ref: strings.TrimSpace(src.Ref)}
-	if src.CredentialID != 0 {
-		username, token, cerr := s.gitcreds.Credentials(r.Context(), src.CredentialID)
-		if cerr != nil {
-			s.writeError(w, http.StatusBadRequest, "git credential not found")
-			return false
-		}
-		opts.Username, opts.Token = username, token
-	}
-
-	remoteHash, err := gitrepo.RemoteHash(r.Context(), opts)
-	if err != nil {
-		s.logger.Warn("stack remote check failed", "stack", name, "url", repoURL, "err", err)
-		s.writeError(w, http.StatusUnprocessableEntity, stack.GitErrorMessage(err))
-		return false
-	}
-
-	repoDir := s.compose.RepoDir(env.ID, name)
-	commit, err := gitrepo.Clone(r.Context(), repoDir, opts)
-	if err != nil {
-		s.logger.Warn("stack clone failed", "stack", name, "url", repoURL, "err", err)
-		s.writeError(w, http.StatusUnprocessableEntity, stack.GitErrorMessage(err))
-		return false
-	}
-
-	content, err := os.ReadFile(filepath.Join(repoDir, filepath.FromSlash(path)))
-	if err != nil {
-		s.logger.Warn("compose file missing in repository", "stack", name, "path", path, "err", err)
-		s.writeError(w, http.StatusUnprocessableEntity, "compose file not found in the repository")
-		return false
-	}
-
-	out, derr := s.compose.DeployRepo(r.Context(), env.Url, env.ID, name, path, envContent)
-	if derr != nil {
-		s.logger.Warn("git stack deploy failed", "stack", name, "err", derr)
-		if isNew {
-			s.compose.DiscardRepo(r.Context(), env.Url, env.ID, name, path)
-		}
-		s.writeError(w, http.StatusUnprocessableEntity, stack.ComposeErrorMessage(out))
-		return false
-	}
-
-	interval := src.PollInterval
-	if interval < stack.MinPollInterval {
-		interval = stack.MinPollInterval
-	}
-
-	params.Content = string(content)
-	params.GitUrl = repoURL
-	params.GitRef = strings.TrimSpace(src.Ref)
-	params.GitPath = path
-	params.GitCredentialID = src.CredentialID
-	params.GitCommit = commit
-	params.GitRemoteHash = remoteHash
-	params.GitPollInterval = interval
-	if src.AutoUpdate {
-		params.GitAutoUpdate = 1
-	}
-	return true
-}
-
-func (s *Server) handleGetStack(w http.ResponseWriter, r *http.Request) {
-	name := chi.URLParam(r, "name")
-
-	env := environmentFrom(r)
-
-	record, err := s.queries.GetStack(r.Context(), db.GetStackParams{EnvID: env.ID, Name: name})
-	if errors.Is(err, sql.ErrNoRows) {
-		s.writeError(w, http.StatusNotFound, "stack not found")
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, "could not load stack", err)
-		return
-	}
-	detail := stackDetailResponse{
-		Name:    record.Name,
-		Source:  record.Source,
-		Content: record.Content,
-		Env:     stack.ParseEnvVars(record.Env),
-	}
-	if record.Source == stack.SourceGit {
-		detail.Git = &gitDetail{
-			URL:           record.GitUrl,
-			Ref:           record.GitRef,
-			Path:          record.GitPath,
-			CredentialID:  record.GitCredentialID,
-			Commit:        record.GitCommit,
-			AutoUpdate:    record.GitAutoUpdate == 1,
-			PollInterval:  record.GitPollInterval,
-			LastCheckedAt: record.GitLastCheckedAt,
-			LastError:     record.GitLastError,
-		}
-	}
-	s.writeJSON(w, http.StatusOK, detail)
 }
 
 type gitDetail struct {
@@ -350,13 +43,125 @@ type stackDetailResponse struct {
 	Git     *gitDetail     `json:"git"`
 }
 
+type gitSource struct {
+	URL          string `json:"url"`
+	Ref          string `json:"ref"`
+	Path         string `json:"path"`
+	CredentialID int64  `json:"credentialId"`
+	AutoUpdate   bool   `json:"autoUpdate"`
+	PollInterval int64  `json:"pollInterval"`
+}
+
+type deployStackRequest struct {
+	Name    string         `json:"name"`
+	Source  string         `json:"source"`
+	Content string         `json:"content"`
+	Env     []stack.EnvVar `json:"env"`
+	Git     *gitSource     `json:"git"`
+}
+
+var stackStatus = map[stack.Kind]int{
+	stack.KindInvalid:     http.StatusBadRequest,
+	stack.KindNotFound:    http.StatusNotFound,
+	stack.KindConflict:    http.StatusConflict,
+	stack.KindRejected:    http.StatusUnprocessableEntity,
+	stack.KindUnreachable: http.StatusBadGateway,
+}
+
+func (s *Server) stackError(w http.ResponseWriter, r *http.Request, message string, err error) {
+	var known *stack.Error
+	if errors.As(err, &known) {
+		s.writeError(w, stackStatus[known.Kind], known.Message)
+		return
+	}
+	s.serverError(w, r, message, err)
+}
+
+func (s *Server) handleListStacks(w http.ResponseWriter, r *http.Request) {
+	summaries, err := s.stacks.List(r.Context(), environmentFrom(r))
+	if err != nil {
+		s.stackError(w, r, "could not list stacks", err)
+		return
+	}
+
+	out := make([]stackResponse, 0, len(summaries))
+	for _, sum := range summaries {
+		out = append(out, stackResponse(sum))
+	}
+	s.writeJSON(w, http.StatusOK, out)
+}
+
+func (s *Server) handleGetStack(w http.ResponseWriter, r *http.Request) {
+	detail, err := s.stacks.Get(r.Context(), environmentFrom(r), chi.URLParam(r, "name"))
+	if err != nil {
+		s.stackError(w, r, "could not load stack", err)
+		return
+	}
+
+	out := stackDetailResponse{
+		Name:    detail.Name,
+		Source:  detail.Source,
+		Content: detail.Content,
+		Env:     detail.Env,
+	}
+	if detail.Git != nil {
+		out.Git = &gitDetail{
+			URL:           detail.Git.URL,
+			Ref:           detail.Git.Ref,
+			Path:          detail.Git.Path,
+			CredentialID:  detail.Git.CredentialID,
+			Commit:        detail.Git.Commit,
+			AutoUpdate:    detail.Git.AutoUpdate,
+			PollInterval:  detail.Git.PollInterval,
+			LastCheckedAt: detail.Git.LastCheckedAt,
+			LastError:     detail.Git.LastError,
+		}
+	}
+	s.writeJSON(w, http.StatusOK, out)
+}
+
+func (s *Server) handleDeployStack(w http.ResponseWriter, r *http.Request) {
+	var req deployStackRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		s.badRequest(w, err)
+		return
+	}
+
+	in := stack.DeployInput{
+		Name:    req.Name,
+		Source:  req.Source,
+		Content: req.Content,
+		Env:     req.Env,
+		Author:  s.currentUserName(r),
+	}
+	if req.Git != nil {
+		in.Git = &stack.GitSource{
+			URL:          req.Git.URL,
+			Ref:          req.Git.Ref,
+			Path:         req.Git.Path,
+			CredentialID: req.Git.CredentialID,
+			AutoUpdate:   req.Git.AutoUpdate,
+			PollInterval: req.Git.PollInterval,
+		}
+	}
+
+	env := environmentFrom(r)
+	if err := s.stacks.Deploy(r.Context(), env, in); err != nil {
+		s.stackError(w, r, "could not deploy the stack", err)
+		return
+	}
+
+	s.publishEnvironment(r.Context(), env)
+	s.writeJSON(w, http.StatusOK, map[string]string{"name": req.Name})
+}
+
 func (s *Server) handleStackActions(w http.ResponseWriter, r *http.Request) {
 	var req bulkActionRequest
 	if err := decodeJSON(w, r, &req); err != nil {
 		s.badRequest(w, err)
 		return
 	}
-	if !validStackActions[req.Action] {
+	if !stack.ValidAction(req.Action) {
 		s.writeError(w, http.StatusBadRequest, "invalid action")
 		return
 	}
@@ -365,58 +170,11 @@ func (s *Server) handleStackActions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	env := environmentFrom(r)
+	done := s.stacks.Act(r.Context(), environmentFrom(r), req.Action, req.IDs)
 
-	managed := make(map[string]db.Stack)
-	if list, lerr := s.queries.ListStacks(r.Context(), env.ID); lerr == nil {
-		for _, m := range list {
-			managed[m.Name] = m
-		}
+	results := make([]actionResult, 0, len(done))
+	for _, d := range done {
+		results = append(results, actionResult{ID: d.Name, OK: d.OK, Error: d.Error})
 	}
-
-	results := make([]actionResult, len(req.IDs))
-	var wg sync.WaitGroup
-	for i, project := range req.IDs {
-		wg.Add(1)
-		go func(i int, project string) {
-			defer wg.Done()
-			results[i] = s.runStackAction(r.Context(), env, project, req.Action, managed)
-		}(i, project)
-	}
-	wg.Wait()
-
 	s.writeJSON(w, http.StatusOK, map[string]any{"results": results})
-}
-
-func (s *Server) runStackAction(ctx context.Context, env db.Environment, project, action string, managed map[string]db.Stack) actionResult {
-	if action == "remove" {
-		if record, ok := managed[project]; ok {
-			stackEnv := stack.EnvFileContent(stack.ParseEnvVars(record.Env))
-			var out string
-			var derr error
-			if record.Source == stack.SourceGit {
-				if !s.stacks.Acquire(record.ID) {
-					return actionResult{ID: project, OK: false, Error: "an update is running"}
-				}
-				defer s.stacks.Release(record.ID)
-				out, derr = s.compose.RemoveRepo(ctx, env.Url, env.ID, project, record.GitPath, stackEnv)
-			} else {
-				out, derr = s.compose.Remove(ctx, env.Url, env.ID, project, record.Content, stackEnv)
-			}
-			if derr != nil {
-				s.logger.Warn("managed stack remove failed", "stack", project, "err", derr, "out", out)
-				return actionResult{ID: project, OK: false, Error: "action failed"}
-			}
-			if derr := s.queries.DeleteStack(ctx, db.DeleteStackParams{EnvID: env.ID, Name: project}); derr != nil {
-				s.logger.Error("could not delete stack record", "stack", project, "err", derr)
-			}
-			return actionResult{ID: project, OK: true}
-		}
-	}
-
-	if err := s.docker.StackAction(ctx, env.ID, env.Url, project, action); err != nil {
-		s.logger.Warn("stack action failed", "action", action, "stack", project, "err", err)
-		return actionResult{ID: project, OK: false, Error: "action failed"}
-	}
-	return actionResult{ID: project, OK: true}
 }

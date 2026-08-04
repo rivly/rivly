@@ -7,8 +7,7 @@ import (
 )
 
 func TestWatcherResyncOnReconnect(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{}
+	srv := newTestServer(t, fakeDocker{}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	env, err := srv.queries.GetEnvironment(context.Background(), 1)
@@ -37,8 +36,7 @@ func TestWatcherResyncOnReconnect(t *testing.T) {
 }
 
 func TestWatcherFirstConnectDoesNotResync(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{}
+	srv := newTestServer(t, fakeDocker{}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	env, err := srv.queries.GetEnvironment(context.Background(), 1)

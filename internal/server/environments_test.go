@@ -247,10 +247,9 @@ func seedEnvironment(t *testing.T, srv *Server) {
 }
 
 func TestEnvironments(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{
+	srv := newTestServer(t, fakeDocker{
 		info: docker.SystemInfo{ServerVersion: "28.5.2", Containers: 3, ContainersRunning: 2, Images: 5},
-	}
+	}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -286,8 +285,7 @@ func TestEnvironments(t *testing.T) {
 }
 
 func TestEnvironmentDaemonDown(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{infoErr: errors.New("cannot connect to the docker daemon")}
+	srv := newTestServer(t, fakeDocker{infoErr: errors.New("cannot connect to the docker daemon")}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -309,8 +307,7 @@ func TestEnvironmentDaemonDown(t *testing.T) {
 }
 
 func TestEnvironmentSnapshotWhenDown(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{infoErr: errors.New("cannot connect")}
+	srv := newTestServer(t, fakeDocker{infoErr: errors.New("cannot connect")}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	snap, err := json.Marshal(docker.SystemInfo{ServerVersion: "1.2.3", Containers: 9, Images: 4})

@@ -11,7 +11,7 @@ import (
 )
 
 func TestEventsStreamRequiresAuth(t *testing.T) {
-	srv := newTestServer(t)
+	srv := newTestServer(t, fakeDocker{}, fakeCompose{})
 	ts := httptest.NewServer(srv.Router())
 	defer ts.Close()
 
@@ -26,7 +26,7 @@ func TestEventsStreamRequiresAuth(t *testing.T) {
 }
 
 func TestEventsStreamEndsOnShutdown(t *testing.T) {
-	srv := newTestServer(t)
+	srv := newTestServer(t, fakeDocker{}, fakeCompose{})
 	ts := httptest.NewServer(srv.Router())
 	defer ts.Close()
 
@@ -62,7 +62,7 @@ func TestEventsStreamDeliversBehindTLSProxy(t *testing.T) {
 
 func assertEventsStreamDelivers(t *testing.T, forwardedProto string) {
 	t.Helper()
-	srv := newTestServer(t)
+	srv := newTestServer(t, fakeDocker{}, fakeCompose{})
 	ts := httptest.NewServer(srv.Router())
 	defer ts.Close()
 

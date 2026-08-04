@@ -14,8 +14,7 @@ import (
 )
 
 func TestContainerExecAuth(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{}
+	srv := newTestServer(t, fakeDocker{}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -27,8 +26,7 @@ func TestContainerExecAuth(t *testing.T) {
 }
 
 func TestContainerExecMissingEnv(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{}
+	srv := newTestServer(t, fakeDocker{}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -41,8 +39,7 @@ func TestContainerExecMissingEnv(t *testing.T) {
 }
 
 func TestContainerExecWebsocketError(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{execErr: errors.New("no shell")}
+	srv := newTestServer(t, fakeDocker{execErr: errors.New("no shell")}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())

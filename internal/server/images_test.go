@@ -12,12 +12,11 @@ import (
 )
 
 func TestListImages(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{
+	srv := newTestServer(t, fakeDocker{
 		images: []docker.Image{
 			{ID: "abc123", Tags: []string{"nginx:latest"}, Size: 142000000, Created: 1700000000},
 		},
-	}
+	}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -41,8 +40,7 @@ func TestListImages(t *testing.T) {
 }
 
 func TestImageActions(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{}
+	srv := newTestServer(t, fakeDocker{}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -64,11 +62,10 @@ func TestImageActions(t *testing.T) {
 }
 
 func TestImagePull(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{pullData: []docker.PullProgress{
+	srv := newTestServer(t, fakeDocker{pullData: []docker.PullProgress{
 		{Status: "Pulling from library/nginx", ID: "latest"},
 		{Status: "Downloading", ID: "abc123", Current: 500, Total: 1000},
-	}}
+	}}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -96,12 +93,11 @@ func TestImagePull(t *testing.T) {
 }
 
 func TestImageDetail(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{imageDetail: docker.ImageDetail{
+	srv := newTestServer(t, fakeDocker{imageDetail: docker.ImageDetail{
 		ID: "abc123", Tags: []string{"nginx:latest"}, Size: 1000, Architecture: "arm64", Os: "linux",
 		Command:    []string{"nginx", "-g", "daemon off;"},
 		Containers: []docker.ImageContainer{{ID: "c1", Name: "web"}},
-	}}
+	}}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -120,8 +116,7 @@ func TestImageDetail(t *testing.T) {
 }
 
 func TestImageDetailUnreachable(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{imageDetailErr: errors.New("no such image")}
+	srv := newTestServer(t, fakeDocker{imageDetailErr: errors.New("no such image")}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -134,8 +129,7 @@ func TestImageDetailUnreachable(t *testing.T) {
 }
 
 func TestImagePrune(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{pruneResult: docker.PruneResult{ImagesDeleted: 3, SpaceReclaimed: 4096}}
+	srv := newTestServer(t, fakeDocker{pruneResult: docker.PruneResult{ImagesDeleted: 3, SpaceReclaimed: 4096}}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -153,8 +147,7 @@ func TestImagePrune(t *testing.T) {
 }
 
 func TestListImagesUnreachable(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{imagesErr: errors.New("cannot connect")}
+	srv := newTestServer(t, fakeDocker{imagesErr: errors.New("cannot connect")}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())

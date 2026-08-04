@@ -22,18 +22,39 @@ const (
 )
 
 type fakeDocker struct {
-	stacks []docker.Stack
-	err    error
+	stacks    []docker.Stack
+	err       error
+	actionErr error
 }
 
 func (f fakeDocker) Stacks(_ context.Context, _ int64, _ string) ([]docker.Stack, error) {
 	return f.stacks, f.err
 }
 
+func (f fakeDocker) StackAction(_ context.Context, _ int64, _, _, _ string) error {
+	return f.actionErr
+}
+
 type fakeCompose struct {
 	deployed chan string
 	err      error
 }
+
+func (f fakeCompose) Deploy(_ context.Context, _ string, _ int64, _, _, _ string) (string, error) {
+	return "", f.err
+}
+
+func (f fakeCompose) Remove(_ context.Context, _ string, _ int64, _, _, _ string) (string, error) {
+	return "", f.err
+}
+
+func (f fakeCompose) Discard(_ context.Context, _ string, _ int64, _ string) {}
+
+func (f fakeCompose) RemoveRepo(_ context.Context, _ string, _ int64, _, _, _ string) (string, error) {
+	return "", f.err
+}
+
+func (f fakeCompose) DiscardRepo(_ context.Context, _ string, _ int64, _, _ string) {}
 
 func (f fakeCompose) RepoDir(_ int64, project string) string {
 	return filepath.Join("/tmp/rivly-test", project)

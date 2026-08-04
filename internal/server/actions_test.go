@@ -8,8 +8,7 @@ import (
 )
 
 func TestContainerActions(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{}
+	srv := newTestServer(t, fakeDocker{}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -32,8 +31,7 @@ func TestContainerActions(t *testing.T) {
 }
 
 func TestContainerActionsInvalid(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{}
+	srv := newTestServer(t, fakeDocker{}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())
@@ -50,8 +48,7 @@ func TestContainerActionsInvalid(t *testing.T) {
 }
 
 func TestContainerActionsPartialFailure(t *testing.T) {
-	srv := newTestServer(t)
-	srv.docker = fakeDocker{actionErr: errors.New("boom")}
+	srv := newTestServer(t, fakeDocker{actionErr: errors.New("boom")}, fakeCompose{})
 	seedEnvironment(t, srv)
 
 	ts := httptest.NewServer(srv.Router())

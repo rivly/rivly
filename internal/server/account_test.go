@@ -35,7 +35,7 @@ func loginClient(t *testing.T, ts *httptest.Server, password string) *http.Clien
 }
 
 func TestUpdateProfile(t *testing.T) {
-	ts := httptest.NewServer(newTestServer(t).Router())
+	ts := httptest.NewServer(newTestServer(t, fakeDocker{}, fakeCompose{}).Router())
 	defer ts.Close()
 	client := authedClient(t, ts)
 
@@ -60,7 +60,7 @@ func TestUpdateProfile(t *testing.T) {
 }
 
 func TestChangePassword(t *testing.T) {
-	ts := httptest.NewServer(newTestServer(t).Router())
+	ts := httptest.NewServer(newTestServer(t, fakeDocker{}, fakeCompose{}).Router())
 	defer ts.Close()
 	client := authedClient(t, ts)
 
@@ -93,7 +93,7 @@ func TestChangePassword(t *testing.T) {
 }
 
 func TestChangePasswordDestroysOtherSessions(t *testing.T) {
-	ts := httptest.NewServer(newTestServer(t).Router())
+	ts := httptest.NewServer(newTestServer(t, fakeDocker{}, fakeCompose{}).Router())
 	defer ts.Close()
 
 	owner := authedClient(t, ts)

@@ -8,7 +8,7 @@ import (
 )
 
 func TestGitCredentialsCRUD(t *testing.T) {
-	srv := newTestServer(t)
+	srv := newTestServer(t, fakeDocker{}, fakeCompose{})
 
 	ts := httptest.NewServer(srv.Router())
 	defer ts.Close()
