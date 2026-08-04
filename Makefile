@@ -1,4 +1,4 @@
-.PHONY: run build build-web build-all test test-race vet lint vuln fmt
+.PHONY: run build build-web build-all image test test-race vet lint vuln fmt
 
 VERSION ?= dev
 PKGS = $(shell go list ./... | grep -v '/data/')
@@ -13,6 +13,9 @@ build-all: build-web build
 
 build:
 	CGO_ENABLED=0 go build -ldflags="-w -s -X github.com/rivly/rivly/internal/buildinfo.version=$(VERSION)" -o bin/rivly ./cmd/rivly
+
+image:
+	docker build --build-arg VERSION=$(VERSION) -t rivly:$(VERSION) .
 
 test:
 	go test $(PKGS)

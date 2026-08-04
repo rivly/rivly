@@ -4,6 +4,12 @@
 | **Date** | 2026-08-04 |
 | **Status** | Accepted |
 
+> **Amended 2026-08-04.** The context below claims a distroless image has no
+> Compose binary to shell out to. That is wrong: the Compose binary is static
+> and can be copied into a distroless image. The decision stands on the two
+> reasons given under Consequences, a shell for debugging and a working
+> container healthcheck, not on the impossibility stated here.
+
 ---
 
 ## Context
@@ -48,8 +54,16 @@ matters to a user is one container to run, not what that container is built from
 The image is larger than distroless and contains a shell, which widens the attack
 surface for anyone who obtains code execution inside the container. That
 container already holds the Docker socket, so it is not the weakest link, but the
-image must still run as a non-root user and carry nothing beyond the binary and
-the plugin.
+image must still run as a non-root user and carry nothing beyond the binary, the
+plugin and what the healthcheck needs.
+
+The shell is what makes the container debuggable by someone who self-hosts it and
+has nobody to escalate to. It is also what lets `HEALTHCHECK` work without giving
+the binary a second job.
+
+Running as a non-root user means the Docker socket is not readable by default.
+Users must pass the socket group explicitly, which is documented in
+[Packaging](../Packaging.md).
 
 Compose is now a versioned part of the image rather than an ambient dependency of
 the host, so its behaviour is reproducible across installs.

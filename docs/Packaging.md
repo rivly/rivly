@@ -59,23 +59,47 @@ compiles before anyone has run a frontend build.
 
 ---
 
+## Running the image
+
+```bash
+docker run -d \
+  -p 8080:8080 \
+  -v rivly:/data \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  --group-add "$(stat -c %g /var/run/docker.sock)" \
+  ghcr.io/rivly/rivly
+```
+
+The `--group-add` is not optional. The container runs as an unprivileged user, so
+it cannot read a socket owned by `root:docker` without being given that group.
+Skipping it produces an environment stuck in the down state, which is the first
+thing a new user will hit.
+
+`/data` holds the database, the encryption key and the working directories of
+managed stacks. It is the only path that must be persisted.
+
+The setup token is printed to the container logs at first start.
+
+---
+
 ## Current state
 
-There is no Dockerfile and no published image.
-
-Reaching the target requires:
-
-1. an image on a minimal base carrying the Compose plugin;
-2. a release pipeline that runs lint, test and govulncheck before publishing.
+The image builds and runs. Reaching the target still requires a release pipeline
+that runs lint, test and govulncheck, then builds and publishes the image on a
+tag.
 
 ---
 
 ## The image
 
-The image is built on a minimal base that carries the Docker Compose plugin,
-rather than on distroless. Managed stacks shell out to Compose, and a distroless
-image has no Compose binary to shell out to. See
-[ADR-0016](<ADR/0016 - A minimal base image carrying the Compose plugin.md>).
+`make image` builds it. Three stages: the dashboard with Bun, the binary with Go,
+then a small Alpine runtime that receives the binary and the Compose plugin
+copied from the official `docker/compose-bin` image. Pinning that image pins the
+Compose version, so behaviour is reproducible across installs rather than
+depending on what the host happens to have.
 
-The binary itself stays static and `CGO_ENABLED=0`. The image must run as a
-non-root user and carry nothing beyond the binary and the plugin.
+It is not distroless. Both binaries are static, so distroless was possible, but
+the image keeps a shell so a self-hoster can debug it and so `HEALTHCHECK` works.
+See [ADR-0016](<ADR/0016 - A minimal base image carrying the Compose plugin.md>).
+
+The container runs as uid 10001 and owns nothing outside `/data`.
