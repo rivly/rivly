@@ -84,7 +84,7 @@ func run(logger *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	for _, loop := range []func(context.Context){srv.RunPoller, srv.RunWatchers, srv.RunGitPoller} {
+	for _, loop := range []func(context.Context){srv.RunPoller, srv.RunWatchers, srv.RunStackSync} {
 		srv.Background(ctx, loop)
 	}
 

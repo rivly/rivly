@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rivly/rivly/internal/docker"
+	"github.com/rivly/rivly/internal/stack"
 )
 
 type containerResponse struct {
@@ -75,15 +76,15 @@ type mountInput struct {
 }
 
 type runContainerRequest struct {
-	Name          string        `json:"name"`
-	Image         string        `json:"image"`
-	Command       string        `json:"command"`
-	Env           []envVar      `json:"env"`
-	Ports         []portMapping `json:"ports"`
-	Mounts        []mountInput  `json:"mounts"`
-	Network       string        `json:"network"`
-	RestartPolicy string        `json:"restartPolicy"`
-	Start         bool          `json:"start"`
+	Name          string         `json:"name"`
+	Image         string         `json:"image"`
+	Command       string         `json:"command"`
+	Env           []stack.EnvVar `json:"env"`
+	Ports         []portMapping  `json:"ports"`
+	Mounts        []mountInput   `json:"mounts"`
+	Network       string         `json:"network"`
+	RestartPolicy string         `json:"restartPolicy"`
+	Start         bool           `json:"start"`
 }
 
 var validRestartPolicies = map[string]bool{

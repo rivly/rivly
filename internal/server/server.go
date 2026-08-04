@@ -18,6 +18,7 @@ import (
 	"github.com/rivly/rivly/internal/events"
 	"github.com/rivly/rivly/internal/gitcred"
 	"github.com/rivly/rivly/internal/registry"
+	"github.com/rivly/rivly/internal/stack"
 )
 
 type dockerService interface {
@@ -72,8 +73,7 @@ type Server struct {
 	setupMu        sync.Mutex
 	envStateMu     sync.Mutex
 	lastEnvState   map[int64]string
-	gitMu          sync.Mutex
-	gitInflight    map[int64]bool
+	stacks         *stack.Service
 	streamsClosing context.Context
 	closeStreams   context.CancelFunc
 	running        sync.WaitGroup
@@ -118,7 +118,7 @@ func New(
 	cfg config.Config,
 ) *Server {
 	streamsClosing, closeStreams := context.WithCancel(context.Background())
-	return &Server{
+	s := &Server{
 		logger:         logger,
 		queries:        queries,
 		sessions:       sessions,
@@ -130,10 +130,15 @@ func New(
 		gitcreds:       gitcreds,
 		cfg:            cfg,
 		lastEnvState:   make(map[int64]string),
-		gitInflight:    make(map[int64]bool),
 		streamsClosing: streamsClosing,
 		closeStreams:   closeStreams,
 	}
+	s.stacks = stack.New(logger, queries, docker, compose, gitcreds, s.publishEnvironment, s.spawn)
+	return s
+}
+
+func (s *Server) RunStackSync(ctx context.Context) {
+	s.stacks.RunSync(ctx)
 }
 
 func (s *Server) CloseStreams() {
