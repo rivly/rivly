@@ -59,7 +59,7 @@ Three loops run for the lifetime of the process.
 | Loop | Cadence | Purpose |
 | --- | --- | --- |
 | Poller | `RIVLY_POLL_INTERVAL`, 5s by default | Queries each environment, refreshes its snapshot, publishes a change event when the fingerprint moves |
-| Watchers | Event-driven, one per environment | Subscribes to the Docker event stream and publishes a debounced change event |
+| Watchers | Event-driven, one per environment | Subscribes to the Docker event stream and publishes a debounced change event. Reconciles the environment list periodically, so a listing that failed at startup is retried and a new environment is picked up |
 | Git poller | 5s tick, per-stack interval | Compares the remote commit of Git stacks and redeploys when it moves |
 
 The poller guarantees liveness when a daemon is unreachable. The watchers give
@@ -125,4 +125,3 @@ Documented here so the architecture is not read as more complete than it is.
   there is no endpoint to add a remote host.
 - Swarm is reported as a boolean and a node count. Services, nodes and tasks are
   not modelled.
-- Watchers read the environment list once at startup.

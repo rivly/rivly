@@ -13,13 +13,31 @@ const (
 	watcherConnectGrace = 2 * time.Second
 )
 
+var watcherRefresh = 30 * time.Second
+
 func (s *Server) RunWatchers(ctx context.Context) {
+	watched := make(map[int64]bool)
+	for {
+		s.startWatchers(ctx, watched)
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(watcherRefresh):
+		}
+	}
+}
+
+func (s *Server) startWatchers(ctx context.Context, watched map[int64]bool) {
 	envs, err := s.queries.ListEnvironments(ctx)
 	if err != nil {
 		s.logger.Error("watcher: could not list environments", "err", err)
 		return
 	}
 	for _, e := range envs {
+		if watched[e.ID] {
+			continue
+		}
+		watched[e.ID] = true
 		s.spawn(func() { s.watchEnvironment(ctx, e) })
 	}
 }

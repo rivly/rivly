@@ -16,6 +16,7 @@ import (
 )
 
 type fakeDocker struct {
+	watchStarted       chan int64
 	info               docker.SystemInfo
 	infoErr            error
 	containers         []docker.Container
@@ -175,7 +176,13 @@ func (f fakeDocker) ContainerAction(_ context.Context, _ int64, _, _, _ string) 
 	return f.actionErr
 }
 
-func (f fakeDocker) WatchEvents(_ context.Context, _ int64, _ string) (<-chan struct{}, <-chan error) {
+func (f fakeDocker) WatchEvents(_ context.Context, id int64, _ string) (<-chan struct{}, <-chan error) {
+	if f.watchStarted != nil {
+		select {
+		case f.watchStarted <- id:
+		default:
+		}
+	}
 	return nil, nil
 }
 
