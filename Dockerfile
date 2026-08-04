@@ -1,18 +1,20 @@
-FROM oven/bun:1 AS dashboard
+FROM --platform=$BUILDPLATFORM oven/bun:1 AS dashboard
 WORKDIR /src
 COPY web/package.json web/bun.lock ./
 RUN bun install --frozen-lockfile
 COPY web/ ./
 RUN bun run build
 
-FROM golang:1.26-alpine AS build
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS build
+ARG TARGETOS
+ARG TARGETARCH
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 COPY --from=dashboard /src/dist ./web/dist
 ARG VERSION=dev
-RUN CGO_ENABLED=0 go build \
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
     -ldflags="-w -s -X github.com/rivly/rivly/internal/buildinfo.version=${VERSION}" \
     -o /out/rivly ./cmd/rivly
 

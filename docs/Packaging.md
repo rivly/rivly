@@ -84,9 +84,11 @@ The setup token is printed to the container logs at first start.
 
 ## Current state
 
-The image builds and runs. Reaching the target still requires a release pipeline
-that runs lint, test and govulncheck, then builds and publishes the image on a
-tag.
+The image builds and runs, for `linux/amd64` and `linux/arm64`. Both binaries are
+cross-compiled from the build platform rather than emulated, so only the small
+Alpine layer needs QEMU.
+
+There is no release pipeline yet, so the image is not published anywhere.
 
 ---
 

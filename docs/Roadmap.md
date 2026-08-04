@@ -6,13 +6,10 @@ What already works is in [Features](Features.md).
 
 ## Before a first release
 
-These are the gaps between what Rivly is and what it claims to be.
+These are the gaps between what Rivly is and what it claims to be. The binary and
+the image are done; see [Packaging](Packaging.md).
 
-- **Single binary.** Build the dashboard, embed it with `go:embed`, serve it with
-  an SPA fallback and a real Content-Security-Policy. See
-  [Packaging](Packaging.md).
-- **Published image.** The Dockerfile exists and the image runs; what is missing
-  is a release pipeline that tags, builds and publishes it.
+- **Published image.** A release pipeline that tags, builds and publishes it.
 - **Environment management.** Create, edit and delete environments, so a remote
   host can be added without editing the database.
 
