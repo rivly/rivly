@@ -100,12 +100,25 @@ func (s *Server) recoverer(next http.Handler) http.Handler {
 	})
 }
 
+var contentSecurityPolicy = strings.Join([]string{
+	"default-src 'self'",
+	"script-src 'self'",
+	"style-src 'self' 'unsafe-inline'",
+	"img-src 'self' data:",
+	"font-src 'self'",
+	"connect-src 'self'",
+	"object-src 'none'",
+	"base-uri 'none'",
+	"form-action 'self'",
+	"frame-ancestors 'none'",
+}, "; ")
+
 func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		header := w.Header()
 		header.Set("X-Content-Type-Options", "nosniff")
 		header.Set("X-Frame-Options", "DENY")
-		header.Set("Content-Security-Policy", "frame-ancestors 'none'")
+		header.Set("Content-Security-Policy", contentSecurityPolicy)
 		header.Set("Referrer-Policy", "no-referrer")
 		next.ServeHTTP(w, r)
 	})

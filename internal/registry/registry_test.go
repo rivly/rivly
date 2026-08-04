@@ -91,9 +91,9 @@ func TestUpdateKeepsPasswordWhenEmpty(t *testing.T) {
 
 func TestDomain(t *testing.T) {
 	cases := map[string]string{
-		"ghcr.io/acme/app:1.0": "ghcr.io",
-		"nginx":                "docker.io",
-		"nginx:latest":         "docker.io",
+		"ghcr.io/acme/app:1.0":               "ghcr.io",
+		"nginx":                              "docker.io",
+		"nginx:latest":                       "docker.io",
 		"registry.example.com:5000/team/img": "registry.example.com:5000",
 	}
 	for ref, want := range cases {

@@ -45,10 +45,9 @@ func TestSecurityHeadersOnEveryResponse(t *testing.T) {
 	defer ts.Close()
 
 	want := map[string]string{
-		"X-Content-Type-Options":  "nosniff",
-		"X-Frame-Options":         "DENY",
-		"Content-Security-Policy": "frame-ancestors 'none'",
-		"Referrer-Policy":         "no-referrer",
+		"X-Content-Type-Options": "nosniff",
+		"X-Frame-Options":        "DENY",
+		"Referrer-Policy":        "no-referrer",
 	}
 
 	for _, path := range []string{"/api/health", "/api/v1/setup", "/api/v1/me", "/api/v1/nope"} {
@@ -61,6 +60,9 @@ func TestSecurityHeadersOnEveryResponse(t *testing.T) {
 			if got := resp.Header.Get(header); got != value {
 				t.Errorf("%s: %s = %q, want %q", path, header, got, value)
 			}
+		}
+		if csp := resp.Header.Get("Content-Security-Policy"); !strings.Contains(csp, "frame-ancestors 'none'") {
+			t.Errorf("%s: CSP must always deny framing, got %q", path, csp)
 		}
 	}
 }

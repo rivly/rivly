@@ -124,8 +124,6 @@ transaction while a transaction is open deadlocks.
 
 Documented here so the architecture is not read as more complete than it is.
 
-- The dashboard is not embedded in the binary yet, so the process serves the API
-  only. See [Packaging](Packaging.md).
 - Environments are seeded, not managed. One `local` row is created at startup and
   there is no endpoint to add a remote host.
 - Swarm is reported as a boolean and a node count. Services, nodes and tasks are

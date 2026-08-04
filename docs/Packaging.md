@@ -38,20 +38,35 @@ See [Configuration](Configuration.md).
 
 ---
 
-## Current state
+## The dashboard
 
-The dashboard is not embedded yet. The Go binary serves the API only, and the
-frontend is built and served separately during development.
+`web/dist` is embedded with `go:embed` and served from the router's not-found
+handler. A request that matches an embedded file gets that file; anything else
+gets `index.html`, so client-side routes survive a page reload. Requests under
+`/api/` are excluded, so an unknown endpoint still answers JSON rather than HTML.
+
+Hashed assets under `/assets/` are cached for a year and marked immutable.
+Everything else, `index.html` first of all, is served `no-cache`: a cached index
+would pin a browser to an old build forever.
+
+`make build-all` builds the dashboard and then the binary. `make build` alone
+compiles against whatever is in `web/dist`, which is what keeps backend-only
+development fast. When nothing is embedded, the server logs a warning at startup
+and serves the API only.
+
+A placeholder keeps `web/dist` present in a fresh clone, so the Go package
+compiles before anyone has run a frontend build.
+
+---
+
+## Current state
 
 There is no Dockerfile and no published image.
 
 Reaching the target requires:
 
-1. building `web/` and embedding `dist/` with `go:embed`;
-2. serving it with an SPA fallback, and a real Content-Security-Policy rather
-   than the current frame-ancestors-only header;
-3. an image on a minimal base carrying the Compose plugin;
-4. a release pipeline that runs lint, test and govulncheck before publishing.
+1. an image on a minimal base carrying the Compose plugin;
+2. a release pipeline that runs lint, test and govulncheck before publishing.
 
 ---
 

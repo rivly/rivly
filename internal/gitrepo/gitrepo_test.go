@@ -102,12 +102,12 @@ func TestResolveRefRejectsZeroHead(t *testing.T) {
 
 func TestComposePathAccepts(t *testing.T) {
 	cases := map[string]string{
-		"docker-compose.yml":        "docker-compose.yml",
-		"./docker-compose.yml":      "docker-compose.yml",
-		"deploy/compose.yaml":       "deploy/compose.yaml",
-		"deploy/./prod/stack.yml":   "deploy/prod/stack.yml",
-		"deploy/prod/../stack.yml":  "deploy/stack.yml",
-		"  docker-compose.yml  ":    "docker-compose.yml",
+		"docker-compose.yml":       "docker-compose.yml",
+		"./docker-compose.yml":     "docker-compose.yml",
+		"deploy/compose.yaml":      "deploy/compose.yaml",
+		"deploy/./prod/stack.yml":  "deploy/prod/stack.yml",
+		"deploy/prod/../stack.yml": "deploy/stack.yml",
+		"  docker-compose.yml  ":   "docker-compose.yml",
 	}
 	for in, want := range cases {
 		got, err := ComposePath(in)

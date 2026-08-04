@@ -20,6 +20,7 @@ import (
 	"github.com/rivly/rivly/internal/gitcred"
 	"github.com/rivly/rivly/internal/registry"
 	"github.com/rivly/rivly/internal/stack"
+	"github.com/rivly/rivly/web"
 )
 
 type dockerService interface {
@@ -187,6 +188,13 @@ func (s *Server) Router() http.Handler {
 	authLimit := httprate.LimitBy(10, time.Minute, func(r *http.Request) (string, error) {
 		return httprate.CanonicalizeIP(middleware.GetClientIP(r.Context())), nil
 	})
+
+	if assets, ok := web.Dashboard(); ok {
+		r.NotFound(s.dashboardHandler(assets))
+	} else {
+		s.logger.Warn("dashboard is not embedded, serving the API only",
+			"hint", "run bun run build in web/ before building the binary")
+	}
 
 	r.Get("/api/health", s.handleHealth)
 	r.Route("/api/v1", func(r chi.Router) {

@@ -73,8 +73,12 @@ its userinfo.
 ## Transport
 
 Every response carries `X-Content-Type-Options: nosniff`,
-`X-Frame-Options: DENY`, `Content-Security-Policy: frame-ancestors 'none'` and
-`Referrer-Policy: no-referrer`.
+`X-Frame-Options: DENY`, `Referrer-Policy: no-referrer` and a Content-Security
+Policy that allows scripts, styles, fonts and connections from the origin only.
+
+Scripts are never allowed inline and never evaluated. Styles do allow
+`'unsafe-inline'`, because the headless widget and terminal libraries position
+elements through inline styles at runtime.
 
 Unsafe methods are protected against cross-origin requests. Additional origins
 must be declared explicitly through `RIVLY_TRUSTED_ORIGINS`.
