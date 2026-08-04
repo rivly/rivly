@@ -2,17 +2,54 @@ package server
 
 import (
 	"bufio"
+	"context"
+	"database/sql"
+	"errors"
 	"log/slog"
 	"net"
 	"net/http"
 	"runtime/debug"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/rivly/rivly/internal/database/db"
 )
 
 const sessionUserID = "userID"
+
+type contextKey int
+
+const environmentKey contextKey = iota
+
+func (s *Server) withEnvironment(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+		if err != nil {
+			s.writeError(w, http.StatusBadRequest, "invalid environment id")
+			return
+		}
+
+		env, err := s.queries.GetEnvironment(r.Context(), id)
+		if errors.Is(err, sql.ErrNoRows) {
+			s.writeError(w, http.StatusNotFound, "environment not found")
+			return
+		}
+		if err != nil {
+			s.serverError(w, r, "could not load environment", err)
+			return
+		}
+
+		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), environmentKey, env)))
+	})
+}
+
+func environmentFrom(r *http.Request) db.Environment {
+	env, _ := r.Context().Value(environmentKey).(db.Environment)
+	return env
+}
 
 func (s *Server) requireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

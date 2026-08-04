@@ -1,10 +1,7 @@
 package server
 
 import (
-	"database/sql"
-	"errors"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -31,21 +28,7 @@ type portResponse struct {
 }
 
 func (s *Server) handleListContainers(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid environment id")
-		return
-	}
-
-	env, err := s.queries.GetEnvironment(r.Context(), id)
-	if errors.Is(err, sql.ErrNoRows) {
-		s.writeError(w, http.StatusNotFound, "environment not found")
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, "could not load environment", err)
-		return
-	}
+	env := environmentFrom(r)
 
 	containers, err := s.docker.Containers(r.Context(), env.ID, env.Url)
 	if err != nil {
@@ -111,12 +94,6 @@ var validRestartPolicies = map[string]bool{
 }
 
 func (s *Server) handleCreateContainer(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid environment id")
-		return
-	}
-
 	var req runContainerRequest
 	if err := decodeJSON(w, r, &req); err != nil {
 		s.badRequest(w, err)
@@ -180,15 +157,7 @@ func (s *Server) handleCreateContainer(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	env, err := s.queries.GetEnvironment(r.Context(), id)
-	if errors.Is(err, sql.ErrNoRows) {
-		s.writeError(w, http.StatusNotFound, "environment not found")
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, "could not load environment", err)
-		return
-	}
+	env := environmentFrom(r)
 
 	containerID, err := s.docker.ContainerCreate(r.Context(), env.ID, env.Url, input)
 	if err != nil {
@@ -239,22 +208,9 @@ type containerDetailResponse struct {
 }
 
 func (s *Server) handleContainerDetail(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid environment id")
-		return
-	}
 	containerID := chi.URLParam(r, "containerID")
 
-	env, err := s.queries.GetEnvironment(r.Context(), id)
-	if errors.Is(err, sql.ErrNoRows) {
-		s.writeError(w, http.StatusNotFound, "environment not found")
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, "could not load environment", err)
-		return
-	}
+	env := environmentFrom(r)
 
 	detail, err := s.docker.ContainerDetail(r.Context(), env.ID, env.Url, containerID)
 	if err != nil {

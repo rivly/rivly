@@ -1,13 +1,11 @@
 package server
 
 import (
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -26,21 +24,7 @@ type imageResponse struct {
 var validImageActions = map[string]bool{"remove": true}
 
 func (s *Server) handleListImages(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid environment id")
-		return
-	}
-
-	env, err := s.queries.GetEnvironment(r.Context(), id)
-	if errors.Is(err, sql.ErrNoRows) {
-		s.writeError(w, http.StatusNotFound, "environment not found")
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, "could not load environment", err)
-		return
-	}
+	env := environmentFrom(r)
 
 	images, err := s.docker.Images(r.Context(), env.ID, env.Url)
 	if err != nil {
@@ -85,22 +69,9 @@ type imageDetailResponse struct {
 }
 
 func (s *Server) handleImageDetail(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid environment id")
-		return
-	}
 	imageID := chi.URLParam(r, "imageID")
 
-	env, err := s.queries.GetEnvironment(r.Context(), id)
-	if errors.Is(err, sql.ErrNoRows) {
-		s.writeError(w, http.StatusNotFound, "environment not found")
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, "could not load environment", err)
-		return
-	}
+	env := environmentFrom(r)
 
 	detail, err := s.docker.ImageDetail(r.Context(), env.ID, env.Url, imageID)
 	if err != nil {
@@ -132,12 +103,6 @@ func (s *Server) handleImageDetail(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleImageActions(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid environment id")
-		return
-	}
-
 	var req bulkActionRequest
 	if err := decodeJSON(w, r, &req); err != nil {
 		s.badRequest(w, err)
@@ -152,15 +117,7 @@ func (s *Server) handleImageActions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	env, err := s.queries.GetEnvironment(r.Context(), id)
-	if errors.Is(err, sql.ErrNoRows) {
-		s.writeError(w, http.StatusNotFound, "environment not found")
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, "could not load environment", err)
-		return
-	}
+	env := environmentFrom(r)
 
 	results := make([]actionResult, len(req.IDs))
 	var wg sync.WaitGroup
@@ -191,11 +148,6 @@ type pullProgressResponse struct {
 }
 
 func (s *Server) handleImagePull(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid environment id")
-		return
-	}
 	ref := strings.TrimSpace(r.URL.Query().Get("ref"))
 	if ref == "" {
 		s.writeError(w, http.StatusBadRequest, "image reference is required")
@@ -208,15 +160,7 @@ func (s *Server) handleImagePull(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	env, err := s.queries.GetEnvironment(r.Context(), id)
-	if errors.Is(err, sql.ErrNoRows) {
-		s.writeError(w, http.StatusNotFound, "environment not found")
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, "could not load environment", err)
-		return
-	}
+	env := environmentFrom(r)
 
 	ctx, cancel := s.streamContext(r)
 	defer cancel()
@@ -281,27 +225,13 @@ type imagePruneRequest struct {
 }
 
 func (s *Server) handleImagePrune(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid environment id")
-		return
-	}
-
 	var req imagePruneRequest
 	if err := decodeJSON(w, r, &req); err != nil && !errors.Is(err, io.EOF) {
 		s.badRequest(w, err)
 		return
 	}
 
-	env, err := s.queries.GetEnvironment(r.Context(), id)
-	if errors.Is(err, sql.ErrNoRows) {
-		s.writeError(w, http.StatusNotFound, "environment not found")
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, "could not load environment", err)
-		return
-	}
+	env := environmentFrom(r)
 
 	res, err := s.docker.ImagesPrune(r.Context(), env.ID, env.Url, req.All)
 	if err != nil {

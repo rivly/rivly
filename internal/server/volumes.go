@@ -1,11 +1,8 @@
 package server
 
 import (
-	"database/sql"
-	"errors"
 	"net/http"
 	"regexp"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -27,21 +24,7 @@ type volumeResponse struct {
 var validVolumeActions = map[string]bool{"remove": true}
 
 func (s *Server) handleListVolumes(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid environment id")
-		return
-	}
-
-	env, err := s.queries.GetEnvironment(r.Context(), id)
-	if errors.Is(err, sql.ErrNoRows) {
-		s.writeError(w, http.StatusNotFound, "environment not found")
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, "could not load environment", err)
-		return
-	}
+	env := environmentFrom(r)
 
 	volumes, err := s.docker.Volumes(r.Context(), env.ID, env.Url)
 	if err != nil {
@@ -69,12 +52,6 @@ type createVolumeRequest struct {
 }
 
 func (s *Server) handleCreateVolume(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid environment id")
-		return
-	}
-
 	var req createVolumeRequest
 	if err := decodeJSON(w, r, &req); err != nil {
 		s.badRequest(w, err)
@@ -86,15 +63,7 @@ func (s *Server) handleCreateVolume(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	env, err := s.queries.GetEnvironment(r.Context(), id)
-	if errors.Is(err, sql.ErrNoRows) {
-		s.writeError(w, http.StatusNotFound, "environment not found")
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, "could not load environment", err)
-		return
-	}
+	env := environmentFrom(r)
 
 	vol, err := s.docker.VolumeCreate(r.Context(), env.ID, env.Url, docker.VolumeCreateInput{
 		Name:   req.Name,
@@ -132,22 +101,9 @@ type volumeDetailResponse struct {
 }
 
 func (s *Server) handleVolumeDetail(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid environment id")
-		return
-	}
 	name := chi.URLParam(r, "name")
 
-	env, err := s.queries.GetEnvironment(r.Context(), id)
-	if errors.Is(err, sql.ErrNoRows) {
-		s.writeError(w, http.StatusNotFound, "environment not found")
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, "could not load environment", err)
-		return
-	}
+	env := environmentFrom(r)
 
 	detail, err := s.docker.VolumeDetail(r.Context(), env.ID, env.Url, name)
 	if err != nil {
@@ -172,12 +128,6 @@ func (s *Server) handleVolumeDetail(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleVolumeActions(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid environment id")
-		return
-	}
-
 	var req bulkActionRequest
 	if err := decodeJSON(w, r, &req); err != nil {
 		s.badRequest(w, err)
@@ -192,15 +142,7 @@ func (s *Server) handleVolumeActions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	env, err := s.queries.GetEnvironment(r.Context(), id)
-	if errors.Is(err, sql.ErrNoRows) {
-		s.writeError(w, http.StatusNotFound, "environment not found")
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, "could not load environment", err)
-		return
-	}
+	env := environmentFrom(r)
 
 	results := make([]actionResult, len(req.IDs))
 	var wg sync.WaitGroup

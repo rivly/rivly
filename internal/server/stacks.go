@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -50,21 +49,7 @@ var validStackActions = map[string]bool{
 var stackNamePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]{0,62}$`)
 
 func (s *Server) handleListStacks(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid environment id")
-		return
-	}
-
-	env, err := s.queries.GetEnvironment(r.Context(), id)
-	if errors.Is(err, sql.ErrNoRows) {
-		s.writeError(w, http.StatusNotFound, "environment not found")
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, "could not load environment", err)
-		return
-	}
+	env := environmentFrom(r)
 
 	discovered, err := s.docker.Stacks(r.Context(), env.ID, env.Url)
 	if err != nil {
@@ -171,12 +156,6 @@ type deployStackRequest struct {
 }
 
 func (s *Server) handleDeployStack(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid environment id")
-		return
-	}
-
 	var req deployStackRequest
 	if err := decodeJSON(w, r, &req); err != nil {
 		s.badRequest(w, err)
@@ -197,15 +176,7 @@ func (s *Server) handleDeployStack(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	env, err := s.queries.GetEnvironment(r.Context(), id)
-	if errors.Is(err, sql.ErrNoRows) {
-		s.writeError(w, http.StatusNotFound, "environment not found")
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, "could not load environment", err)
-		return
-	}
+	env := environmentFrom(r)
 
 	existing, getErr := s.queries.GetStack(r.Context(), db.GetStackParams{EnvID: env.ID, Name: name})
 	isNew := errors.Is(getErr, sql.ErrNoRows)
@@ -368,22 +339,9 @@ func gitError(err error) string {
 }
 
 func (s *Server) handleGetStack(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid environment id")
-		return
-	}
 	name := chi.URLParam(r, "name")
 
-	env, err := s.queries.GetEnvironment(r.Context(), id)
-	if errors.Is(err, sql.ErrNoRows) {
-		s.writeError(w, http.StatusNotFound, "environment not found")
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, "could not load environment", err)
-		return
-	}
+	env := environmentFrom(r)
 
 	stack, err := s.queries.GetStack(r.Context(), db.GetStackParams{EnvID: env.ID, Name: name})
 	if errors.Is(err, sql.ErrNoRows) {
@@ -437,12 +395,6 @@ type stackDetailResponse struct {
 }
 
 func (s *Server) handleStackActions(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid environment id")
-		return
-	}
-
 	var req bulkActionRequest
 	if err := decodeJSON(w, r, &req); err != nil {
 		s.badRequest(w, err)
@@ -457,15 +409,7 @@ func (s *Server) handleStackActions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	env, err := s.queries.GetEnvironment(r.Context(), id)
-	if errors.Is(err, sql.ErrNoRows) {
-		s.writeError(w, http.StatusNotFound, "environment not found")
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, "could not load environment", err)
-		return
-	}
+	env := environmentFrom(r)
 
 	managed := make(map[string]db.Stack)
 	if list, lerr := s.queries.ListStacks(r.Context(), env.ID); lerr == nil {

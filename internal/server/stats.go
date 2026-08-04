@@ -1,12 +1,9 @@
 package server
 
 import (
-	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -25,11 +22,6 @@ type statsResponse struct {
 }
 
 func (s *Server) handleContainerStats(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid environment id")
-		return
-	}
 	containerID := chi.URLParam(r, "containerID")
 
 	flusher, ok := w.(http.Flusher)
@@ -38,15 +30,7 @@ func (s *Server) handleContainerStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	env, err := s.queries.GetEnvironment(r.Context(), id)
-	if errors.Is(err, sql.ErrNoRows) {
-		s.writeError(w, http.StatusNotFound, "environment not found")
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, "could not load environment", err)
-		return
-	}
+	env := environmentFrom(r)
 
 	ctx, cancel := s.streamContext(r)
 	defer cancel()

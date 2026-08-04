@@ -1,11 +1,8 @@
 package server
 
 import (
-	"database/sql"
-	"errors"
 	"net/http"
 	"net/netip"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -26,21 +23,7 @@ type networkResponse struct {
 var validNetworkActions = map[string]bool{"remove": true}
 
 func (s *Server) handleListNetworks(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid environment id")
-		return
-	}
-
-	env, err := s.queries.GetEnvironment(r.Context(), id)
-	if errors.Is(err, sql.ErrNoRows) {
-		s.writeError(w, http.StatusNotFound, "environment not found")
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, "could not load environment", err)
-		return
-	}
+	env := environmentFrom(r)
 
 	networks, err := s.docker.Networks(r.Context(), env.ID, env.Url)
 	if err != nil {
@@ -70,12 +53,6 @@ type createNetworkRequest struct {
 }
 
 func (s *Server) handleCreateNetwork(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid environment id")
-		return
-	}
-
 	var req createNetworkRequest
 	if err := decodeJSON(w, r, &req); err != nil {
 		s.badRequest(w, err)
@@ -94,15 +71,7 @@ func (s *Server) handleCreateNetwork(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	env, err := s.queries.GetEnvironment(r.Context(), id)
-	if errors.Is(err, sql.ErrNoRows) {
-		s.writeError(w, http.StatusNotFound, "environment not found")
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, "could not load environment", err)
-		return
-	}
+	env := environmentFrom(r)
 
 	created, err := s.docker.NetworkCreate(r.Context(), env.ID, env.Url, docker.NetworkCreateInput{
 		Name:   req.Name,
@@ -146,22 +115,9 @@ type networkDetailResponse struct {
 }
 
 func (s *Server) handleNetworkDetail(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid environment id")
-		return
-	}
 	networkID := chi.URLParam(r, "networkID")
 
-	env, err := s.queries.GetEnvironment(r.Context(), id)
-	if errors.Is(err, sql.ErrNoRows) {
-		s.writeError(w, http.StatusNotFound, "environment not found")
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, "could not load environment", err)
-		return
-	}
+	env := environmentFrom(r)
 
 	detail, err := s.docker.NetworkDetail(r.Context(), env.ID, env.Url, networkID)
 	if err != nil {
@@ -192,12 +148,6 @@ func (s *Server) handleNetworkDetail(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleNetworkActions(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid environment id")
-		return
-	}
-
 	var req bulkActionRequest
 	if err := decodeJSON(w, r, &req); err != nil {
 		s.badRequest(w, err)
@@ -212,15 +162,7 @@ func (s *Server) handleNetworkActions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	env, err := s.queries.GetEnvironment(r.Context(), id)
-	if errors.Is(err, sql.ErrNoRows) {
-		s.writeError(w, http.StatusNotFound, "environment not found")
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, "could not load environment", err)
-		return
-	}
+	env := environmentFrom(r)
 
 	results := make([]actionResult, len(req.IDs))
 	var wg sync.WaitGroup

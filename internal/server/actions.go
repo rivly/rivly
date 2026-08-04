@@ -1,13 +1,8 @@
 package server
 
 import (
-	"database/sql"
-	"errors"
 	"net/http"
-	"strconv"
 	"sync"
-
-	"github.com/go-chi/chi/v5"
 )
 
 const maxBulkActions = 200
@@ -34,12 +29,6 @@ type actionResult struct {
 }
 
 func (s *Server) handleContainerActions(w http.ResponseWriter, r *http.Request) {
-	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
-		s.writeError(w, http.StatusBadRequest, "invalid environment id")
-		return
-	}
-
 	var req bulkActionRequest
 	if err := decodeJSON(w, r, &req); err != nil {
 		s.badRequest(w, err)
@@ -54,15 +43,7 @@ func (s *Server) handleContainerActions(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	env, err := s.queries.GetEnvironment(r.Context(), id)
-	if errors.Is(err, sql.ErrNoRows) {
-		s.writeError(w, http.StatusNotFound, "environment not found")
-		return
-	}
-	if err != nil {
-		s.serverError(w, r, "could not load environment", err)
-		return
-	}
+	env := environmentFrom(r)
 
 	results := make([]actionResult, len(req.IDs))
 	var wg sync.WaitGroup
