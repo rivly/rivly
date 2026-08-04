@@ -206,3 +206,64 @@ func TestNormalizeURLRejectsNonHTTP(t *testing.T) {
 		}
 	}
 }
+
+func TestInstallSwapsTheCheckoutAtomically(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	target := filepath.Join(root, "repo")
+	staging := filepath.Join(root, ".clone-new")
+
+	for dir, marker := range map[string]string{target: "old", staging: "new"} {
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			t.Fatalf("MkdirAll: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "docker-compose.yml"), []byte(marker), 0o600); err != nil {
+			t.Fatalf("WriteFile: %v", err)
+		}
+	}
+
+	if err := install(staging, target); err != nil {
+		t.Fatalf("install: %v", err)
+	}
+
+	got, err := os.ReadFile(filepath.Join(target, "docker-compose.yml"))
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	if string(got) != "new" {
+		t.Fatalf("the target must hold the new checkout, got %q", got)
+	}
+
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		t.Fatalf("ReadDir: %v", err)
+	}
+	for _, e := range entries {
+		if e.Name() != "repo" {
+			t.Errorf("install must leave nothing behind, found %q", e.Name())
+		}
+	}
+}
+
+func TestInstallWorksWhenThereIsNoPreviousCheckout(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	target := filepath.Join(root, "repo")
+	staging := filepath.Join(root, ".clone-new")
+
+	if err := os.MkdirAll(staging, 0o700); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(staging, "compose.yml"), []byte("first"), 0o600); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	if err := install(staging, target); err != nil {
+		t.Fatalf("a first clone has nothing to move aside: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(target, "compose.yml")); err != nil {
+		t.Fatalf("Stat: %v", err)
+	}
+}
