@@ -37,6 +37,7 @@ func (f fakeDocker) StackAction(_ context.Context, _ int64, _, _, _ string) erro
 }
 
 type fakeCompose struct {
+	repoDir  string
 	deployed chan string
 	removed  chan string
 	out      string
@@ -73,7 +74,7 @@ func (f fakeCompose) RemoveRepo(_ context.Context, _ string, _ int64, project, _
 func (f fakeCompose) DiscardRepo(_ context.Context, _ string, _ int64, _, _ string) {}
 
 func (f fakeCompose) RepoDir(_ int64, project string) string {
-	return filepath.Join("/tmp/rivly-test", project)
+	return filepath.Join(f.repoDir, project)
 }
 
 func (f fakeCompose) DeployRepo(_ context.Context, _ string, _ int64, project, _, _ string) (string, error) {

@@ -91,12 +91,21 @@ func (s *Service) Deploy(ctx context.Context, env db.Environment, in DeployInput
 			return rejected(ComposeErrorMessage(out))
 		}
 		params.Content = in.Content
+		if !isNew && existing.Source == SourceGit {
+			s.discardCheckout(env.ID, name)
+		}
 	}
 
 	if _, err := s.queries.UpsertStack(ctx, params); err != nil {
 		return fmt.Errorf("save stack %q: %w", name, err)
 	}
 	return nil
+}
+
+func (s *Service) discardCheckout(envID int64, project string) {
+	if err := os.RemoveAll(s.compose.RepoDir(envID, project)); err != nil {
+		s.logger.Warn("could not remove the previous git checkout", "stack", project, "err", err)
+	}
 }
 
 func (s *Service) deployGit(

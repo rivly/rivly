@@ -2,6 +2,8 @@ package stack
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -128,5 +130,58 @@ func TestDeployRefusesAStackBeingUpdated(t *testing.T) {
 	}
 	if got := kindOf(t, err); got != KindConflict {
 		t.Fatalf("kind = %v, want KindConflict", got)
+	}
+}
+
+func TestDeploySwitchingFromGitToContentDropsTheCheckout(t *testing.T) {
+	root := t.TempDir()
+	h := newHarness(t, fakeDocker{}, fakeCompose{repoDir: root})
+	h.seed(t, "app", fakeRemote(t, headA), headA, 15, 1)
+
+	checkout := filepath.Join(root, "app")
+	if err := os.MkdirAll(checkout, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(checkout, "docker-compose.yml"), []byte("services: {}\n"), 0o600); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	err := h.Deploy(context.Background(), h.env(t), DeployInput{
+		Name:    "app",
+		Source:  SourceContent,
+		Content: "services:\n  web:\n    image: nginx\n",
+	})
+	if err != nil {
+		t.Fatalf("Deploy: %v", err)
+	}
+
+	if _, statErr := os.Stat(checkout); !os.IsNotExist(statErr) {
+		t.Fatalf("the git checkout must be dropped when a stack stops being a git stack, got %v", statErr)
+	}
+
+	if got := h.reload(t, "app").Source; got != SourceContent {
+		t.Errorf("source = %q, want %q", got, SourceContent)
+	}
+}
+
+func TestDeployContentStackLeavesTheCheckoutAlone(t *testing.T) {
+	root := t.TempDir()
+	h := newHarness(t, fakeDocker{}, fakeCompose{repoDir: root})
+
+	if err := h.Deploy(context.Background(), h.env(t), DeployInput{Name: "app", Content: "services: {}"}); err != nil {
+		t.Fatalf("first Deploy: %v", err)
+	}
+
+	checkout := filepath.Join(root, "app")
+	if err := os.MkdirAll(checkout, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+
+	if err := h.Deploy(context.Background(), h.env(t), DeployInput{Name: "app", Content: "services: {b: c}"}); err != nil {
+		t.Fatalf("second Deploy: %v", err)
+	}
+
+	if _, statErr := os.Stat(checkout); statErr != nil {
+		t.Fatalf("redeploying a content stack must not touch anything else: %v", statErr)
 	}
 }
