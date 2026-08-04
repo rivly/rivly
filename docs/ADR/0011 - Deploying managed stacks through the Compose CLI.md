@@ -6,8 +6,10 @@
 
 > **Amended 2026-08-04.** A consequence originally stated that
 > `RIVLY_COMPOSE_BIN` accepted a single executable, which made Compose v2
-> awkward to configure. That was a defect and has been fixed. The decision
-> itself is unchanged.
+> awkward to configure. That was a defect and has been fixed. The tension with
+> the distroless image is resolved by
+> [ADR-0016](<0016 - A minimal base image carrying the Compose plugin.md>). The
+> decision itself is unchanged.
 
 ---
 

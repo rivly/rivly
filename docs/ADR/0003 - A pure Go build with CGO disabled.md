@@ -4,6 +4,10 @@
 | **Date** | 2026-07-13 |
 | **Status** | Accepted |
 
+> **Amended 2026-08-04.** The production image is no longer distroless, see
+> [ADR-0016](<0016 - A minimal base image carrying the Compose plugin.md>). The
+> pure Go rule itself is unchanged and still in force.
+
 ---
 
 ## Context

@@ -46,7 +46,7 @@ self-hosted interface. No accounts, no telemetry, no lock-in.
 | Backend | Go, chi, official Docker SDK (`moby/moby/client`) |
 | Database | SQLite (pure-Go, no CGO) |
 | Frontend | React, Vite, TanStack Router and Query |
-| Packaging | Single binary with the UI embedded, distroless image |
+| Packaging | Single binary with the UI embedded, one container image |
 
 ## Development
 

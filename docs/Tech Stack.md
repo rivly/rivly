@@ -52,8 +52,8 @@ See [Docker Integration](<Docker Integration.md>).
 
 SQLite means no database to run alongside the container, which keeps the install
 to one artifact. `modernc.org/sqlite` is a pure Go implementation, so
-`CGO_ENABLED=0` still holds and the distroless image stays viable.
-`mattn/go-sqlite3` would break both.
+`CGO_ENABLED=0` still holds and the binary stays static and portable across base
+images. `mattn/go-sqlite3` would break both.
 
 sqlc generates type-safe code from real SQL. There is no ORM: the queries stay
 readable, reviewable, and cheap to reason about.
@@ -74,9 +74,9 @@ startup.
 Compose has no usable Go library. Reimplementing its file format and dependency
 resolution is out of scope, so Rivly shells out.
 
-This is the one dependency that is not satisfied by the binary itself, and it is
-in tension with the distroless image described in [Packaging](Packaging.md). That
-tension is unresolved and deliberate for now.
+This is the one dependency that is not satisfied by the binary itself. It is
+resolved by shipping the Compose plugin inside the image, which is why that image
+is not distroless. See [Packaging](Packaging.md).
 
 ---
 

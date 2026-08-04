@@ -14,6 +14,7 @@ import (
 const (
 	composeTimeout = 5 * time.Minute
 	probeTimeout   = 5 * time.Second
+	dataDirMarker  = "<data>"
 	composeFile    = "docker-compose.yml"
 	envFile        = ".env"
 	repoSubdir     = "repo"
@@ -194,7 +195,15 @@ func (r *Runner) run(ctx context.Context, dockerHost, dir, project, file, envPat
 	cmd.Env = withDockerHost(os.Environ(), dockerHost)
 
 	out, err := cmd.CombinedOutput()
-	return strings.TrimSpace(string(out)), err
+	return r.redact(strings.TrimSpace(string(out))), err
+}
+
+func (r *Runner) redact(out string) string {
+	absolute, err := filepath.Abs(r.dataDir)
+	if err != nil || absolute == string(filepath.Separator) {
+		return out
+	}
+	return strings.ReplaceAll(out, absolute, dataDirMarker)
 }
 
 func withDockerHost(env []string, dockerHost string) []string {

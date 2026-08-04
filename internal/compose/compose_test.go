@@ -5,6 +5,7 @@ import (
 	"errors"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -74,5 +75,51 @@ func TestWithDockerHostReplacesAnyInheritedValue(t *testing.T) {
 	want := []string{"PATH=/bin", "HOME=/root", "DOCKER_HOST=unix:///run/docker.sock"}
 	if !slices.Equal(got, want) {
 		t.Fatalf("withDockerHost = %v, want %v", got, want)
+	}
+}
+
+func TestRedactHidesTheDataDirectory(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	runner := &Runner{dataDir: dir}
+
+	out := runner.redact("services.web Additional property imagee is not allowed\n" +
+		"file: " + filepath.Join(dir, "stacks", "1", "app", "docker-compose.yml"))
+
+	if strings.Contains(out, dir) {
+		t.Fatalf("the host path must not reach the client: %q", out)
+	}
+	if !strings.Contains(out, "<data>/stacks/1/app/docker-compose.yml") {
+		t.Errorf("the useful part of the path must survive: %q", out)
+	}
+	if !strings.Contains(out, "Additional property imagee is not allowed") {
+		t.Errorf("the compose error itself must survive: %q", out)
+	}
+}
+
+func TestRedactWorksFromARelativeDataDirectory(t *testing.T) {
+	t.Parallel()
+
+	runner := &Runner{dataDir: "data"}
+	absolute, err := filepath.Abs("data")
+	if err != nil {
+		t.Fatalf("Abs: %v", err)
+	}
+
+	out := runner.redact("cannot read " + filepath.Join(absolute, "stacks", "1", "app"))
+	if strings.Contains(out, absolute) {
+		t.Fatalf("a relative data dir must still be redacted by its absolute form: %q", out)
+	}
+}
+
+func TestRedactLeavesOrdinaryOutputAlone(t *testing.T) {
+	t.Parallel()
+
+	runner := &Runner{dataDir: "data"}
+	const message = "invalid data in service web: no such image"
+
+	if got := runner.redact(message); got != message {
+		t.Fatalf("the word data must not be substituted on its own: %q", got)
 	}
 }

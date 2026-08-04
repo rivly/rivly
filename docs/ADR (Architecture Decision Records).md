@@ -81,3 +81,4 @@ it was written down.
 | 0013 | [Encrypted credential storage with a local key](<ADR/0013 - Encrypted credential storage with a local key.md>) | 2026-07-14 | Accepted |
 | 0014 | [A setup token to claim the instance](<ADR/0014 - A setup token to claim the instance.md>) | 2026-07-15 | Accepted |
 | 0015 | [A single SQLite connection](<ADR/0015 - A single SQLite connection.md>) | 2026-07-15 | Accepted |
+| 0016 | [A minimal base image carrying the Compose plugin](<ADR/0016 - A minimal base image carrying the Compose plugin.md>) | 2026-08-04 | Accepted |
