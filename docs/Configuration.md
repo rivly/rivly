@@ -36,8 +36,11 @@ backed up.
 `docker compose` first, then `docker-compose`, and logs which one it resolved.
 
 Setting it accepts a full command, not just an executable, so `docker compose`,
-`docker-compose` and an absolute path to the plugin binary are all valid. When
-nothing resolves, Rivly still starts and every other feature works, but
+`docker-compose` and an absolute path to the plugin binary are all valid. The
+executable must exist, otherwise the override is refused and reported at startup
+rather than at the first deploy.
+
+When nothing resolves, Rivly still starts and every other feature works, but
 deploying a managed stack fails with an explicit error.
 
 `RIVLY_TRUSTED_ORIGINS` is only needed when the dashboard is served from a

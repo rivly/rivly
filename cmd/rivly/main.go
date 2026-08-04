@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -26,16 +28,20 @@ import (
 const shutdownTimeout = 10 * time.Second
 
 func main() {
-	level := new(slog.LevelVar)
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level}))
-	if err := run(logger, level); err != nil {
-		logger.Error("fatal", "err", err)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	if err := run(ctx, os.Getenv, os.Stdout); err != nil {
+		fmt.Fprintf(os.Stderr, "rivly: %s\n", err)
 		os.Exit(1)
 	}
 }
 
-func run(logger *slog.Logger, level *slog.LevelVar) error {
-	cfg, err := config.Load()
+func run(ctx context.Context, getenv func(string) string, stdout io.Writer) error {
+	level := new(slog.LevelVar)
+	logger := slog.New(slog.NewJSONHandler(stdout, &slog.HandlerOptions{Level: level}))
+
+	cfg, err := config.Load(getenv)
 	if err != nil {
 		return err
 	}
@@ -53,11 +59,11 @@ func run(logger *slog.Logger, level *slog.LevelVar) error {
 	logger.Info("database ready", "path", cfg.DatabasePath)
 
 	queries := db.New(sqlDB)
-	if err := seedLocalEnvironment(context.Background(), queries, cfg.DockerHost); err != nil {
+	if err := seedLocalEnvironment(ctx, queries, cfg.DockerHost); err != nil {
 		return err
 	}
 
-	cfg.SetupToken, err = resolveSetupToken(context.Background(), queries, cfg.SetupToken, logger)
+	cfg.SetupToken, err = resolveSetupToken(ctx, queries, cfg.SetupToken, logger)
 	if err != nil {
 		return err
 	}
@@ -84,7 +90,7 @@ func run(logger *slog.Logger, level *slog.LevelVar) error {
 	local := auth.NewLocal(queries, sqlDB)
 	srv := server.New(logger, queries, sessions, local, dockerManager, composeRunner, eventsHub, registries, gitCredentials, cfg)
 
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	ctx, stop := context.WithCancel(ctx)
 	defer stop()
 
 	for _, loop := range []func(context.Context){srv.RunPoller, srv.RunWatchers, srv.RunStackSync} {

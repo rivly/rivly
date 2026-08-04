@@ -39,8 +39,15 @@ func (r *Runner) Command() string {
 	return strings.Join(r.command, " ")
 }
 
+func parseCommand(bin string) []string {
+	return strings.Fields(bin)
+}
+
 func resolveCommand(bin string) []string {
-	if override := strings.Fields(bin); len(override) > 0 {
+	if override := parseCommand(bin); len(override) > 0 {
+		if _, err := exec.LookPath(override[0]); err != nil {
+			return nil
+		}
 		return override
 	}
 	for _, candidate := range candidates {

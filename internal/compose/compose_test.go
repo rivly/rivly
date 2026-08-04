@@ -3,11 +3,12 @@ package compose
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"slices"
 	"testing"
 )
 
-func TestResolveCommandHonoursTheOverride(t *testing.T) {
+func TestParseCommand(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
@@ -25,10 +26,19 @@ func TestResolveCommandHonoursTheOverride(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			if got := resolveCommand(tc.bin); !slices.Equal(got, tc.want) {
-				t.Fatalf("resolveCommand(%q) = %v, want %v", tc.bin, got, tc.want)
+			if got := parseCommand(tc.bin); !slices.Equal(got, tc.want) {
+				t.Fatalf("parseCommand(%q) = %v, want %v", tc.bin, got, tc.want)
 			}
 		})
+	}
+}
+
+func TestResolveCommandRejectsAnOverrideThatDoesNotExist(t *testing.T) {
+	t.Parallel()
+
+	missing := filepath.Join(t.TempDir(), "compose-that-is-not-there")
+	if got := resolveCommand(missing); got != nil {
+		t.Fatalf("a configured executable that does not exist must not be trusted, got %v", got)
 	}
 }
 

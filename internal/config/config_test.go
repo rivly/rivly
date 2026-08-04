@@ -2,6 +2,7 @@ package config
 
 import (
 	"log/slog"
+	"os"
 	"testing"
 	"time"
 )
@@ -11,7 +12,7 @@ func TestLoadDefaults(t *testing.T) {
 	t.Setenv("RIVLY_POLL_INTERVAL", "")
 	t.Setenv("RIVLY_TRUSTED_ORIGINS", "")
 
-	cfg, err := Load()
+	cfg, err := Load(os.Getenv)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
@@ -32,7 +33,7 @@ func TestLoadRejectsInvalidTrustedOrigin(t *testing.T) {
 	} {
 		t.Run(origin, func(t *testing.T) {
 			t.Setenv("RIVLY_TRUSTED_ORIGINS", origin)
-			if _, err := Load(); err == nil {
+			if _, err := Load(os.Getenv); err == nil {
 				t.Fatalf("%q must be rejected, not silently ignored", origin)
 			}
 		})
@@ -41,7 +42,7 @@ func TestLoadRejectsInvalidTrustedOrigin(t *testing.T) {
 
 func TestLoadAcceptsValidTrustedOrigins(t *testing.T) {
 	t.Setenv("RIVLY_TRUSTED_ORIGINS", "https://rivly.dev, http://localhost:5173")
-	cfg, err := Load()
+	cfg, err := Load(os.Getenv)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
@@ -52,14 +53,14 @@ func TestLoadAcceptsValidTrustedOrigins(t *testing.T) {
 
 func TestLoadRejectsInvalidPollInterval(t *testing.T) {
 	t.Setenv("RIVLY_POLL_INTERVAL", "30x")
-	if _, err := Load(); err == nil {
+	if _, err := Load(os.Getenv); err == nil {
 		t.Fatal("a malformed duration must be rejected, not silently replaced by the default")
 	}
 }
 
 func TestLoadAcceptsValidPollInterval(t *testing.T) {
 	t.Setenv("RIVLY_POLL_INTERVAL", "30s")
-	cfg, err := Load()
+	cfg, err := Load(os.Getenv)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
@@ -90,7 +91,7 @@ func TestLoadLogLevel(t *testing.T) {
 				t.Setenv("RIVLY_LOG_LEVEL", tc.value)
 			}
 
-			cfg, err := Load()
+			cfg, err := Load(os.Getenv)
 			if tc.wantErr {
 				if err == nil {
 					t.Fatalf("Load(%q): want an error, got none", tc.value)

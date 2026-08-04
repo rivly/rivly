@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 )
@@ -21,26 +20,26 @@ type Config struct {
 	LogLevel       slog.Level
 }
 
-func Load() (Config, error) {
-	pollInterval, err := envDuration("RIVLY_POLL_INTERVAL", 5*time.Second)
+func Load(getenv func(string) string) (Config, error) {
+	pollInterval, err := envDuration(getenv, "RIVLY_POLL_INTERVAL", 5*time.Second)
 	if err != nil {
 		return Config{}, err
 	}
 
-	logLevel, err := envLevel("RIVLY_LOG_LEVEL", slog.LevelInfo)
+	logLevel, err := envLevel(getenv, "RIVLY_LOG_LEVEL", slog.LevelInfo)
 	if err != nil {
 		return Config{}, err
 	}
 
 	cfg := Config{
-		Addr:           env("RIVLY_ADDR", ":8080"),
-		DatabasePath:   env("RIVLY_DATABASE", "rivly.db"),
-		TrustedOrigins: splitNonEmpty(os.Getenv("RIVLY_TRUSTED_ORIGINS")),
-		DockerHost:     env("DOCKER_HOST", "unix:///var/run/docker.sock"),
+		Addr:           env(getenv, "RIVLY_ADDR", ":8080"),
+		DatabasePath:   env(getenv, "RIVLY_DATABASE", "rivly.db"),
+		TrustedOrigins: splitNonEmpty(getenv("RIVLY_TRUSTED_ORIGINS")),
+		DockerHost:     env(getenv, "DOCKER_HOST", "unix:///var/run/docker.sock"),
 		PollInterval:   pollInterval,
-		DataDir:        env("RIVLY_DATA", "data"),
-		ComposeBin:     os.Getenv("RIVLY_COMPOSE_BIN"),
-		SetupToken:     os.Getenv("RIVLY_SETUP_TOKEN"),
+		DataDir:        env(getenv, "RIVLY_DATA", "data"),
+		ComposeBin:     getenv("RIVLY_COMPOSE_BIN"),
+		SetupToken:     getenv("RIVLY_SETUP_TOKEN"),
 		LogLevel:       logLevel,
 	}
 
@@ -60,8 +59,8 @@ func validateTrustedOrigins(origins []string) error {
 	return nil
 }
 
-func envLevel(key string, fallback slog.Level) (slog.Level, error) {
-	v := os.Getenv(key)
+func envLevel(getenv func(string) string, key string, fallback slog.Level) (slog.Level, error) {
+	v := getenv(key)
 	if v == "" {
 		return fallback, nil
 	}
@@ -72,8 +71,8 @@ func envLevel(key string, fallback slog.Level) (slog.Level, error) {
 	return level, nil
 }
 
-func envDuration(key string, fallback time.Duration) (time.Duration, error) {
-	v := os.Getenv(key)
+func envDuration(getenv func(string) string, key string, fallback time.Duration) (time.Duration, error) {
+	v := getenv(key)
 	if v == "" {
 		return fallback, nil
 	}
@@ -84,8 +83,8 @@ func envDuration(key string, fallback time.Duration) (time.Duration, error) {
 	return d, nil
 }
 
-func env(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
+func env(getenv func(string) string, key, fallback string) string {
+	if v := getenv(key); v != "" {
 		return v
 	}
 	return fallback
