@@ -1,5 +1,3 @@
-# ADR-0003 - A pure Go build with CGO disabled
-
 | Field | Value |
 | --- | --- |
 | **Identifier** | ADR-0003 |

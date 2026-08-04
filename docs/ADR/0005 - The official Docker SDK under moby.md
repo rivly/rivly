@@ -1,5 +1,3 @@
-# ADR-0005 - The official Docker SDK under moby
-
 | Field | Value |
 | --- | --- |
 | **Identifier** | ADR-0005 |

@@ -1,5 +1,3 @@
-# ADR-0013 - Encrypted credential storage with a local key
-
 | Field | Value |
 | --- | --- |
 | **Identifier** | ADR-0013 |

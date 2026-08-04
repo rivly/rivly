@@ -1,5 +1,3 @@
-# ADR-0002 - SQLite as the only datastore
-
 | Field | Value |
 | --- | --- |
 | **Identifier** | ADR-0002 |

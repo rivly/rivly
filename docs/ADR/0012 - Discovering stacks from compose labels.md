@@ -1,5 +1,3 @@
-# ADR-0012 - Discovering stacks from compose labels
-
 | Field | Value |
 | --- | --- |
 | **Identifier** | ADR-0012 |

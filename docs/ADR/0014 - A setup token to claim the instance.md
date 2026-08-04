@@ -1,5 +1,3 @@
-# ADR-0014 - A setup token to claim the instance
-
 | Field | Value |
 | --- | --- |
 | **Identifier** | ADR-0014 |

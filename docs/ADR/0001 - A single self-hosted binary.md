@@ -1,5 +1,3 @@
-# ADR-0001 - A single self-hosted binary
-
 | Field | Value |
 | --- | --- |
 | **Identifier** | ADR-0001 |

@@ -1,5 +1,3 @@
-# ADR-0009 - A poller alongside Docker event watchers
-
 | Field | Value |
 | --- | --- |
 | **Identifier** | ADR-0009 |

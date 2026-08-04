@@ -1,5 +1,3 @@
-# ADR-0000 - Template
-
 | Field | Value |
 | --- | --- |
 | **Identifier** | ADR-0000 |

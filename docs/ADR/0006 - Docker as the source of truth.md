@@ -1,5 +1,3 @@
-# ADR-0006 - Docker as the source of truth
-
 | Field | Value |
 | --- | --- |
 | **Identifier** | ADR-0006 |

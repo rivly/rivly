@@ -1,5 +1,3 @@
-# ADR-0011 - Deploying managed stacks through the Compose CLI
-
 | Field | Value |
 | --- | --- |
 | **Identifier** | ADR-0011 |

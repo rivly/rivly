@@ -1,5 +1,3 @@
-# ADR-0007 - Cookie sessions instead of tokens
-
 | Field | Value |
 | --- | --- |
 | **Identifier** | ADR-0007 |

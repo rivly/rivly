@@ -1,5 +1,3 @@
-# ADR-0015 - A single SQLite connection
-
 | Field | Value |
 | --- | --- |
 | **Identifier** | ADR-0015 |

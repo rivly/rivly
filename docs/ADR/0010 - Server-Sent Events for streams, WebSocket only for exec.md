@@ -1,5 +1,3 @@
-# ADR-0010 - Server-Sent Events for streams, WebSocket only for exec
-
 | Field | Value |
 | --- | --- |
 | **Identifier** | ADR-0010 |

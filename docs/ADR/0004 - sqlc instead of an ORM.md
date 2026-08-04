@@ -1,5 +1,3 @@
-# ADR-0004 - sqlc instead of an ORM
-
 | Field | Value |
 | --- | --- |
 | **Identifier** | ADR-0004 |

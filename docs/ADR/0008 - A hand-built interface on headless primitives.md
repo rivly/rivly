@@ -1,5 +1,3 @@
-# ADR-0008 - A hand-built interface on headless primitives
-
 | Field | Value |
 | --- | --- |
 | **Identifier** | ADR-0008 |
