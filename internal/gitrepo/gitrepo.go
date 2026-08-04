@@ -46,9 +46,15 @@ func Clone(ctx context.Context, dir string, opts Options) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, cloneTimeout)
 	defer cancel()
 
-	repo, err := attempt(ctx, dir, opts, plumbing.NewBranchReferenceName)
+	staging, err := newStaging(dir)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = os.RemoveAll(staging) }()
+
+	repo, err := attempt(ctx, staging, opts, plumbing.NewBranchReferenceName)
 	if err != nil && opts.Ref != "" {
-		repo, err = attempt(ctx, dir, opts, plumbing.NewTagReferenceName)
+		repo, err = attempt(ctx, staging, opts, plumbing.NewTagReferenceName)
 	}
 	if err != nil {
 		return "", mapError(err)
@@ -58,7 +64,38 @@ func Clone(ctx context.Context, dir string, opts Options) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("resolve head: %w", err)
 	}
+
+	if err := install(staging, dir); err != nil {
+		return "", err
+	}
 	return head.Hash().String(), nil
+}
+
+func newStaging(dir string) (string, error) {
+	parent := filepath.Dir(dir)
+	if err := os.MkdirAll(parent, 0o755); err != nil {
+		return "", fmt.Errorf("create repository parent directory: %w", err)
+	}
+	staging, err := os.MkdirTemp(parent, ".clone-")
+	if err != nil {
+		return "", fmt.Errorf("create staging directory: %w", err)
+	}
+	return staging, nil
+}
+
+func install(staging, dir string) error {
+	previous := dir + ".previous"
+	_ = os.RemoveAll(previous)
+
+	if err := os.Rename(dir, previous); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("move the previous checkout aside: %w", err)
+	}
+	if err := os.Rename(staging, dir); err != nil {
+		_ = os.Rename(previous, dir)
+		return fmt.Errorf("install the new checkout: %w", err)
+	}
+	_ = os.RemoveAll(previous)
+	return nil
 }
 
 func attempt(ctx context.Context, dir string, opts Options, refName func(string) plumbing.ReferenceName) (*git.Repository, error) {

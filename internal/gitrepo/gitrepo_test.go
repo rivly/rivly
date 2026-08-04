@@ -1,11 +1,52 @@
 package gitrepo
 
 import (
+	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/go-git/go-git/v5/plumbing"
 )
+
+func TestCloneFailureKeepsTheWorkingCheckout(t *testing.T) {
+	t.Parallel()
+
+	unreachable := httptest.NewServer(http.HandlerFunc(http.NotFound))
+	defer unreachable.Close()
+
+	project := t.TempDir()
+	dir := filepath.Join(project, "repo")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	compose := filepath.Join(dir, "docker-compose.yml")
+	if err := os.WriteFile(compose, []byte("services: {}\n"), 0o600); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	if _, err := Clone(context.Background(), dir, Options{URL: unreachable.URL + "/acme/app.git"}); err == nil {
+		t.Fatal("expected the clone to fail")
+	}
+
+	if _, err := os.Stat(compose); err != nil {
+		t.Fatalf("a failed clone must leave the working checkout alone: %v", err)
+	}
+
+	entries, err := os.ReadDir(project)
+	if err != nil {
+		t.Fatalf("ReadDir: %v", err)
+	}
+	for _, e := range entries {
+		if strings.HasPrefix(e.Name(), ".clone-") || strings.HasSuffix(e.Name(), ".previous") {
+			t.Fatalf("a failed clone must not leave %q behind", e.Name())
+		}
+	}
+}
 
 func refsFixture() []*plumbing.Reference {
 	return []*plumbing.Reference{
