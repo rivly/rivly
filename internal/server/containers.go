@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -168,7 +169,7 @@ func (s *Server) handleCreateContainer(w http.ResponseWriter, r *http.Request) {
 			s.writeError(w, http.StatusBadGateway, "container created but could not start")
 			return
 		}
-		if strings.Contains(err.Error(), "pull image") {
+		if errors.Is(err, docker.ErrImagePull) {
 			s.writeError(w, http.StatusBadGateway, "could not pull the image")
 			return
 		}

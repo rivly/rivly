@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/rivly/rivly/internal/database"
 	"github.com/rivly/rivly/internal/database/db"
 	"github.com/rivly/rivly/internal/registry"
 )
@@ -101,7 +102,7 @@ func (s *Server) handleCreateRegistry(w http.ResponseWriter, r *http.Request) {
 
 	reg, err := s.registries.Create(r.Context(), req.Name, req.Server, req.Username, req.Password, s.currentUserName(r))
 	if err != nil {
-		if strings.Contains(err.Error(), "UNIQUE") {
+		if database.IsUniqueViolation(err) {
 			s.writeError(w, http.StatusConflict, "a registry for this server already exists")
 			return
 		}
@@ -136,7 +137,7 @@ func (s *Server) handleUpdateRegistry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		if strings.Contains(err.Error(), "UNIQUE") {
+		if database.IsUniqueViolation(err) {
 			s.writeError(w, http.StatusConflict, "a registry for this server already exists")
 			return
 		}

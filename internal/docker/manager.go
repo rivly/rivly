@@ -2,6 +2,7 @@ package docker
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -19,6 +20,8 @@ const (
 	composeServiceLabel    = "com.docker.compose.service"
 	composeWorkingDirLabel = "com.docker.compose.project.working_dir"
 )
+
+var ErrImagePull = errors.New("pull image")
 
 type AuthResolver func(ctx context.Context, ref string) string
 

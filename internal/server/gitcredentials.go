@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/rivly/rivly/internal/database"
 	"github.com/rivly/rivly/internal/gitcred"
 )
 
@@ -65,7 +66,7 @@ func (s *Server) handleCreateGitCredential(w http.ResponseWriter, r *http.Reques
 
 	cred, err := s.gitcreds.Create(r.Context(), req.Name, req.Username, req.Token, s.currentUserName(r))
 	if err != nil {
-		if strings.Contains(err.Error(), "UNIQUE") {
+		if database.IsUniqueViolation(err) {
 			s.writeError(w, http.StatusConflict, "a credential with this name already exists")
 			return
 		}
@@ -99,7 +100,7 @@ func (s *Server) handleUpdateGitCredential(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if err != nil {
-		if strings.Contains(err.Error(), "UNIQUE") {
+		if database.IsUniqueViolation(err) {
 			s.writeError(w, http.StatusConflict, "a credential with this name already exists")
 			return
 		}

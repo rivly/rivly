@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	cerrdefs "github.com/containerd/errdefs"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/api/types/mount"
 	"github.com/moby/moby/api/types/network"
@@ -280,9 +281,9 @@ func (m *Manager) ContainerCreate(ctx context.Context, id int64, host string, in
 		HostConfig: hostConfig,
 	}
 	res, err := cli.ContainerCreate(ctx, opts)
-	if err != nil && strings.Contains(err.Error(), "No such image") {
+	if err != nil && cerrdefs.IsNotFound(err) {
 		if perr := m.pullImage(ctx, cli, in.Image); perr != nil {
-			return "", fmt.Errorf("pull image %q: %w", in.Image, perr)
+			return "", fmt.Errorf("%w %q: %w", ErrImagePull, in.Image, perr)
 		}
 		res, err = cli.ContainerCreate(ctx, opts)
 	}
