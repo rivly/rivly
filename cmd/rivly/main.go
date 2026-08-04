@@ -26,18 +26,21 @@ import (
 const shutdownTimeout = 10 * time.Second
 
 func main() {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	if err := run(logger); err != nil {
+	level := new(slog.LevelVar)
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level}))
+	if err := run(logger, level); err != nil {
 		logger.Error("fatal", "err", err)
 		os.Exit(1)
 	}
 }
 
-func run(logger *slog.Logger) error {
+func run(logger *slog.Logger, level *slog.LevelVar) error {
 	cfg, err := config.Load()
 	if err != nil {
 		return err
 	}
+	level.Set(cfg.LogLevel)
+	logger.Debug("configuration loaded", "addr", cfg.Addr, "data", cfg.DataDir, "poll", cfg.PollInterval)
 
 	sqlDB, err := database.Open(cfg.DatabasePath)
 	if err != nil {

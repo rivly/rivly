@@ -1,6 +1,7 @@
 package config
 
 import (
+	"log/slog"
 	"testing"
 	"time"
 )
@@ -64,5 +65,44 @@ func TestLoadAcceptsValidPollInterval(t *testing.T) {
 	}
 	if cfg.PollInterval != 30*time.Second {
 		t.Fatalf("PollInterval = %v, want 30s", cfg.PollInterval)
+	}
+}
+
+func TestLoadLogLevel(t *testing.T) {
+	cases := map[string]struct {
+		value   string
+		want    slog.Level
+		wantErr bool
+	}{
+		"unset defaults to info": {"", slog.LevelInfo, false},
+		"debug":                  {"debug", slog.LevelDebug, false},
+		"warn":                   {"warn", slog.LevelWarn, false},
+		"uppercase is accepted":  {"ERROR", slog.LevelError, false},
+		"offset syntax":          {"info+2", slog.LevelInfo + 2, false},
+		"nonsense is rejected":   {"chatty", 0, true},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			if tc.value == "" {
+				t.Setenv("RIVLY_LOG_LEVEL", "")
+			} else {
+				t.Setenv("RIVLY_LOG_LEVEL", tc.value)
+			}
+
+			cfg, err := Load()
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("Load(%q): want an error, got none", tc.value)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("Load(%q): %v", tc.value, err)
+			}
+			if cfg.LogLevel != tc.want {
+				t.Errorf("LogLevel = %v, want %v", cfg.LogLevel, tc.want)
+			}
+		})
 	}
 }

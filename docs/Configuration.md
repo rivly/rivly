@@ -18,6 +18,7 @@ than being silently ignored.
 | `RIVLY_COMPOSE_BIN` | detected | Compose command used to deploy managed stacks |
 | `RIVLY_TRUSTED_ORIGINS` | empty | Comma-separated origins allowed to send unsafe requests, as `scheme://host` |
 | `RIVLY_SETUP_TOKEN` | generated | Token required to claim the instance |
+| `RIVLY_LOG_LEVEL` | `info` | Log verbosity: `debug`, `info`, `warn` or `error` |
 
 ---
 
@@ -41,6 +42,9 @@ deploying a managed stack fails with an explicit error.
 
 `RIVLY_TRUSTED_ORIGINS` is only needed when the dashboard is served from a
 different origin than the API. An invalid origin aborts startup.
+
+`RIVLY_LOG_LEVEL` is applied as soon as the configuration is read, so a failure
+to parse the configuration itself is still reported at the default level.
 
 `RIVLY_SETUP_TOKEN` pins the setup token instead of generating a new one, which
 is what makes an automated first-run provisioning possible. It is ignored once an

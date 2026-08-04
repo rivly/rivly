@@ -3,8 +3,10 @@
 run:
 	go run ./cmd/rivly
 
+VERSION ?= dev
+
 build:
-	CGO_ENABLED=0 go build -ldflags="-w -s" -o bin/rivly ./cmd/rivly
+	CGO_ENABLED=0 go build -ldflags="-w -s -X github.com/rivly/rivly/internal/buildinfo.version=$(VERSION)" -o bin/rivly ./cmd/rivly
 
 test:
 	go test $(shell go list ./... | grep -v '/data/')

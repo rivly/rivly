@@ -201,6 +201,7 @@ func (s *Server) Router() http.Handler {
 		r.Group(func(r chi.Router) {
 			r.Use(s.sessions.LoadAndSave)
 
+			r.With(s.requireAuth).Get("/version", s.handleVersion)
 			r.Get("/setup", s.handleSetupStatus)
 			r.With(authLimit).Post("/setup", s.handleSetup)
 			r.With(authLimit).Post("/login", s.handleLogin)

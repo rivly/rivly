@@ -21,7 +21,11 @@ surface yet, and no stability guarantee is offered outside a release.
 Business endpoints live under `/api/v1/`.
 
 Operational endpoints such as `/api/health` are unversioned, because a probe
-should not have to follow an API version.
+should not have to follow an API version. `/api/health` verifies that the
+database answers, and returns `503` when it does not.
+
+`/api/v1/version` reports the build, and requires a session: the running version
+tells an attacker which advisories apply.
 
 A breaking change means a new prefix, not a mutation of the existing one.
 
@@ -61,6 +65,7 @@ same-origin. Calling the backend directly from `:5173` will be rejected.
 | Prefix | Covers |
 | --- | --- |
 | `/setup`, `/login`, `/logout`, `/me` | Account and session |
+| `/version` | Build version, commit and Go version. Requires a session |
 | `/environments` | Docker endpoints and their system info |
 | `/environments/{id}/containers` | List, create, inspect, act |
 | `/environments/{id}/images` | List, inspect, pull, prune, act |

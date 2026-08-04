@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -24,6 +25,24 @@ import (
 )
 
 func newTestServer(t *testing.T, dockerClient dockerService, composeRunner composeRunner) *Server {
+	srv, _ := newTestServerWithDB(t, dockerClient, composeRunner)
+	return srv
+}
+
+func closeTestDatabase(t *testing.T, srv *Server) {
+	t.Helper()
+	sqlDB, ok := testDatabases[srv]
+	if !ok {
+		t.Fatal("no database registered for this server")
+	}
+	if err := sqlDB.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+}
+
+var testDatabases = map[*Server]*sql.DB{}
+
+func newTestServerWithDB(t *testing.T, dockerClient dockerService, composeRunner composeRunner) (*Server, *sql.DB) {
 	t.Helper()
 	sqlDB, err := database.Open(filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {
@@ -41,7 +60,10 @@ func newTestServer(t *testing.T, dockerClient dockerService, composeRunner compo
 	}
 	registries := registry.NewStore(queries, cipher)
 	gitCredentials := gitcred.NewStore(queries, cipher)
-	return New(logger, queries, auth.NewSessionManager(sqlDB), auth.NewLocal(queries, sqlDB), dockerClient, composeRunner, events.NewHub(), registries, gitCredentials, config.Config{SetupToken: testSetupToken})
+	srv := New(logger, queries, auth.NewSessionManager(sqlDB), auth.NewLocal(queries, sqlDB), dockerClient, composeRunner, events.NewHub(), registries, gitCredentials, config.Config{SetupToken: testSetupToken})
+	testDatabases[srv] = sqlDB
+	t.Cleanup(func() { delete(testDatabases, srv) })
+	return srv, sqlDB
 }
 
 func TestAuthFlow(t *testing.T) {

@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rivly/rivly/internal/auth"
+	"github.com/rivly/rivly/internal/buildinfo"
 	"github.com/rivly/rivly/internal/database/db"
 )
 
@@ -39,8 +40,32 @@ type setupInput struct {
 	Token string `json:"token"`
 }
 
-func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
+func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
+	if _, err := s.queries.Ping(r.Context()); err != nil {
+		s.logger.Error("health check failed", "err", err)
+		s.writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "unavailable"})
+		return
+	}
 	s.writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+type versionResponse struct {
+	Version string `json:"version"`
+	Commit  string `json:"commit,omitempty"`
+	BuiltAt string `json:"builtAt,omitempty"`
+	Dirty   bool   `json:"dirty,omitempty"`
+	Go      string `json:"go,omitempty"`
+}
+
+func (s *Server) handleVersion(w http.ResponseWriter, _ *http.Request) {
+	info := buildinfo.Read()
+	s.writeJSON(w, http.StatusOK, versionResponse{
+		Version: info.Version,
+		Commit:  info.Commit,
+		BuiltAt: info.BuiltAt,
+		Dirty:   info.Dirty,
+		Go:      info.Go,
+	})
 }
 
 func (s *Server) handleSetupStatus(w http.ResponseWriter, r *http.Request) {

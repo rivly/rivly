@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
@@ -17,10 +18,16 @@ type Config struct {
 	DataDir        string
 	ComposeBin     string
 	SetupToken     string
+	LogLevel       slog.Level
 }
 
 func Load() (Config, error) {
 	pollInterval, err := envDuration("RIVLY_POLL_INTERVAL", 5*time.Second)
+	if err != nil {
+		return Config{}, err
+	}
+
+	logLevel, err := envLevel("RIVLY_LOG_LEVEL", slog.LevelInfo)
 	if err != nil {
 		return Config{}, err
 	}
@@ -34,6 +41,7 @@ func Load() (Config, error) {
 		DataDir:        env("RIVLY_DATA", "data"),
 		ComposeBin:     os.Getenv("RIVLY_COMPOSE_BIN"),
 		SetupToken:     os.Getenv("RIVLY_SETUP_TOKEN"),
+		LogLevel:       logLevel,
 	}
 
 	if err := validateTrustedOrigins(cfg.TrustedOrigins); err != nil {
@@ -50,6 +58,18 @@ func validateTrustedOrigins(origins []string) error {
 		}
 	}
 	return nil
+}
+
+func envLevel(key string, fallback slog.Level) (slog.Level, error) {
+	v := os.Getenv(key)
+	if v == "" {
+		return fallback, nil
+	}
+	var level slog.Level
+	if err := level.UnmarshalText([]byte(v)); err != nil {
+		return 0, fmt.Errorf("%s: %q is not a valid log level, use debug, info, warn or error: %w", key, v, err)
+	}
+	return level, nil
 }
 
 func envDuration(key string, fallback time.Duration) (time.Duration, error) {
