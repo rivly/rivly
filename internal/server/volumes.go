@@ -2,15 +2,12 @@ package server
 
 import (
 	"net/http"
-	"regexp"
 	"strings"
 	"sync"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rivly/rivly/internal/docker"
 )
-
-var resourceNamePattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}$`)
 
 type volumeResponse struct {
 	Name       string `json:"name"`

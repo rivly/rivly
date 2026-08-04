@@ -14,7 +14,7 @@ func TestHubPublishReceive(t *testing.T) {
 	hub.Publish("environment.updated", map[string]int{"id": 7})
 
 	select {
-	case evt := <-sub:
+	case evt := <-sub.Events():
 		if evt.Type != "environment.updated" {
 			t.Fatalf("type: got %q", evt.Type)
 		}
@@ -35,7 +35,6 @@ func TestHubSlowSubscriberDoesNotBlock(t *testing.T) {
 	_, unsubscribe := hub.Subscribe()
 	defer unsubscribe()
 
-	// The subscriber never reads; a full buffer must not block the publisher.
 	done := make(chan struct{})
 	go func() {
 		for range 1000 {
@@ -51,12 +50,68 @@ func TestHubSlowSubscriberDoesNotBlock(t *testing.T) {
 	}
 }
 
-func TestHubUnsubscribe(t *testing.T) {
+func TestHubMarksASlowSubscriberStale(t *testing.T) {
+	hub := NewHub()
+	sub, unsubscribe := hub.Subscribe()
+	defer unsubscribe()
+
+	for range subscriberBuffer {
+		hub.Publish("noise", 1)
+	}
+
+	select {
+	case <-sub.Stale():
+		t.Fatal("a subscriber that kept up must not be marked stale")
+	default:
+	}
+	if got := hub.Dropped(); got != 0 {
+		t.Fatalf("dropped = %d before the buffer is full, want 0", got)
+	}
+
+	hub.Publish("overflow", 1)
+
+	select {
+	case <-sub.Stale():
+	default:
+		t.Fatal("a subscriber that missed an event must be told, or its view stays stale forever")
+	}
+	if got := hub.Dropped(); got != 1 {
+		t.Fatalf("dropped = %d, want 1", got)
+	}
+}
+
+func TestHubStaleIsReportedOnlyOnce(t *testing.T) {
+	hub := NewHub()
+	sub, unsubscribe := hub.Subscribe()
+	defer unsubscribe()
+
+	for range subscriberBuffer + 10 {
+		hub.Publish("noise", 1)
+	}
+
+	select {
+	case <-sub.Stale():
+	default:
+		t.Fatal("expected the subscriber to be stale")
+	}
+	if got := hub.Dropped(); got != 10 {
+		t.Fatalf("dropped = %d, want 10", got)
+	}
+}
+
+func TestHubUnsubscribeMarksTheSubscriptionStale(t *testing.T) {
 	hub := NewHub()
 	sub, unsubscribe := hub.Subscribe()
 	unsubscribe()
 
-	if _, ok := <-sub; ok {
-		t.Fatal("expected channel to be closed after unsubscribe")
+	select {
+	case <-sub.Stale():
+	default:
+		t.Fatal("unsubscribing must release a reader blocked on the subscription")
+	}
+
+	hub.Publish("after", 1)
+	if got := hub.Dropped(); got != 0 {
+		t.Fatalf("an unsubscribed reader must not count as a drop, got %d", got)
 	}
 }

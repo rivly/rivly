@@ -7,19 +7,6 @@ import (
 
 const missingSocket = "unix:///tmp/rivly-nonexistent.sock"
 
-func TestPingUnreachable(t *testing.T) {
-	m := NewManager()
-	defer m.Close()
-
-	st := m.Ping(context.Background(), 1, missingSocket)
-	if st.Up {
-		t.Fatal("expected down for a nonexistent socket")
-	}
-	if st.Error == "" {
-		t.Fatal("expected an error message")
-	}
-}
-
 func TestInfoUnreachable(t *testing.T) {
 	m := NewManager()
 	defer m.Close()

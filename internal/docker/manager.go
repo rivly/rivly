@@ -51,12 +51,6 @@ func (m *Manager) registryAuth(ctx context.Context, ref string) string {
 	return m.authFor(ctx, ref)
 }
 
-type Status struct {
-	Up         bool
-	APIVersion string
-	Error      string
-}
-
 type SystemInfo struct {
 	ServerVersion     string
 	OSType            string
@@ -91,20 +85,6 @@ func (m *Manager) clientFor(id int64, host string) (*client.Client, error) {
 	}
 	m.clients[id] = cachedClient{host: host, cli: cli}
 	return cli, nil
-}
-
-func (m *Manager) Ping(ctx context.Context, id int64, host string) Status {
-	cli, err := m.clientFor(id, host)
-	if err != nil {
-		return Status{Error: err.Error()}
-	}
-	ctx, cancel := context.WithTimeout(ctx, callTimeout)
-	defer cancel()
-	res, err := cli.Ping(ctx, client.PingOptions{})
-	if err != nil {
-		return Status{Error: err.Error()}
-	}
-	return Status{Up: true, APIVersion: res.APIVersion}
 }
 
 func (m *Manager) Info(ctx context.Context, id int64, host string) (SystemInfo, error) {

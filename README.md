@@ -50,7 +50,8 @@ self-hosted interface. No accounts, no telemetry, no lock-in.
 
 ## Development
 
-Prerequisites: **Go 1.24+**, **[Bun](https://bun.sh)**, and a running **Docker** daemon.
+Prerequisites: the Go version declared in `go.mod`, **[Bun](https://bun.sh)**, and a
+running **Docker** daemon.
 
 ```bash
 git clone https://github.com/rivly/rivly.git

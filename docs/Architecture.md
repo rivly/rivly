@@ -79,6 +79,11 @@ reported rather than silently killed.
 `internal/events` is a generic hub: subscribers get a buffered channel, and a
 publish that would block is dropped rather than delayed.
 
+A dropped event is not silent. The subscriber is marked stale, its stream is
+closed, and the browser reconnects and resyncs. That matters because the poller
+has already recorded the new fingerprint, so it will not republish: without the
+disconnect, the interface would stay wrong until the next unrelated change.
+
 The browser holds one `EventSource` on `/api/v1/events`. On each event it
 replaces the environment in the query cache and invalidates the resource lists.
 Logs, stats and image pulls are separate short-lived SSE streams. The container

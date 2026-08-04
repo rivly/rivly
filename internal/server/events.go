@@ -63,7 +63,11 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			flusher.Flush()
-		case evt := <-sub:
+		case <-sub.Stale():
+			s.logger.Warn("dropping a slow event stream, the client will reconnect and resync",
+				"dropped", s.events.Dropped())
+			return
+		case evt := <-sub.Events():
 			data, err := json.Marshal(evt)
 			if err != nil {
 				continue
