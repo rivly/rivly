@@ -83,10 +83,20 @@ func (f fakeCompose) DeployRepo(_ context.Context, _ string, _ int64, project, _
 }
 
 type fakeCredentials struct {
-	err error
+	err    error
+	asked  chan int64
+	locked sync.Mutex
 }
 
-func (f fakeCredentials) Credentials(_ context.Context, _ int64) (string, string, error) {
+func (f *fakeCredentials) Credentials(_ context.Context, id int64) (string, string, error) {
+	f.locked.Lock()
+	defer f.locked.Unlock()
+	if f.asked != nil {
+		select {
+		case f.asked <- id:
+		default:
+		}
+	}
 	return "git", "token", f.err
 }
 
@@ -97,6 +107,11 @@ type harness struct {
 }
 
 func newHarness(t *testing.T, dockerClient Docker, composeRunner Compose) *harness {
+	t.Helper()
+	return newHarnessWithCredentials(t, dockerClient, composeRunner, &fakeCredentials{})
+}
+
+func newHarnessWithCredentials(t *testing.T, dockerClient Docker, composeRunner Compose, creds Credentials) *harness {
 	t.Helper()
 
 	sqlDB, err := database.Open(filepath.Join(t.TempDir(), "test.db"))
@@ -121,7 +136,7 @@ func newHarness(t *testing.T, dockerClient Docker, composeRunner Compose) *harne
 		queries,
 		dockerClient,
 		composeRunner,
-		fakeCredentials{},
+		creds,
 		func(context.Context, db.Environment) {},
 		func(fn func()) {
 			h.running.Add(1)
@@ -156,6 +171,21 @@ func fakeRemote(t *testing.T, head string) string {
 	}))
 	t.Cleanup(srv.Close)
 	return srv.URL + "/acme/app.git"
+}
+
+func (h *harness) seedWithCredential(t *testing.T, name, url string, credentialID int64) db.Stack {
+	t.Helper()
+	st, err := h.queries.UpsertStack(context.Background(), db.UpsertStackParams{
+		EnvID: 1, Name: name, Content: "services: {}\n", Env: "[]",
+		CreatedBy: "tester", UpdatedBy: "tester", Source: SourceGit,
+		GitUrl: url, GitRef: "main", GitPath: "docker-compose.yml",
+		GitCommit: headA, GitRemoteHash: headA, GitAutoUpdate: 1,
+		GitPollInterval: 15, GitCredentialID: credentialID,
+	})
+	if err != nil {
+		t.Fatalf("UpsertStack(%s): %v", name, err)
+	}
+	return st
 }
 
 func (h *harness) seed(t *testing.T, name, url, remoteHash string, interval int64, autoUpdate int64) db.Stack {
@@ -361,5 +391,54 @@ func TestIsRunning(t *testing.T) {
 				t.Errorf("isRunning = %v, want %v", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestSyncFetchesTheStoredCredential(t *testing.T) {
+	asked := make(chan int64, 1)
+	creds := &fakeCredentials{asked: asked}
+	h := newHarnessWithCredentials(t, fakeDocker{}, fakeCompose{}, creds)
+	h.seedWithCredential(t, "app", fakeRemote(t, headA), 42)
+
+	h.syncAndWait(t)
+
+	select {
+	case id := <-asked:
+		if id != 42 {
+			t.Fatalf("the stored credential must be looked up by its own id, got %d", id)
+		}
+	default:
+		t.Fatal("a git stack with a credential must authenticate, otherwise every private repository fails")
+	}
+}
+
+func TestSyncSkipsTheCredentialLookupWhenThereIsNone(t *testing.T) {
+	asked := make(chan int64, 1)
+	creds := &fakeCredentials{asked: asked}
+	h := newHarnessWithCredentials(t, fakeDocker{}, fakeCompose{}, creds)
+	h.seed(t, "app", fakeRemote(t, headA), headA, 15, 1)
+
+	h.syncAndWait(t)
+
+	select {
+	case id := <-asked:
+		t.Fatalf("a public repository must not trigger a credential lookup, got id %d", id)
+	default:
+	}
+}
+
+func TestSyncReportsAMissingCredential(t *testing.T) {
+	creds := &fakeCredentials{err: errComposeFailed}
+	h := newHarnessWithCredentials(t, fakeDocker{}, fakeCompose{}, creds)
+	h.seedWithCredential(t, "app", fakeRemote(t, headB), 42)
+
+	h.syncAndWait(t)
+
+	st := h.reload(t, "app")
+	if st.GitLastError != "git credential not found" {
+		t.Fatalf("the user must be told why the sync stopped, got %q", st.GitLastError)
+	}
+	if st.GitRemoteHash != headA {
+		t.Errorf("a stack that could not be checked must keep its known hash, got %q", st.GitRemoteHash)
 	}
 }

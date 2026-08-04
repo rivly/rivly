@@ -34,7 +34,7 @@ func (m *Manager) Stacks(ctx context.Context, id int64, host string) ([]Stack, e
 		services map[string]bool
 	}
 	groups := make(map[string]*group)
-	order := make([]string, 0)
+	order := make([]*group, 0)
 	for _, c := range res.Items {
 		project := c.Labels[composeProjectLabel]
 		if project == "" {
@@ -47,7 +47,7 @@ func (m *Manager) Stacks(ctx context.Context, id int64, host string) ([]Stack, e
 				services: make(map[string]bool),
 			}
 			groups[project] = g
-			order = append(order, project)
+			order = append(order, g)
 		}
 		g.stack.Total++
 		if c.State == "running" {
@@ -59,8 +59,7 @@ func (m *Manager) Stacks(ctx context.Context, id int64, host string) ([]Stack, e
 	}
 
 	out := make([]Stack, 0, len(order))
-	for _, project := range order {
-		g := groups[project]
+	for _, g := range order {
 		g.stack.Services = len(g.services)
 		switch g.stack.Running {
 		case 0:
