@@ -13,8 +13,6 @@ These are the gaps between what Rivly is and what it claims to be.
   [Packaging](Packaging.md).
 - **Container image.** A Dockerfile and a published image, with the compose
   dependency resolved one way or another.
-- **Continuous integration.** Lint, test, build and govulncheck on every change.
-  See [Quality](Quality.md).
 - **Environment management.** Create, edit and delete environments, so a remote
   host can be added without editing the database.
 

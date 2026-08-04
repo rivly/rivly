@@ -15,9 +15,12 @@ implementation and a note are never allowed to diverge.
 ## Commands
 
 ```bash
-make lint     # golangci-lint, must pass
-make test     # go test
-make build    # static binary
+make build      # static binary
+make vet        # go vet
+make lint       # golangci-lint, must pass
+make test       # go test
+make test-race  # go test -race, what CI runs
+make vuln       # govulncheck
 
 cd web
 bun run lint   # oxlint, must pass
@@ -85,13 +88,17 @@ stable release, confirm it works with the current stack, and justify the version
 
 Pin versions. No floating constraints, no unmaintained packages.
 
-Run `govulncheck` before a release.
+`make vuln` runs govulncheck, and CI runs it on every change.
 
 ---
 
 ## Continuous integration
 
-Not set up yet. Tracked in [Roadmap](Roadmap.md).
+GitHub Actions runs three jobs on every push to `main` and every pull request:
+the backend (build, vet, lint, race-enabled tests), a govulncheck scan, and the
+frontend (lint and build).
 
-Until it exists, the validation commands above are run locally and their result
-reported in the change.
+CI calls the same `make` targets a developer runs, so the two can never drift.
+
+The Go version comes from `go.mod` rather than from the workflow, so bumping the
+module bumps CI with it.
