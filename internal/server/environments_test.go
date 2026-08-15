@@ -9,6 +9,7 @@ import (
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"github.com/rivly/rivly/internal/compose"
@@ -327,5 +328,42 @@ func TestEnvironmentSnapshotWhenDown(t *testing.T) {
 	}
 	if envs[0].LastSeen == nil {
 		t.Fatalf("expected lastSeen to be set")
+	}
+}
+
+func TestEnvironmentCRUD(t *testing.T) {
+	ts := httptest.NewServer(newTestServer(t, fakeDocker{}, fakeCompose{}).Router())
+	defer ts.Close()
+	client := authedClient(t, ts)
+
+	var created environmentDetailResponse
+	postJSONCreated(t, client, ts.URL+"/api/v1/environments",
+		`{"name":"prod","url":"tcp://10.0.0.4:2376"}`, &created)
+	if created.Name != "prod" || created.Kind != "remote" {
+		t.Fatalf("create: got %+v", created)
+	}
+
+	var updated environmentDetailResponse
+	putJSON(t, client, ts.URL+"/api/v1/environments/"+strconv.FormatInt(created.ID, 10),
+		`{"name":"prod-eu","url":"tcp://10.0.0.5:2376"}`, &updated)
+	if updated.Name != "prod-eu" || updated.URL != "tcp://10.0.0.5:2376" {
+		t.Fatalf("update: got %+v", updated)
+	}
+
+	for _, body := range []string{
+		`{"name":"","url":"tcp://10.0.0.4:2376"}`,
+		`{"name":"nope","url":"ftp://10.0.0.4"}`,
+		`{"name":"nope","url":"tcp://"}`,
+	} {
+		if code := postStatus(t, client, ts.URL+"/api/v1/environments", body); code != http.StatusBadRequest {
+			t.Fatalf("invalid %s: want 400, got %d", body, code)
+		}
+	}
+
+	if code := deleteStatus(t, client, ts.URL+"/api/v1/environments/"+strconv.FormatInt(created.ID, 10)); code != http.StatusNoContent {
+		t.Fatalf("delete: want 204, got %d", code)
+	}
+	if code := deleteStatus(t, client, ts.URL+"/api/v1/environments/"+strconv.FormatInt(created.ID, 10)); code != http.StatusNotFound {
+		t.Fatalf("delete twice: want 404, got %d", code)
 	}
 }

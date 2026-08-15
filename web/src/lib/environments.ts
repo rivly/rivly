@@ -1,4 +1,9 @@
-import { queryOptions, useQuery } from '@tanstack/react-query'
+import {
+  queryOptions,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { api } from './api'
 
 export type EnvironmentStatus = 'up' | 'down'
@@ -50,4 +55,44 @@ export function useEnvironments() {
 
 export function useEnvironment(id: number) {
   return useQuery(environmentQueryOptions(id))
+}
+
+type EnvironmentInput = {
+  name: string
+  url: string
+}
+
+export function useCreateEnvironment() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: EnvironmentInput) =>
+      api.post<EnvironmentDetail>('/environments', input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['environments'] })
+    },
+  })
+}
+
+export function useUpdateEnvironment() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: EnvironmentInput & { id: number }) =>
+      api.put<EnvironmentDetail>(`/environments/${input.id}`, {
+        name: input.name,
+        url: input.url,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['environments'] })
+    },
+  })
+}
+
+export function useDeleteEnvironment() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => api.del<void>(`/environments/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['environments'] })
+    },
+  })
 }

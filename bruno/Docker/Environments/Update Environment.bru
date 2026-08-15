@@ -1,0 +1,26 @@
+meta {
+  name: Update Environment
+  type: http
+  seq: 9
+}
+
+put {
+  url: {{baseUrl}}/api/v1/environments/2
+  body: json
+  auth: none
+}
+
+headers {
+  content-type: application/json
+}
+
+body:json {
+  {
+    "name": "production-eu",
+    "url": "tcp://10.0.0.5:2376"
+  }
+}
+
+assert {
+  res.status: eq 200
+}

@@ -1,0 +1,15 @@
+meta {
+  name: Remove Environment
+  type: http
+  seq: 10
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/environments/2
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 204
+}

@@ -1,7 +1,7 @@
 .wrap {
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: var(--surface);
+  background: var(--bg-raised);
   overflow: hidden;
 }
 
@@ -106,10 +106,12 @@
 .menuPopup {
   min-width: 180px;
   padding: 4px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--bg-raised);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius);
-  box-shadow: 0 8px 24px rgba(16, 24, 40, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 16px 40px rgba(0, 0, 0, 0.55);
 }
 
 .menuItem {
@@ -125,7 +127,7 @@
 }
 
 .menuItem[data-highlighted] {
-  background: var(--bg-subtle);
+  background: var(--surface-hover);
 }
 
 .menuCheck {
@@ -224,11 +226,11 @@ tbody tr:hover .td {
 }
 
 .td.pinned {
-  background: var(--surface);
+  background: var(--bg-raised);
 }
 
 tbody tr:hover .td.pinned {
-  background: color-mix(in srgb, var(--fg) 3%, var(--surface));
+  background: color-mix(in srgb, var(--fg) 3%, var(--bg-raised));
 }
 
 .pinnedLeftEdge {
@@ -304,7 +306,7 @@ tbody tr:hover .td.pinned {
 }
 
 .pageButton:hover:not(:disabled) {
-  background: var(--bg-subtle);
+  background: var(--surface-hover);
 }
 
 .pageButton:disabled {

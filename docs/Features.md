@@ -7,6 +7,9 @@ Planned work lives in [Roadmap](Roadmap.md).
 ## Environments
 
 - A `local` environment is created at first start from `DOCKER_HOST`.
+- Environments are added, renamed, repointed and removed from the interface. The
+  kind is derived from the endpoint scheme: a socket is local, anything else is
+  remote.
 - System information is shown per environment: Docker version, OS, architecture,
   kernel, CPU count, memory, container and image counts, Swarm state.
 - An unreachable environment is marked down and still renders its last known

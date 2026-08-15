@@ -258,3 +258,37 @@ func postJSONCreated(t *testing.T, c *http.Client, url, body string, dst any) {
 		}
 	}
 }
+
+func putJSON(t *testing.T, c *http.Client, url, body string, dst any) {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodPut, url, bytes.NewBufferString(body))
+	if err != nil {
+		t.Fatalf("PUT %s: %v", url, err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := c.Do(req)
+	if err != nil {
+		t.Fatalf("PUT %s: %v", url, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("PUT %s: want 200, got %d", url, resp.StatusCode)
+	}
+	if err := json.NewDecoder(resp.Body).Decode(dst); err != nil {
+		t.Fatalf("decode %s: %v", url, err)
+	}
+}
+
+func deleteStatus(t *testing.T, c *http.Client, url string) int {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodDelete, url, nil)
+	if err != nil {
+		t.Fatalf("DELETE %s: %v", url, err)
+	}
+	resp, err := c.Do(req)
+	if err != nil {
+		t.Fatalf("DELETE %s: %v", url, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	return resp.StatusCode
+}

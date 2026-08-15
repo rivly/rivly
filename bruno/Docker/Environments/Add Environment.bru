@@ -1,0 +1,27 @@
+meta {
+  name: Add Environment
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/v1/environments
+  body: json
+  auth: none
+}
+
+headers {
+  content-type: application/json
+}
+
+body:json {
+  {
+    "name": "production",
+    "url": "tcp://10.0.0.4:2376"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.kind: eq remote
+}

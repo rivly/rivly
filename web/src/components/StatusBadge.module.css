@@ -17,17 +17,20 @@
 }
 
 .up {
-  color: #1a7f42;
-  background: color-mix(in srgb, #1a7f42 12%, transparent);
+  color: var(--ok);
+  border: 1px solid color-mix(in oklab, var(--ok) 28%, transparent);
+  background: color-mix(in oklab, var(--ok) 14%, transparent);
 }
 
 .up .dot {
-  background: #1fab54;
+  background: var(--ok);
+  box-shadow: 0 0 6px var(--ok);
 }
 
 .down {
-  color: var(--danger-strong);
-  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger-text);
+  border: 1px solid color-mix(in oklab, var(--danger) 32%, transparent);
+  background: color-mix(in oklab, var(--danger) 14%, transparent);
 }
 
 .down .dot {

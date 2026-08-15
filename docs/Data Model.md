@@ -28,8 +28,11 @@ An environment is a Docker endpoint: a name, a kind, and a URL.
 it was taken. This is what lets an unreachable host still render something
 useful.
 
-One `local` environment is seeded at startup when the table is empty. There is no
-endpoint to create, edit or delete environments yet.
+One `local` environment is seeded at startup when the table is empty. Environments
+are created, edited and deleted through the API. Changing the URL clears the
+snapshot, because a snapshot taken from another host describes nothing useful.
+Deleting one cascades to the stacks Rivly recorded for it, and leaves whatever
+runs on the host untouched.
 
 ---
 

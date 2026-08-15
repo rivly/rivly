@@ -2,8 +2,14 @@ package server
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/rivly/rivly/internal/database/db"
 	"github.com/rivly/rivly/internal/docker"
 	"github.com/rivly/rivly/internal/environment"
@@ -104,4 +110,132 @@ func (s *Server) handleListEnvironments(w http.ResponseWriter, r *http.Request) 
 func (s *Server) handleGetEnvironment(w http.ResponseWriter, r *http.Request) {
 	detail := s.environments.Build(r.Context(), environmentFrom(r))
 	s.writeJSON(w, http.StatusOK, toEnvironmentDetailResponse(detail))
+}
+
+const maxEnvironmentName = 64
+
+var dockerHostSchemes = map[string]bool{
+	"unix":  true,
+	"npipe": true,
+	"tcp":   true,
+	"ssh":   true,
+	"http":  true,
+	"https": true,
+}
+
+type environmentInput struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
+}
+
+func validateEnvironment(in environmentInput) (name, endpoint, kind, message string, ok bool) {
+	name = strings.TrimSpace(in.Name)
+	if name == "" {
+		return "", "", "", "a name is required", false
+	}
+	if len(name) > maxEnvironmentName {
+		return "", "", "", "name is too long", false
+	}
+
+	endpoint = strings.TrimSpace(in.URL)
+	parsed, err := url.Parse(endpoint)
+	if err != nil || !dockerHostSchemes[parsed.Scheme] {
+		return "", "", "", "endpoint must start with unix://, tcp://, ssh:// or npipe://", false
+	}
+	if parsed.Scheme == "unix" || parsed.Scheme == "npipe" {
+		if parsed.Path == "" {
+			return "", "", "", "a socket path is required", false
+		}
+		kind = "local"
+	} else {
+		if parsed.Host == "" {
+			return "", "", "", "a host is required", false
+		}
+		kind = "remote"
+	}
+	return name, endpoint, kind, "", true
+}
+
+func (s *Server) handleCreateEnvironment(w http.ResponseWriter, r *http.Request) {
+	var in environmentInput
+	if err := decodeJSON(w, r, &in); err != nil {
+		s.badRequest(w, err)
+		return
+	}
+	name, endpoint, kind, message, ok := validateEnvironment(in)
+	if !ok {
+		s.writeError(w, http.StatusBadRequest, message)
+		return
+	}
+
+	created, err := s.queries.CreateEnvironment(r.Context(), db.CreateEnvironmentParams{
+		Name: name,
+		Kind: kind,
+		Url:  endpoint,
+	})
+	if err != nil {
+		s.serverError(w, r, "could not create the environment", err)
+		return
+	}
+
+	s.publishEnvironment(r.Context(), created)
+	s.writeJSON(w, http.StatusCreated, toEnvironmentDetailResponse(s.environments.Build(r.Context(), created)))
+}
+
+func (s *Server) handleUpdateEnvironment(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, "invalid environment id")
+		return
+	}
+
+	var in environmentInput
+	if err := decodeJSON(w, r, &in); err != nil {
+		s.badRequest(w, err)
+		return
+	}
+	name, endpoint, kind, message, ok := validateEnvironment(in)
+	if !ok {
+		s.writeError(w, http.StatusBadRequest, message)
+		return
+	}
+
+	updated, err := s.queries.UpdateEnvironment(r.Context(), db.UpdateEnvironmentParams{
+		Name: name,
+		Kind: kind,
+		Url:  endpoint,
+		ID:   id,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		s.writeError(w, http.StatusNotFound, "environment not found")
+		return
+	}
+	if err != nil {
+		s.serverError(w, r, "could not update the environment", err)
+		return
+	}
+
+	s.publishEnvironment(r.Context(), updated)
+	s.writeJSON(w, http.StatusOK, toEnvironmentDetailResponse(s.environments.Build(r.Context(), updated)))
+}
+
+func (s *Server) handleDeleteEnvironment(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		s.writeError(w, http.StatusBadRequest, "invalid environment id")
+		return
+	}
+
+	removed, err := s.queries.DeleteEnvironment(r.Context(), id)
+	if err != nil {
+		s.serverError(w, r, "could not remove the environment", err)
+		return
+	}
+	if removed == 0 {
+		s.writeError(w, http.StatusNotFound, "environment not found")
+		return
+	}
+
+	s.events.Publish("environment.removed", map[string]int64{"id": id})
+	w.WriteHeader(http.StatusNoContent)
 }

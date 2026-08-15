@@ -49,6 +49,18 @@ func (q *Queries) CreateEnvironment(ctx context.Context, arg CreateEnvironmentPa
 	return i, err
 }
 
+const deleteEnvironment = `-- name: DeleteEnvironment :execrows
+DELETE FROM environments WHERE id = ?
+`
+
+func (q *Queries) DeleteEnvironment(ctx context.Context, id int64) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteEnvironment, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const getEnvironment = `-- name: GetEnvironment :one
 SELECT id, name, kind, url, created_at, updated_at, snapshot, snapshot_at FROM environments WHERE id = ? LIMIT 1
 `
@@ -103,6 +115,47 @@ func (q *Queries) ListEnvironments(ctx context.Context) ([]Environment, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateEnvironment = `-- name: UpdateEnvironment :one
+UPDATE environments
+SET
+    name = ?1,
+    kind = ?2,
+    url = ?3,
+    snapshot = CASE WHEN url = ?3 THEN snapshot END,
+    snapshot_at = CASE WHEN url = ?3 THEN snapshot_at END,
+    updated_at = unixepoch()
+WHERE id = ?4
+RETURNING id, name, kind, url, created_at, updated_at, snapshot, snapshot_at
+`
+
+type UpdateEnvironmentParams struct {
+	Name string
+	Kind string
+	Url  string
+	ID   int64
+}
+
+func (q *Queries) UpdateEnvironment(ctx context.Context, arg UpdateEnvironmentParams) (Environment, error) {
+	row := q.db.QueryRowContext(ctx, updateEnvironment,
+		arg.Name,
+		arg.Kind,
+		arg.Url,
+		arg.ID,
+	)
+	var i Environment
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Kind,
+		&i.Url,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Snapshot,
+		&i.SnapshotAt,
+	)
+	return i, err
 }
 
 const updateEnvironmentSnapshot = `-- name: UpdateEnvironmentSnapshot :exec

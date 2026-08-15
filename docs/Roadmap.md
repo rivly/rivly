@@ -10,8 +10,6 @@ These are the gaps between what Rivly is and what it claims to be. The binary an
 the image are done; see [Packaging](Packaging.md).
 
 - **Published image.** A release pipeline that tags, builds and publishes it.
-- **Environment management.** Create, edit and delete environments, so a remote
-  host can be added without editing the database.
 
 ---
 
