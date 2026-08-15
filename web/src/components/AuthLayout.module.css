@@ -1,12 +1,36 @@
 .wrap {
+  position: relative;
   min-height: 100dvh;
   display: grid;
   place-items: center;
-  padding: 24px;
-  background: var(--bg-subtle);
+  padding: 76px 24px 32px;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.glow {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(900px, 150vw);
+  height: min(760px, 130vh);
+  translate: -50% -50%;
+  pointer-events: none;
+  filter: blur(64px);
+  background:
+    radial-gradient(46% 44% at 38% 34%, rgba(47, 123, 255, 0.3), transparent 68%),
+    radial-gradient(42% 42% at 70% 68%, rgba(109, 92, 231, 0.24), transparent 70%);
+}
+
+.corner {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 1;
 }
 
 .stack {
+  position: relative;
   width: 100%;
   max-width: 400px;
   display: flex;
@@ -16,28 +40,42 @@
 }
 
 .logo {
-  height: 36px;
+  height: 32px;
   width: auto;
 }
 
 .card {
   width: 100%;
-  padding: 32px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  padding: 1px;
   border-radius: var(--radius);
+  background: linear-gradient(
+    170deg,
+    rgba(255, 255, 255, 0.18),
+    rgba(255, 255, 255, 0.05) 34%,
+    rgba(255, 255, 255, 0.03) 70%,
+    rgba(255, 255, 255, 0.07)
+  );
   box-shadow:
-    0 1px 2px rgba(16, 24, 40, 0.04),
-    0 12px 32px rgba(16, 24, 40, 0.06);
+    0 2px 4px rgba(0, 0, 0, 0.4),
+    0 24px 56px -18px rgba(0, 0, 0, 0.7);
+}
+
+.inner {
+  padding: 32px;
+  border-radius: 7px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 44%),
+    var(--bg-raised);
+  backdrop-filter: blur(18px) saturate(150%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .title {
   margin-bottom: 24px;
-  font-size: 1.375rem;
+  font-family: var(--font-display);
+  font-variation-settings: "wdth" 104;
+  font-weight: 700;
+  font-size: 1.5rem;
+  letter-spacing: -0.03em;
   text-align: center;
-}
-
-.footer {
-  display: flex;
-  justify-content: center;
 }

@@ -61,6 +61,7 @@ function LoginPage() {
           type="email"
           autoComplete="email"
           placeholder="you@company.com"
+          autoFocus
           required
         />
         <PasswordField

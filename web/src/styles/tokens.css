@@ -1,26 +1,39 @@
 :root {
-  color-scheme: light;
+  color-scheme: dark;
 
-  --bg: #ffffff;
-  --bg-subtle: #f6f7f9;
-  --surface: #ffffff;
-  --fg: #1a1d21;
-  --fg-muted: #626b76;
-  --border: #e6e8ec;
-  --border-strong: #d6dae0;
+  --bg: #05070e;
+  --bg-raised: #080b14;
+  --bg-subtle: #0b0f19;
+  --surface: rgba(255, 255, 255, 0.028);
+  --surface-hover: rgba(255, 255, 255, 0.055);
+
+  --fg: #e8ecf5;
+  --fg-muted: #8791a6;
+  --fg-dim: #707a95;
+
+  --border: rgba(255, 255, 255, 0.075);
+  --border-strong: rgba(255, 255, 255, 0.15);
 
   --accent: #2f7bff;
-  --accent-strong: #1e69f0;
-  --accent-border: #1a5fdc;
+  --accent-lift: #4b8dff;
+  --accent-strong: #1a5fdc;
+  --accent-border: #2a6ee4;
   --accent-contrast: #ffffff;
-  --accent-glow: rgba(30, 105, 240, 0.28);
+  --accent-glow: rgba(47, 123, 255, 0.28);
+
+  --violet: #6d5ce7;
+  --data: #7fd8ff;
+  --ok: #3fcf8e;
+  --warn: #ffb020;
 
   --danger: #e5484d;
   --danger-strong: #c62a2f;
+  --danger-text: #ff6b70;
 
   --radius: 8px;
   --radius-lg: 14px;
 
+  --font-display: "Archivo Variable", "Geist Variable", system-ui, sans-serif;
   --font-sans: "Geist Variable", -apple-system, BlinkMacSystemFont, system-ui,
     "Segoe UI", Roboto, sans-serif;
   --font-mono: "Geist Mono Variable", ui-monospace, "SF Mono", Menlo, Consolas,

@@ -50,18 +50,23 @@
 
 .hint {
   font-size: 0.8125rem;
+  line-height: 1.55;
   color: var(--fg-muted);
+  text-wrap: pretty;
 }
 
 .hint code {
-  padding: 1px 4px;
-  border-radius: 4px;
-  background: var(--bg-subtle);
+  padding: 1.5px 5px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--data);
   font-family: var(--font-mono);
-  font-size: 0.9em;
+  font-size: 0.875em;
+  font-variant-ligatures: none;
 }
 
 .error {
   font-size: 0.8125rem;
-  color: var(--danger-strong);
+  color: var(--danger-text);
 }

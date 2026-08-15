@@ -16,12 +16,12 @@
   align-items: flex-start;
   gap: 11px;
   padding: 14px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--bg-raised);
+  border: 1px solid var(--border-strong);
   border-radius: 10px;
   box-shadow:
-    0 4px 12px rgba(16, 24, 40, 0.1),
-    0 2px 4px rgba(16, 24, 40, 0.06);
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 16px 40px rgba(0, 0, 0, 0.55);
   transition:
     opacity 0.22s ease,
     transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
@@ -46,7 +46,7 @@
 }
 
 .success .icon {
-  color: #1fab54;
+  color: var(--ok);
 }
 
 .error .icon {
@@ -99,7 +99,7 @@
 }
 
 .close:hover {
-  background: var(--bg-subtle);
+  background: var(--surface-hover);
   color: var(--fg);
 }
 

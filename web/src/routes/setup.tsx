@@ -60,6 +60,8 @@ function SetupPage() {
           name="displayName"
           autoComplete="name"
           placeholder="Admin"
+          autoFocus
+          required
         />
         <Field
           label="Email"
@@ -81,13 +83,6 @@ function SetupPage() {
           name="token"
           autoComplete="off"
           spellCheck={false}
-          placeholder="Paste the token from the server logs"
-          hint={
-            <>
-              Rivly printed this token when it started. Run{' '}
-              <code>docker logs rivly</code> to find it.
-            </>
-          }
           required
         />
         <FormError message={error} />
