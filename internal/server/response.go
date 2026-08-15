@@ -8,6 +8,14 @@ import (
 
 const maxRequestBody = 1 << 20
 
+func mapSlice[In, Out any](in []In, convert func(In) Out) []Out {
+	out := make([]Out, 0, len(in))
+	for _, v := range in {
+		out = append(out, convert(v))
+	}
+	return out
+}
+
 func (s *Server) writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)

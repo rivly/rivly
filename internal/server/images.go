@@ -12,7 +12,16 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rivly/rivly/internal/database/db"
+	"github.com/rivly/rivly/internal/docker"
 )
+
+type imageAPI interface {
+	Images(ctx context.Context) ([]docker.Image, error)
+	ImageAction(ctx context.Context, imageID, action string) error
+	ImageDetail(ctx context.Context, imageID string) (docker.ImageDetail, error)
+	ImagePull(ctx context.Context, ref string) (<-chan docker.PullProgress, error)
+	ImagesPrune(ctx context.Context, all bool) (docker.PruneResult, error)
+}
 
 type imageResponse struct {
 	ID      string   `json:"id"`

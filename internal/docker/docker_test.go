@@ -8,7 +8,7 @@ import (
 const missingSocket = "unix:///tmp/rivly-nonexistent.sock"
 
 func TestInfoUnreachable(t *testing.T) {
-	m := NewManager()
+	m := NewManager(nil)
 	defer m.Close()
 
 	client, err := m.Client(1, missingSocket)
@@ -21,7 +21,7 @@ func TestInfoUnreachable(t *testing.T) {
 }
 
 func TestClientCached(t *testing.T) {
-	m := NewManager()
+	m := NewManager(nil)
 	defer m.Close()
 
 	c1, err := m.clientFor(1, missingSocket)
@@ -38,7 +38,7 @@ func TestClientCached(t *testing.T) {
 }
 
 func TestClientRebuiltWhenHostChanges(t *testing.T) {
-	m := NewManager()
+	m := NewManager(nil)
 	defer m.Close()
 
 	before, err := m.clientFor(1, missingSocket)

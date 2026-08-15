@@ -72,84 +72,88 @@ func available(ctx context.Context, command []string) bool {
 	return exec.CommandContext(ctx, command[0], args...).Run() == nil
 }
 
-func (r *Runner) Deploy(ctx context.Context, dockerHost string, envID int64, project, content, env string) (string, error) {
-	dir, err := r.materialize(envID, project, content, env)
-	if err != nil {
-		return "", err
-	}
-	if out, perr := r.pull(ctx, dockerHost, dir, project, composeFile, ""); perr != nil {
-		return out, perr
-	}
-	return r.run(ctx, dockerHost, dir, project, composeFile, "", "up", "-d", "--remove-orphans")
+type Source int
+
+const (
+	Inline Source = iota
+	Repository
+)
+
+type Stack struct {
+	Source     Source
+	DockerHost string
+	EnvID      int64
+	Project    string
+	Content    string
+	File       string
+	Env        string
 }
 
-func (r *Runner) Remove(ctx context.Context, dockerHost string, envID int64, project, content, env string) (string, error) {
-	dir, err := r.materialize(envID, project, content, env)
+func (r *Runner) Deploy(ctx context.Context, st Stack) (string, error) {
+	dir, file, envPath, err := r.prepare(st)
 	if err != nil {
 		return "", err
 	}
-	out, rerr := r.run(ctx, dockerHost, dir, project, composeFile, "", "down", "--remove-orphans")
+	if out, perr := r.pull(ctx, st.DockerHost, dir, st.Project, file, envPath); perr != nil {
+		return out, perr
+	}
+	return r.run(ctx, st.DockerHost, dir, st.Project, file, envPath, "up", "-d", "--remove-orphans")
+}
+
+func (r *Runner) Remove(ctx context.Context, st Stack) (string, error) {
+	dir, file, envPath, err := r.prepare(st)
+	if err != nil {
+		return "", err
+	}
+	out, rerr := r.run(ctx, st.DockerHost, dir, st.Project, file, envPath, "down", "--remove-orphans")
 	if rerr == nil {
-		_ = os.RemoveAll(dir)
+		_ = os.RemoveAll(r.projectDir(st.EnvID, st.Project))
 	}
 	return out, rerr
 }
 
-func (r *Runner) Discard(ctx context.Context, dockerHost string, envID int64, project string) {
-	dir := r.projectDir(envID, project)
-	_, _ = r.run(ctx, dockerHost, dir, project, composeFile, "", "down", "--remove-orphans")
-	_ = os.RemoveAll(dir)
+func (r *Runner) Discard(ctx context.Context, st Stack) {
+	dir, file := r.location(st)
+	_, _ = r.run(ctx, st.DockerHost, dir, st.Project, file, "", "down", "--remove-orphans")
+	_ = os.RemoveAll(r.projectDir(st.EnvID, st.Project))
 }
 
 func (r *Runner) RepoDir(envID int64, project string) string {
 	return filepath.Join(r.projectDir(envID, project), repoSubdir)
 }
 
-func (r *Runner) DeployRepo(ctx context.Context, dockerHost string, envID int64, project, file, env string) (string, error) {
-	envPath, err := r.writeRepoEnv(envID, project, env)
-	if err != nil {
-		return "", err
+func (r *Runner) location(st Stack) (dir, file string) {
+	if st.Source == Repository {
+		return r.RepoDir(st.EnvID, st.Project), st.File
 	}
-	dir := r.RepoDir(envID, project)
-	if out, perr := r.pull(ctx, dockerHost, dir, project, file, envPath); perr != nil {
-		return out, perr
-	}
-	return r.run(ctx, dockerHost, dir, project, file, envPath, "up", "-d", "--remove-orphans")
+	return r.projectDir(st.EnvID, st.Project), composeFile
 }
 
-func (r *Runner) RemoveRepo(ctx context.Context, dockerHost string, envID int64, project, file, env string) (string, error) {
-	envPath, err := r.writeRepoEnv(envID, project, env)
-	if err != nil {
-		return "", err
+func (r *Runner) prepare(st Stack) (dir, file, envPath string, err error) {
+	dir, file = r.location(st)
+	if st.Source == Repository {
+		envPath, err = r.writeRepoEnv(st.EnvID, st.Project, st.Env)
+		return dir, file, envPath, err
 	}
-	out, rerr := r.run(ctx, dockerHost, r.RepoDir(envID, project), project, file, envPath, "down", "--remove-orphans")
-	if rerr == nil {
-		_ = os.RemoveAll(r.projectDir(envID, project))
+	if err := r.materialize(st.EnvID, st.Project, st.Content, st.Env); err != nil {
+		return "", "", "", err
 	}
-	return out, rerr
-}
-
-func (r *Runner) DiscardRepo(ctx context.Context, dockerHost string, envID int64, project, file string) {
-	_, _ = r.run(ctx, dockerHost, r.RepoDir(envID, project), project, file, "", "down", "--remove-orphans")
-	_ = os.RemoveAll(r.projectDir(envID, project))
+	return dir, file, "", nil
 }
 
 func (r *Runner) projectDir(envID int64, project string) string {
 	return filepath.Join(r.dataDir, "stacks", strconv.FormatInt(envID, 10), project)
 }
 
-func (r *Runner) materialize(envID int64, project, content, env string) (string, error) {
+func (r *Runner) materialize(envID int64, project, content, env string) error {
 	dir := r.projectDir(envID, project)
 	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return "", err
+		return err
 	}
 	if err := os.WriteFile(filepath.Join(dir, composeFile), []byte(content), 0o600); err != nil {
-		return "", err
+		return err
 	}
-	if err := os.WriteFile(filepath.Join(dir, envFile), []byte(env), 0o600); err != nil {
-		return "", err
-	}
-	return dir, nil
+	return os.WriteFile(filepath.Join(dir, envFile), []byte(env), 0o600)
 }
 
 func (r *Runner) writeRepoEnv(envID int64, project, env string) (string, error) {

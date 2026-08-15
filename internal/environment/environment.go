@@ -17,6 +17,8 @@ const (
 	StatusDown = "down"
 )
 
+const maxParallelProbes = 8
+
 type DockerClient interface {
 	Info(ctx context.Context) (docker.SystemInfo, error)
 	WatchEvents(ctx context.Context) (<-chan struct{}, <-chan error)
@@ -115,11 +117,14 @@ func (s *Service) BuildAll(ctx context.Context) ([]Detail, error) {
 	}
 
 	out := make([]Detail, len(envs))
+	sem := make(chan struct{}, maxParallelProbes)
 	var wg sync.WaitGroup
 	for i, e := range envs {
+		sem <- struct{}{}
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			defer func() { <-sem }()
 			out[i] = s.Build(ctx, e)
 		}()
 	}

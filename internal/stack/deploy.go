@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/rivly/rivly/internal/compose"
 	"github.com/rivly/rivly/internal/database/db"
 	"github.com/rivly/rivly/internal/gitrepo"
 )
@@ -101,11 +102,11 @@ func (s *Service) deployContent(
 		return invalid("compose file is empty")
 	}
 
-	out, err := s.compose.Deploy(ctx, env.Url, env.ID, name, content, envContent)
+	out, err := s.compose.Deploy(ctx, compose.Stack{Source: compose.Inline, DockerHost: env.Url, EnvID: env.ID, Project: name, Content: content, Env: envContent})
 	if err != nil {
 		s.logger.Warn("stack deploy failed", "stack", name, "err", err)
 		if isNew {
-			s.compose.Discard(ctx, env.Url, env.ID, name)
+			s.compose.Discard(ctx, compose.Stack{Source: compose.Inline, DockerHost: env.Url, EnvID: env.ID, Project: name})
 		}
 		return rejected(ComposeErrorMessage(out))
 	}
@@ -181,11 +182,11 @@ func (s *Service) deployGit(
 		return rejected("compose file not found in the repository")
 	}
 
-	out, derr := s.compose.DeployRepo(ctx, env.Url, env.ID, name, path, envContent)
+	out, derr := s.compose.Deploy(ctx, compose.Stack{Source: compose.Repository, DockerHost: env.Url, EnvID: env.ID, Project: name, File: path, Env: envContent})
 	if derr != nil {
 		s.logger.Warn("git stack deploy failed", "stack", name, "err", derr)
 		if isNew {
-			s.compose.DiscardRepo(ctx, env.Url, env.ID, name, path)
+			s.compose.Discard(ctx, compose.Stack{Source: compose.Repository, DockerHost: env.Url, EnvID: env.ID, Project: name, File: path})
 		}
 		return rejected(ComposeErrorMessage(out))
 	}

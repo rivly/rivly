@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/mail"
+	"regexp"
 	"strings"
 
 	"github.com/go-chi/chi/v5/middleware"
@@ -169,6 +170,8 @@ func (s *Server) startSession(r *http.Request, userID int64) error {
 	s.sessions.Put(r.Context(), sessionUserID, userID)
 	return nil
 }
+
+var resourceNamePattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}$`)
 
 func validateSetup(in credentialsInput) (email string, message string, ok bool) {
 	addr, err := mail.ParseAddress(in.Email)

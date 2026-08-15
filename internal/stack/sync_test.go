@@ -12,6 +12,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/rivly/rivly/internal/compose"
 	"github.com/rivly/rivly/internal/database"
 	"github.com/rivly/rivly/internal/database/db"
 	"github.com/rivly/rivly/internal/docker"
@@ -58,32 +59,20 @@ func (f fakeCompose) record(ch chan string, project string) {
 	}
 }
 
-func (f fakeCompose) Deploy(_ context.Context, _ string, _ int64, project, _, _ string) (string, error) {
-	f.record(f.deployed, project)
+func (f fakeCompose) Deploy(_ context.Context, st compose.Stack) (string, error) {
+	f.record(f.deployed, st.Project)
 	return f.out, f.err
 }
 
-func (f fakeCompose) Remove(_ context.Context, _ string, _ int64, project, _, _ string) (string, error) {
-	f.record(f.removed, project)
+func (f fakeCompose) Remove(_ context.Context, st compose.Stack) (string, error) {
+	f.record(f.removed, st.Project)
 	return f.out, f.err
 }
 
-func (f fakeCompose) Discard(_ context.Context, _ string, _ int64, _ string) {}
-
-func (f fakeCompose) RemoveRepo(_ context.Context, _ string, _ int64, project, _, _ string) (string, error) {
-	f.record(f.removed, project)
-	return f.out, f.err
-}
-
-func (f fakeCompose) DiscardRepo(_ context.Context, _ string, _ int64, _, _ string) {}
+func (f fakeCompose) Discard(_ context.Context, _ compose.Stack) {}
 
 func (f fakeCompose) RepoDir(_ int64, project string) string {
 	return filepath.Join(f.repoDir, project)
-}
-
-func (f fakeCompose) DeployRepo(_ context.Context, _ string, _ int64, project, _, _ string) (string, error) {
-	f.record(f.deployed, project)
-	return f.out, f.err
 }
 
 type fakeCredentials struct {

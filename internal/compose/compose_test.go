@@ -59,7 +59,7 @@ func TestRunWithoutAComposeExecutableFailsCleanly(t *testing.T) {
 		t.Fatalf("Command() = %q, want empty", got)
 	}
 
-	out, err := runner.Deploy(context.Background(), "unix:///var/run/docker.sock", 1, "app", "services: {}\n", "")
+	out, err := runner.Deploy(context.Background(), Stack{Source: Inline, DockerHost: "unix:///var/run/docker.sock", EnvID: 1, Project: "app", Content: "services: {}\n", Env: ""})
 	if !errors.Is(err, ErrNoCompose) {
 		t.Fatalf("Deploy without compose: want ErrNoCompose, got %v", err)
 	}

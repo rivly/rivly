@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/rivly/rivly/internal/compose"
 	"github.com/rivly/rivly/internal/database/db"
 	"github.com/rivly/rivly/internal/gitrepo"
 )
@@ -127,7 +128,7 @@ func (s *Service) redeploy(ctx context.Context, env db.Environment, st db.Stack,
 		return
 	}
 
-	out, err := s.compose.DeployRepo(ctx, env.Url, env.ID, st.Name, st.GitPath, EnvFileContent(ParseEnvVars(st.Env)))
+	out, err := s.compose.Deploy(ctx, compose.Stack{Source: compose.Repository, DockerHost: env.Url, EnvID: env.ID, Project: st.Name, File: st.GitPath, Env: EnvFileContent(ParseEnvVars(st.Env))})
 	if err != nil {
 		s.logger.Warn("stack sync: deploy failed", "stack", st.Name, "err", err, "out", out)
 		s.markChecked(ctx, st, ComposeErrorMessage(out), st.GitRemoteHash)

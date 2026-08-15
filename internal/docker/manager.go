@@ -36,12 +36,8 @@ type Manager struct {
 	authFor AuthResolver
 }
 
-func NewManager() *Manager {
-	return &Manager{clients: make(map[int64]cachedClient)}
-}
-
-func (m *Manager) SetAuthResolver(fn AuthResolver) {
-	m.authFor = fn
+func NewManager(authFor AuthResolver) *Manager {
+	return &Manager{clients: make(map[int64]cachedClient), authFor: authFor}
 }
 
 type Client struct {

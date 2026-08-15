@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/rivly/rivly/internal/compose"
 	"github.com/rivly/rivly/internal/database/db"
 	"github.com/rivly/rivly/internal/docker"
 	"github.com/rivly/rivly/internal/gitrepo"
@@ -34,13 +35,10 @@ type DockerClient interface {
 type Docker func(envID int64, host string) (DockerClient, error)
 
 type Compose interface {
-	Deploy(ctx context.Context, dockerHost string, envID int64, project, content, env string) (string, error)
-	Remove(ctx context.Context, dockerHost string, envID int64, project, content, env string) (string, error)
-	Discard(ctx context.Context, dockerHost string, envID int64, project string)
+	Deploy(ctx context.Context, st compose.Stack) (string, error)
+	Remove(ctx context.Context, st compose.Stack) (string, error)
+	Discard(ctx context.Context, st compose.Stack)
 	RepoDir(envID int64, project string) string
-	DeployRepo(ctx context.Context, dockerHost string, envID int64, project, file, env string) (string, error)
-	RemoveRepo(ctx context.Context, dockerHost string, envID int64, project, file, env string) (string, error)
-	DiscardRepo(ctx context.Context, dockerHost string, envID int64, project, file string)
 }
 
 type Credentials interface {

@@ -10,6 +10,13 @@ import (
 	"github.com/rivly/rivly/internal/docker"
 )
 
+type volumeAPI interface {
+	Volumes(ctx context.Context) ([]docker.Volume, error)
+	VolumeAction(ctx context.Context, volumeName, action string) error
+	VolumeCreate(ctx context.Context, in docker.VolumeCreateInput) (docker.Volume, error)
+	VolumeDetail(ctx context.Context, name string) (docker.VolumeDetail, error)
+}
+
 type volumeResponse struct {
 	Name       string `json:"name"`
 	Driver     string `json:"driver"`

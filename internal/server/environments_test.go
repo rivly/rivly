@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/rivly/rivly/internal/compose"
 	"github.com/rivly/rivly/internal/database/db"
 	"github.com/rivly/rivly/internal/docker"
 )
@@ -197,29 +198,19 @@ type fakeCompose struct {
 	repoDir   string
 }
 
-func (f fakeCompose) Deploy(_ context.Context, _ string, _ int64, _, _, _ string) (string, error) {
+func (f fakeCompose) Deploy(_ context.Context, _ compose.Stack) (string, error) {
 	return f.deployOut, f.deployErr
 }
 
-func (f fakeCompose) Remove(_ context.Context, _ string, _ int64, _, _, _ string) (string, error) {
+func (f fakeCompose) Remove(_ context.Context, _ compose.Stack) (string, error) {
 	return "", f.removeErr
 }
 
-func (f fakeCompose) Discard(_ context.Context, _ string, _ int64, _ string) {}
+func (f fakeCompose) Discard(_ context.Context, _ compose.Stack) {}
 
 func (f fakeCompose) RepoDir(_ int64, project string) string {
 	return filepath.Join(f.repoDir, project)
 }
-
-func (f fakeCompose) DeployRepo(_ context.Context, _ string, _ int64, _, _, _ string) (string, error) {
-	return f.deployOut, f.deployErr
-}
-
-func (f fakeCompose) RemoveRepo(_ context.Context, _ string, _ int64, _, _, _ string) (string, error) {
-	return "", f.removeErr
-}
-
-func (f fakeCompose) DiscardRepo(_ context.Context, _ string, _ int64, _, _ string) {}
 
 const testSetupToken = "test-setup-token"
 

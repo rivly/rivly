@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strings"
@@ -9,6 +10,16 @@ import (
 	"github.com/rivly/rivly/internal/docker"
 	"github.com/rivly/rivly/internal/stack"
 )
+
+type containerAPI interface {
+	Containers(ctx context.Context) ([]docker.Container, error)
+	ContainerDetail(ctx context.Context, containerID string) (docker.ContainerDetail, error)
+	ContainerCreate(ctx context.Context, in docker.ContainerCreateInput) (string, error)
+	ContainerStats(ctx context.Context, containerID string) (<-chan docker.Stats, error)
+	ContainerLogs(ctx context.Context, containerID string, tail int, follow bool) (<-chan docker.LogLine, error)
+	ContainerExec(ctx context.Context, containerID string) (*docker.ExecSession, error)
+	ContainerAction(ctx context.Context, containerID, action string) error
+}
 
 type containerResponse struct {
 	ID      string         `json:"id"`
@@ -36,30 +47,30 @@ func (s *Server) handleListContainers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out := make([]containerResponse, 0, len(containers))
-	for _, c := range containers {
-		ports := make([]portResponse, 0, len(c.Ports))
-		for _, p := range c.Ports {
-			ports = append(ports, portResponse{
-				PrivatePort: p.PrivatePort,
-				PublicPort:  p.PublicPort,
-				Type:        p.Type,
-				IP:          p.IP,
-			})
-		}
-		out = append(out, containerResponse{
-			ID:      c.ID,
-			Name:    c.Name,
-			Image:   c.Image,
-			State:   c.State,
-			Status:  c.Status,
-			Stack:   c.Stack,
-			Created: c.Created,
-			IP:      c.IP,
-			Ports:   ports,
-		})
+	s.writeJSON(w, http.StatusOK, mapSlice(containers, toContainerResponse))
+}
+
+func toPortResponse(p docker.Port) portResponse {
+	return portResponse{
+		PrivatePort: p.PrivatePort,
+		PublicPort:  p.PublicPort,
+		Type:        p.Type,
+		IP:          p.IP,
 	}
-	s.writeJSON(w, http.StatusOK, out)
+}
+
+func toContainerResponse(c docker.Container) containerResponse {
+	return containerResponse{
+		ID:      c.ID,
+		Name:    c.Name,
+		Image:   c.Image,
+		State:   c.State,
+		Status:  c.Status,
+		Stack:   c.Stack,
+		Created: c.Created,
+		IP:      c.IP,
+		Ports:   mapSlice(c.Ports, toPortResponse),
+	}
 }
 
 type portMapping struct {
@@ -216,25 +227,13 @@ func (s *Server) handleContainerDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ports := make([]portResponse, 0, len(detail.Ports))
-	for _, p := range detail.Ports {
-		ports = append(ports, portResponse{PrivatePort: p.PrivatePort, PublicPort: p.PublicPort, Type: p.Type, IP: p.IP})
-	}
-	networks := make([]networkAttachmentResponse, 0, len(detail.Networks))
-	for _, n := range detail.Networks {
-		networks = append(networks, networkAttachmentResponse{Name: n.Name, IP: n.IP})
-	}
-	mounts := make([]mountResponse, 0, len(detail.Mounts))
-	for _, mnt := range detail.Mounts {
-		mounts = append(mounts, mountResponse{Type: mnt.Type, Source: mnt.Source, Destination: mnt.Destination, Name: mnt.Name, RW: mnt.RW})
-	}
 	labels := detail.Labels
 	if labels == nil {
 		labels = map[string]string{}
 	}
-	env2 := detail.Env
-	if env2 == nil {
-		env2 = []string{}
+	variables := detail.Env
+	if variables == nil {
+		variables = []string{}
 	}
 
 	s.writeJSON(w, http.StatusOK, containerDetailResponse{
@@ -246,10 +245,14 @@ func (s *Server) handleContainerDetail(w http.ResponseWriter, r *http.Request) {
 		StartedAt:     detail.StartedAt,
 		Command:       detail.Command,
 		RestartPolicy: detail.RestartPolicy,
-		Ports:         ports,
-		Networks:      networks,
-		Mounts:        mounts,
-		Env:           env2,
-		Labels:        labels,
+		Ports:         mapSlice(detail.Ports, toPortResponse),
+		Networks: mapSlice(detail.Networks, func(n docker.NetworkAttachment) networkAttachmentResponse {
+			return networkAttachmentResponse{Name: n.Name, IP: n.IP}
+		}),
+		Mounts: mapSlice(detail.Mounts, func(m docker.Mount) mountResponse {
+			return mountResponse{Type: m.Type, Source: m.Source, Destination: m.Destination, Name: m.Name, RW: m.RW}
+		}),
+		Env:    variables,
+		Labels: labels,
 	})
 }

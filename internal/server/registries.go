@@ -14,6 +14,10 @@ import (
 	"github.com/rivly/rivly/internal/registry"
 )
 
+type registryAPI interface {
+	RegistryLogin(ctx context.Context, server, username, password string) error
+}
+
 type registryResponse struct {
 	ID        int64  `json:"id"`
 	Name      string `json:"name"`

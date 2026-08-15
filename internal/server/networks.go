@@ -11,6 +11,13 @@ import (
 	"github.com/rivly/rivly/internal/docker"
 )
 
+type networkAPI interface {
+	Networks(ctx context.Context) ([]docker.Network, error)
+	NetworkAction(ctx context.Context, networkID, action string) error
+	NetworkCreate(ctx context.Context, in docker.NetworkCreateInput) (docker.CreatedNetwork, error)
+	NetworkDetail(ctx context.Context, networkID string) (docker.NetworkDetail, error)
+}
+
 type networkResponse struct {
 	ID      string `json:"id"`
 	Name    string `json:"name"`

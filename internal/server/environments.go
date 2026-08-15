@@ -83,7 +83,8 @@ func (s *Server) emitEnvironment(_ context.Context, detail environment.Detail) {
 }
 
 func (s *Server) publishEnvironment(ctx context.Context, e db.Environment) {
-	s.environments.Publish(ctx, e)
+	detached := context.WithoutCancel(ctx)
+	s.spawn(func() { s.environments.Publish(detached, e) })
 }
 
 func (s *Server) handleListEnvironments(w http.ResponseWriter, r *http.Request) {

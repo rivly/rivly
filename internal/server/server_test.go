@@ -22,9 +22,10 @@ import (
 	"github.com/rivly/rivly/internal/gitcred"
 	"github.com/rivly/rivly/internal/registry"
 	"github.com/rivly/rivly/internal/secret"
+	"github.com/rivly/rivly/internal/stack"
 )
 
-func newTestServer(t *testing.T, client DockerClient, composeRunner composeRunner) *Server {
+func newTestServer(t *testing.T, client DockerClient, composeRunner stack.Compose) *Server {
 	t.Helper()
 	srv, _ := newTestServerWithDB(t, client, composeRunner)
 	return srv
@@ -43,7 +44,7 @@ func closeTestDatabase(t *testing.T, srv *Server) {
 
 var testDatabases = map[*Server]*sql.DB{}
 
-func newTestServerWithDB(t *testing.T, client DockerClient, composeRunner composeRunner) (*Server, *sql.DB) {
+func newTestServerWithDB(t *testing.T, client DockerClient, composeRunner stack.Compose) (*Server, *sql.DB) {
 	t.Helper()
 	sqlDB, err := database.Open(filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {

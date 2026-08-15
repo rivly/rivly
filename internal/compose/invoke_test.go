@@ -33,7 +33,7 @@ func recordingCompose(t *testing.T) (*Runner, func() []string) {
 func TestDeployPullsThenBringsTheStackUp(t *testing.T) {
 	runner, recorded := recordingCompose(t)
 
-	out, err := runner.Deploy(context.Background(), "unix:///run/docker.sock", 1, "app", "services: {}\n", "PORT=\"8080\"\n")
+	out, err := runner.Deploy(context.Background(), Stack{Source: Inline, DockerHost: "unix:///run/docker.sock", EnvID: 1, Project: "app", Content: "services: {}\n", Env: "PORT=\"8080\"\n"})
 	if err != nil {
 		t.Fatalf("Deploy: %v (%s)", err, out)
 	}
@@ -63,7 +63,7 @@ func TestDeployMaterialisesTheComposeAndEnvFiles(t *testing.T) {
 
 	const compose = "services:\n  web:\n    image: nginx\n"
 	const env = "PORT=\"8080\"\n"
-	if _, err := runner.Deploy(context.Background(), "unix:///run/docker.sock", 7, "app", compose, env); err != nil {
+	if _, err := runner.Deploy(context.Background(), Stack{Source: Inline, DockerHost: "unix:///run/docker.sock", EnvID: 7, Project: "app", Content: compose, Env: env}); err != nil {
 		t.Fatalf("Deploy: %v", err)
 	}
 
@@ -93,7 +93,7 @@ func TestDeployMaterialisesTheComposeAndEnvFiles(t *testing.T) {
 func TestRemoveTearsDownAndForgetsTheProject(t *testing.T) {
 	runner, recorded := recordingCompose(t)
 
-	if _, err := runner.Deploy(context.Background(), "unix:///run/docker.sock", 1, "app", "services: {}\n", ""); err != nil {
+	if _, err := runner.Deploy(context.Background(), Stack{Source: Inline, DockerHost: "unix:///run/docker.sock", EnvID: 1, Project: "app", Content: "services: {}\n", Env: ""}); err != nil {
 		t.Fatalf("Deploy: %v", err)
 	}
 	dir := runner.projectDir(1, "app")
@@ -101,7 +101,7 @@ func TestRemoveTearsDownAndForgetsTheProject(t *testing.T) {
 		t.Fatalf("the project directory must exist after a deploy: %v", err)
 	}
 
-	if _, err := runner.Remove(context.Background(), "unix:///run/docker.sock", 1, "app", "services: {}\n", ""); err != nil {
+	if _, err := runner.Remove(context.Background(), Stack{Source: Inline, DockerHost: "unix:///run/docker.sock", EnvID: 1, Project: "app", Content: "services: {}\n", Env: ""}); err != nil {
 		t.Fatalf("Remove: %v", err)
 	}
 
@@ -121,7 +121,7 @@ func TestDeployRepoPassesTheEnvFileExplicitly(t *testing.T) {
 		t.Fatalf("MkdirAll: %v", err)
 	}
 
-	if _, err := runner.DeployRepo(context.Background(), "unix:///run/docker.sock", 1, "app", "deploy/compose.yml", "TOKEN=\"x\"\n"); err != nil {
+	if _, err := runner.Deploy(context.Background(), Stack{Source: Repository, DockerHost: "unix:///run/docker.sock", EnvID: 1, Project: "app", File: "deploy/compose.yml", Env: "TOKEN=\"x\"\n"}); err != nil {
 		t.Fatalf("DeployRepo: %v", err)
 	}
 
@@ -143,7 +143,7 @@ func TestDeployRepoOmitsTheEnvFileWhenThereIsNone(t *testing.T) {
 		t.Fatalf("MkdirAll: %v", err)
 	}
 
-	if _, err := runner.DeployRepo(context.Background(), "unix:///run/docker.sock", 1, "app", "compose.yml", "   "); err != nil {
+	if _, err := runner.Deploy(context.Background(), Stack{Source: Repository, DockerHost: "unix:///run/docker.sock", EnvID: 1, Project: "app", File: "compose.yml", Env: "   "}); err != nil {
 		t.Fatalf("DeployRepo: %v", err)
 	}
 
@@ -167,7 +167,7 @@ func TestRunnerPointsComposeAtTheRightDaemon(t *testing.T) {
 	t.Setenv("DOCKER_HOST", "unix:///wrong/inherited.sock")
 	runner := NewRunner(context.Background(), script, filepath.Join(dir, "data"))
 
-	if _, err := runner.Deploy(context.Background(), "tcp://prod:2376", 1, "app", "services: {}\n", ""); err != nil {
+	if _, err := runner.Deploy(context.Background(), Stack{Source: Inline, DockerHost: "tcp://prod:2376", EnvID: 1, Project: "app", Content: "services: {}\n", Env: ""}); err != nil {
 		t.Fatalf("Deploy: %v", err)
 	}
 

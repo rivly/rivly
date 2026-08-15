@@ -32,7 +32,7 @@ func recordingEngine(t *testing.T, body string) (*Client, func() []call) {
 	}))
 	t.Cleanup(ts.Close)
 
-	manager := NewManager()
+	manager := NewManager(nil)
 	t.Cleanup(manager.Close)
 
 	client, err := manager.Client(1, ts.URL)
@@ -204,7 +204,7 @@ func TestVolumeCreateDefaultsToTheLocalDriver(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	manager := NewManager()
+	manager := NewManager(nil)
 	defer manager.Close()
 	client, err := manager.Client(1, ts.URL)
 	if err != nil {
@@ -222,7 +222,7 @@ func TestVolumeCreateDefaultsToTheLocalDriver(t *testing.T) {
 func TestClientIsIsolatedPerEnvironment(t *testing.T) {
 	t.Parallel()
 
-	manager := NewManager()
+	manager := NewManager(nil)
 	defer manager.Close()
 
 	first := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

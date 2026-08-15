@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/rivly/rivly/internal/compose"
 	"github.com/rivly/rivly/internal/database/db"
 )
 
@@ -69,9 +70,9 @@ func (s *Service) remove(ctx context.Context, env db.Environment, record db.Stac
 			return ActionResult{Name: record.Name, OK: false, Error: "an update is running"}
 		}
 		defer s.Release(record.ID)
-		out, err = s.compose.RemoveRepo(ctx, env.Url, env.ID, record.Name, record.GitPath, envContent)
+		out, err = s.compose.Remove(ctx, compose.Stack{Source: compose.Repository, DockerHost: env.Url, EnvID: env.ID, Project: record.Name, File: record.GitPath, Env: envContent})
 	} else {
-		out, err = s.compose.Remove(ctx, env.Url, env.ID, record.Name, record.Content, envContent)
+		out, err = s.compose.Remove(ctx, compose.Stack{Source: compose.Inline, DockerHost: env.Url, EnvID: env.ID, Project: record.Name, Content: record.Content, Env: envContent})
 	}
 	if err != nil {
 		s.logger.Warn("managed stack remove failed", "stack", record.Name, "err", err, "out", out)

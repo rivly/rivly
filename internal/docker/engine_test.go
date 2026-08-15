@@ -23,7 +23,7 @@ func fakeEngine(t *testing.T, routes map[string]string) *Client {
 	}))
 	t.Cleanup(ts.Close)
 
-	manager := NewManager()
+	manager := NewManager(nil)
 	t.Cleanup(manager.Close)
 
 	client, err := manager.Client(1, ts.URL)
@@ -245,7 +245,7 @@ func TestClientSurfacesADaemonFailure(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	manager := NewManager()
+	manager := NewManager(nil)
 	defer manager.Close()
 	client, err := manager.Client(1, ts.URL)
 	if err != nil {

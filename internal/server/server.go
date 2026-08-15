@@ -23,45 +23,22 @@ import (
 	"github.com/rivly/rivly/web"
 )
 
-type DockerClient interface {
+type systemAPI interface {
 	Info(ctx context.Context) (docker.SystemInfo, error)
-	Containers(ctx context.Context) ([]docker.Container, error)
-	ContainerDetail(ctx context.Context, containerID string) (docker.ContainerDetail, error)
-	ContainerCreate(ctx context.Context, in docker.ContainerCreateInput) (string, error)
-	ContainerStats(ctx context.Context, containerID string) (<-chan docker.Stats, error)
-	ContainerLogs(ctx context.Context, containerID string, tail int, follow bool) (<-chan docker.LogLine, error)
-	ContainerExec(ctx context.Context, containerID string) (*docker.ExecSession, error)
-	ContainerAction(ctx context.Context, containerID, action string) error
-	Images(ctx context.Context) ([]docker.Image, error)
-	ImageAction(ctx context.Context, imageID, action string) error
-	ImageDetail(ctx context.Context, imageID string) (docker.ImageDetail, error)
-	ImagePull(ctx context.Context, ref string) (<-chan docker.PullProgress, error)
-	ImagesPrune(ctx context.Context, all bool) (docker.PruneResult, error)
-	Volumes(ctx context.Context) ([]docker.Volume, error)
-	VolumeAction(ctx context.Context, volumeName, action string) error
-	VolumeCreate(ctx context.Context, in docker.VolumeCreateInput) (docker.Volume, error)
-	VolumeDetail(ctx context.Context, name string) (docker.VolumeDetail, error)
-	Networks(ctx context.Context) ([]docker.Network, error)
-	NetworkAction(ctx context.Context, networkID, action string) error
-	NetworkCreate(ctx context.Context, in docker.NetworkCreateInput) (docker.CreatedNetwork, error)
-	NetworkDetail(ctx context.Context, networkID string) (docker.NetworkDetail, error)
-	Stacks(ctx context.Context) ([]docker.Stack, error)
-	StackAction(ctx context.Context, project, action string) error
 	WatchEvents(ctx context.Context) (<-chan struct{}, <-chan error)
-	RegistryLogin(ctx context.Context, server, username, password string) error
+}
+
+type DockerClient interface {
+	systemAPI
+	containerAPI
+	imageAPI
+	volumeAPI
+	networkAPI
+	stackAPI
+	registryAPI
 }
 
 type DockerFactory func(envID int64, host string) (DockerClient, error)
-
-type composeRunner interface {
-	Deploy(ctx context.Context, dockerHost string, envID int64, project, content, env string) (string, error)
-	Remove(ctx context.Context, dockerHost string, envID int64, project, content, env string) (string, error)
-	Discard(ctx context.Context, dockerHost string, envID int64, project string)
-	RepoDir(envID int64, project string) string
-	DeployRepo(ctx context.Context, dockerHost string, envID int64, project, file, env string) (string, error)
-	RemoveRepo(ctx context.Context, dockerHost string, envID int64, project, file, env string) (string, error)
-	DiscardRepo(ctx context.Context, dockerHost string, envID int64, project, file string)
-}
 
 type Server struct {
 	logger         *slog.Logger
@@ -69,7 +46,6 @@ type Server struct {
 	sessions       *scs.SessionManager
 	local          *auth.Local
 	docker         DockerFactory
-	compose        composeRunner
 	events         *events.Hub
 	registries     *registry.Store
 	gitcreds       *gitcred.Store
@@ -114,7 +90,7 @@ func New(
 	sessions *scs.SessionManager,
 	local *auth.Local,
 	docker DockerFactory,
-	compose composeRunner,
+	composeRunner stack.Compose,
 	eventsHub *events.Hub,
 	registries *registry.Store,
 	gitcreds *gitcred.Store,
@@ -127,7 +103,6 @@ func New(
 		sessions:       sessions,
 		local:          local,
 		docker:         docker,
-		compose:        compose,
 		events:         eventsHub,
 		registries:     registries,
 		gitcreds:       gitcreds,
@@ -146,7 +121,7 @@ func New(
 	s.stacks = stack.New(
 		logger, queries,
 		func(id int64, host string) (stack.DockerClient, error) { return docker(id, host) },
-		compose, gitcreds, s.environments.Publish, s.spawn,
+		composeRunner, gitcreds, s.environments.Publish, s.spawn,
 	)
 	return s
 }

@@ -8,7 +8,10 @@ import (
 	"github.com/rivly/rivly/internal/database/db"
 )
 
-const maxBulkActions = 200
+const (
+	maxBulkActions     = 200
+	maxParallelActions = 8
+)
 
 var validActions = map[string]bool{
 	"start":   true,
@@ -56,11 +59,14 @@ func (s *Server) handleBulkAction(w http.ResponseWriter, r *http.Request, spec b
 	env := environmentFrom(r)
 
 	results := make([]actionResult, len(req.IDs))
+	sem := make(chan struct{}, maxParallelActions)
 	var wg sync.WaitGroup
 	for i, id := range req.IDs {
+		sem <- struct{}{}
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			defer func() { <-sem }()
 			if err := spec.apply(ctx, env, id, req.Action); err != nil {
 				s.logger.Warn("bulk action failed",
 					"kind", spec.noun, "action", req.Action, "id", id, "err", err)

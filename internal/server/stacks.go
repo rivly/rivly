@@ -1,12 +1,19 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/rivly/rivly/internal/docker"
 	"github.com/rivly/rivly/internal/stack"
 )
+
+type stackAPI interface {
+	Stacks(ctx context.Context) ([]docker.Stack, error)
+	StackAction(ctx context.Context, project, action string) error
+}
 
 type stackResponse struct {
 	Name       string `json:"name"`

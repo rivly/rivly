@@ -78,8 +78,7 @@ func run(ctx context.Context, getenv func(string) string, stdout io.Writer) erro
 	registries := registry.NewStore(queries, cipher)
 	gitCredentials := gitcred.NewStore(queries, cipher)
 
-	dockerManager := docker.NewManager()
-	dockerManager.SetAuthResolver(registries.AuthFor)
+	dockerManager := docker.NewManager(registries.AuthFor)
 	defer dockerManager.Close()
 
 	composeRunner := compose.NewRunner(ctx, cfg.ComposeBin, cfg.DataDir)
